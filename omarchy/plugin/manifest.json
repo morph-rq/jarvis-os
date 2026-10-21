@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "jarvis.companion",
+  "name": "Jarvis",
+  "version": "0.2.0",
+  "author": "Jarvis WorkOS",
+  "license": "MIT",
+  "description": "Jarvis WorkOS: an animated companion in the bar, a conversation panel, Gemini Live voice with the Hey Jarvis wake word, and dictation — all through jarvisd.",
+  "kinds": ["service", "panel", "bar-widget"],
+  "keepLoaded": true,
+  "entryPoints": {
+    "service": "Service.qml",
+    "panel": "Panel.qml",
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Jarvis",
+    "description": "Jarvis status: listening, thinking, speaking, dictating, approvals. Click for the panel, right-click to talk, middle-click to dictate.",
+    "category": "AI",
+    "defaultSection": "right",
+    "allowMultiple": false
+  }
+}

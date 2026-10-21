@@ -1,0 +1,17 @@
+screen_analysis_ms: 6202
+screenshots_left_behind: 0
+manual_idle_cpu_pct: 0.00
+wake_idle_rss_mb: 305
+recover_before: True
+wake_on_again_capture_nodes: 1
+wake_idle_cpu_pct: 2.50
+local_path: {"heard": "Какие приложения запущены?", "stt_ms": 3506, "engine": "whisper", "reply": "Открыто:\n1. org.omarchy.screensaver — foot [1]", "piper_audible_s": 2.5}
+manual_capture_nodes: 0
+wake_capture_nodes: 1
+muted_capture_nodes: 0
+recover_lost: open=True error=''
+binds: ['Jarvis panel', 'Jarvis: cancel tasks', 'Jarvis: dictation on/off', 'Jarvis: microphone on/off', 'Jarvis: stop talking', 'Jarvis: talk (push-to-talk)']
+screen_analysis: Ошибка указывает на то, что диск (`/dev/vda2`) заполнен на 97%, из-за чего система не может записывать логи в папку `/var/log/journal`.
+recover_after: open=True restarts=0 frame_age=0.1
+shortcut_super_alt_v: conversation -> conversation
+daemons_running: 1

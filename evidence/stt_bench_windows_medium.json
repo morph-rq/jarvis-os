@@ -1,0 +1,99 @@
+{
+  "model": "whisper medium/cpu",
+  "load_s": 329.0,
+  "routed_correctly": 6,
+  "total": 10,
+  "mean_stt_ms": 4274,
+  "rows": [
+    {
+      "said": "Открой терминал.",
+      "heard": "Открой терминал!",
+      "stt_ms": 3826,
+      "audio_s": 1.0,
+      "expected": "open_app",
+      "routed": "open_app",
+      "ok": true
+    },
+    {
+      "said": "Открой папку с проектами.",
+      "heard": "Отовой папку с проектами.",
+      "stt_ms": 3753,
+      "audio_s": 1.4,
+      "expected": "open_project",
+      "routed": null,
+      "ok": false
+    },
+    {
+      "said": "Переключись на рабочий стол номер три.",
+      "heard": "и переключись на рабочий стол номер три.",
+      "stt_ms": 3842,
+      "audio_s": 2.2,
+      "expected": "switch_workspace",
+      "routed": null,
+      "ok": false
+    },
+    {
+      "said": "Какие приложения запущены?",
+      "heard": "Какие приложения запущены?",
+      "stt_ms": 3724,
+      "audio_s": 1.6,
+      "expected": "list_windows",
+      "routed": "list_windows",
+      "ok": true
+    },
+    {
+      "said": "Сделай скриншот и объясни ошибку.",
+      "heard": "Делай скриншот и объясни ошибку.",
+      "stt_ms": 3924,
+      "audio_s": 2.1,
+      "expected": "analyze_screen",
+      "routed": "analyze_screen",
+      "ok": true
+    },
+    {
+      "said": "Громкость сорок.",
+      "heard": "и Бомка Сорок.",
+      "stt_ms": 8086,
+      "audio_s": 0.8,
+      "expected": "set_volume",
+      "routed": null,
+      "ok": false
+    },
+    {
+      "said": "Найди файл отчёт за сентябрь.",
+      "heard": "Найди файл «Отчет за сентябре».",
+      "stt_ms": 4083,
+      "audio_s": 1.8,
+      "expected": "search_files",
+      "routed": "search_files",
+      "ok": true
+    },
+    {
+      "said": "Закрой окно.",
+      "heard": "Закрой окно",
+      "stt_ms": 3749,
+      "audio_s": 1.0,
+      "expected": "close_window",
+      "routed": "close_window",
+      "ok": true
+    },
+    {
+      "said": "Продолжи предыдущую задачу.",
+      "heard": "и так далее.  Продолжим предыдущую задачу.",
+      "stt_ms": 3955,
+      "audio_s": 1.7,
+      "expected": "continue_task",
+      "routed": null,
+      "ok": false
+    },
+    {
+      "said": "Запомни, что моя компания называется Атлас.",
+      "heard": "Запомни, что моя компания называется Atlas",
+      "stt_ms": 3798,
+      "audio_s": 2.4,
+      "expected": "remember",
+      "routed": "remember",
+      "ok": true
+    }
+  ]
+}

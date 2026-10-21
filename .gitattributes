@@ -1,0 +1,5 @@
+# Scripts and sources run inside Omarchy (often from a shared Windows checkout): always LF.
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.png binary
+*.onnx binary

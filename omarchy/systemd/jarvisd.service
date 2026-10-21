@@ -1,0 +1,24 @@
+[Unit]
+Description=Jarvis WorkOS daemon (voice, tasks, tools)
+# Needs the compositor's environment (WAYLAND_DISPLAY, HYPRLAND_INSTANCE_SIGNATURE) and PipeWire.
+After=pipewire.service pipewire-pulse.service graphical-session.target
+Wants=pipewire.service
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/share/jarvis-workos/venv/bin/jarvis-workos daemon
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=8
+Environment=JARVIS_LOG=INFO
+# No hub telemetry; Whisper weights come from pinned revisions.
+Environment=HF_HUB_DISABLE_TELEMETRY=1
+# Hardening as in Hey Jarvis's voice-launcher.service: files are private, no privilege gain.
+UMask=0077
+NoNewPrivileges=yes
+LockPersonality=yes
+RestrictSUIDSGID=yes
+
+[Install]
+WantedBy=graphical-session.target

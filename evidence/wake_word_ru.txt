@@ -1,0 +1,7 @@
+en voice 'Hey Jarvis!': max score 0.998 -> WAKE
+ru voice 'Hey Jarvis!': max score 0.002 -> no
+ru voice 'Хэй, Джарвис!': max score 0.186 -> no
+ru voice 'Эй, Джарвис!': max score 0.992 -> WAKE
+ru voice 'Джарвис!': max score 0.000 -> no
+ru voice 'Привет, как дела? Открой, пожалуйста, мой календарь на завтра.': max score 0.000 -> no
+ru voice 'Давай обсудим отчёт за сентябрь.': max score 0.000 -> no

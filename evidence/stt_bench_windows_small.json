@@ -1,0 +1,99 @@
+{
+  "model": "whisper small/cpu",
+  "load_s": 28.5,
+  "routed_correctly": 6,
+  "total": 10,
+  "mean_stt_ms": 1335,
+  "rows": [
+    {
+      "said": "Открой терминал.",
+      "heard": "Отрой терминал.",
+      "stt_ms": 1324,
+      "audio_s": 1.1,
+      "expected": "open_app",
+      "routed": "open_app",
+      "ok": true
+    },
+    {
+      "said": "Открой папку с проектами.",
+      "heard": "открой папку с проектами.",
+      "stt_ms": 1309,
+      "audio_s": 1.4,
+      "expected": "open_project",
+      "routed": "open_project",
+      "ok": true
+    },
+    {
+      "said": "Переключись на рабочий стол номер три.",
+      "heard": "Telegram, чист на рабочий стол №3.",
+      "stt_ms": 1364,
+      "audio_s": 2.1,
+      "expected": "switch_workspace",
+      "routed": null,
+      "ok": false
+    },
+    {
+      "said": "Какие приложения запущены?",
+      "heard": "Какие приложения запущены?",
+      "stt_ms": 1320,
+      "audio_s": 1.7,
+      "expected": "list_windows",
+      "routed": "list_windows",
+      "ok": true
+    },
+    {
+      "said": "Сделай скриншот и объясни ошибку.",
+      "heard": "Делай скриншот и объясни ошибку.",
+      "stt_ms": 1367,
+      "audio_s": 2.0,
+      "expected": "analyze_screen",
+      "routed": "analyze_screen",
+      "ok": true
+    },
+    {
+      "said": "Громкость сорок.",
+      "heard": "Ролка 40",
+      "stt_ms": 1274,
+      "audio_s": 0.9,
+      "expected": "set_volume",
+      "routed": null,
+      "ok": false
+    },
+    {
+      "said": "Найди файл отчёт за сентябрь.",
+      "heard": "Найди файл отчет за сентябрь.",
+      "stt_ms": 1395,
+      "audio_s": 1.9,
+      "expected": "search_files",
+      "routed": "search_files",
+      "ok": true
+    },
+    {
+      "said": "Закрой окно.",
+      "heard": "Заклакно!",
+      "stt_ms": 1315,
+      "audio_s": 1.0,
+      "expected": "close_window",
+      "routed": null,
+      "ok": false
+    },
+    {
+      "said": "Продолжи предыдущую задачу.",
+      "heard": "и так далее.",
+      "stt_ms": 1310,
+      "audio_s": 1.8,
+      "expected": "continue_task",
+      "routed": null,
+      "ok": false
+    },
+    {
+      "said": "Запомни, что моя компания называется Атлас.",
+      "heard": "Запомни, что моя компания называется ATOS",
+      "stt_ms": 1381,
+      "audio_s": 2.5,
+      "expected": "remember",
+      "routed": "remember",
+      "ok": true
+    }
+  ]
+}

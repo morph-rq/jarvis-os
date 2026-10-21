@@ -1,0 +1,14 @@
+# Jarvis WorkOS settings. Change them with `jarvis-workos config set KEY VALUE` (validated) or the
+# panel's Settings. API keys never go here: they live in the keyring or secrets.env (mode 600).
+
+[voice]
+engine = "live"                # "live" (Gemini Live) or "local" (Whisper + Piper, offline)
+voice = "Charon"
+barge_in = "gated"             # gated | open (with --echo-cancel or headphones) | off
+
+[wake]
+enabled = true
+threshold = 0.5                # lower = more sensitive
+
+[ui]
+language = "auto"              # auto | ru | en | pt

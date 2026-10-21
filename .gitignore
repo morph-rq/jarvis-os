@@ -1,0 +1,15 @@
+# Upstream checkouts are pinned in UPSTREAM.md, not vendored.
+upstream/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+# Secrets never live in the repo; see service/jarvis/config.py.
+secrets.env
+*.secret
+evidence/tmp/
+
+# Downloaded VM launcher (verified hash in UPSTREAM.md)
+vm/
+*.egg-info/
+build/

@@ -1,0 +1,29 @@
+[project]
+name = "jarvis-workos"
+version = "0.1.0"
+description = "Jarvis: an executive AI companion service for Omarchy (portable to Windows for development)"
+requires-python = ">=3.11"
+dependencies = [
+  "google-genai>=1.50",
+]
+
+[project.optional-dependencies]
+# Local speech (wake word, VAD, Whisper, Piper), versions as pinned by Hey Jarvis 2.4.0.
+# omarchy/install.sh installs these from Hey Jarvis's hash-locked requirements.lock instead.
+local = ["openwakeword==0.6.0", "faster-whisper==1.2.1", "piper-tts==1.4.2", "onnxruntime==1.24.4", "numpy"]
+# Only needed off Linux; on Omarchy audio goes through PipeWire's pw-record/pw-play.
+windows = ["sounddevice>=0.5", "numpy"]
+dev = ["pytest>=8"]
+
+[project.scripts]
+jarvis-workos = "jarvis.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["jarvis*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
