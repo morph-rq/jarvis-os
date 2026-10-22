@@ -1,0 +1,80 @@
+{
+  "runtime": "pipecat",
+  "local": {
+    "wake": "ready",
+    "vad": "ready",
+    "whisper": "lazy",
+    "piper": "ready"
+  },
+  "wake_score": 0.923,
+  "live": {
+    "state": "connected",
+    "model": "gemini-3.8-live",
+    "connect_ms": 1375,
+    "error": null,
+    "runtime": "pipecat"
+  },
+  "capabilities": {
+    "reminder": {
+      "tool_ran": true,
+      "answer": [
+        "Напомню через двадцать минут."
+      ],
+      "tool_events": [
+        [
+          "reminders",
+          "started",
+          null
+        ],
+        [
+          "reminders",
+          "finished",
+          6.5
+        ]
+      ],
+      "cards": []
+    },
+    "weather": {
+      "tool_ran": true,
+      "answer": [
+        "В Лиссабоне сейчас ясно, около двадцати градусов тепла."
+      ],
+      "tool_events": [
+        [
+          "weather",
+          "started",
+          null
+        ],
+        [
+          "weather",
+          "finished",
+          1014.6
+        ]
+      ],
+      "cards": [
+        "weather"
+      ]
+    },
+    "health": {
+      "tool_ran": true,
+      "answer": [
+        "Система работает отлично."
+      ],
+      "tool_events": [
+        [
+          "diagnostics",
+          "started",
+          null
+        ],
+        [
+          "diagnostics",
+          "finished",
+          26.4
+        ]
+      ],
+      "cards": [
+        "gauges"
+      ]
+    }
+  }
+}

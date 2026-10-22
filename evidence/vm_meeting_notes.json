@@ -1,0 +1,39 @@
+{
+  "start": {
+    "text": "запиши встречу",
+    "routed": "meeting_notes",
+    "ms": 1526,
+    "state": "succeeded",
+    "result": "Recording 'Meeting'. Say 'stop the meeting notes' when it ends.",
+    "error": null,
+    "tools": [
+      "meeting_notes"
+    ],
+    "cards": [],
+    "notices": [],
+    "approvals": [
+      "meeting_notes(action='start')"
+    ]
+  },
+  "stop": {
+    "text": "останови запись встречи",
+    "routed": "meeting_notes",
+    "ms": 9124,
+    "state": "succeeded",
+    "result": "The team agreed to release a new version on Friday. Speaker A will prepare the build and Speaker B will write the release notes by Thursday. 2 action item(s).",
+    "error": null,
+    "tools": [
+      "meeting_notes"
+    ],
+    "cards": [
+      {
+        "kind": "file",
+        "title": "Meeting"
+      }
+    ],
+    "notices": [],
+    "approvals": []
+  },
+  "notes": "# Meeting\n\n2026-10-21 18:50 · 0.2 min\n\n## Summary\n\nThe team agreed to release a new version on Friday. Speaker A will prepare the build and Speaker B will write the release notes by Thursday.\n\n## Topics\n\n- New version release\n- Release schedule\n- Release notes\n\n## Decisions\n\n- The new version will be released on Friday.\n\n## Action items\n\n- [ ] **Speaker A**: Подготовить сборку (due Пятница)\n- [ ] **Speaker B**: Write the release notes (due Thursday)\n\n## Transcript\n\nSpeaker A: Давайте выпустим новую версию в пятницу. Я подготовлю сборку.\nSpeaker B: Agreed. I will write the release notes by Thursday.\n",
+  "raw_left": []
+}

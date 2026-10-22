@@ -1,0 +1,134 @@
+{
+  "audio_devices(action=list)": {
+    "risk": "safe",
+    "ms": 26.4,
+    "ok": true,
+    "message": "Outputs: Virtio 1.0 sound (QEMU) Stereo, DF27C240L (NVIDIA High Definition Audio), Windows System Default *. Inputs: Virtio 1.0 sound (QEMU) Stereo *"
+  },
+  "bluetooth(action=status)": {
+    "risk": "safe",
+    "ms": 0.0,
+    "ok": false,
+    "message": "Not available on this system: Bluetooth tools are not installed (bluez-utils)"
+  },
+  "music(action=players)": {
+    "risk": "safe",
+    "ms": 7.5,
+    "ok": true,
+    "message": "No media players are running."
+  },
+  "qr_code(action=make,text=https://omarchy.org)": {
+    "risk": "safe",
+    "ms": 3.9,
+    "ok": true,
+    "message": "QR code ready."
+  },
+  "screenshot(region=window)": {
+    "risk": "safe",
+    "ms": 121.5,
+    "ok": true,
+    "message": "Saved screenshot-2026-10-21_18-49-18.png"
+  },
+  "appearance(action=themes)": {
+    "risk": "safe",
+    "ms": 19.3,
+    "ok": true,
+    "message": "Current: Tokyo Night. Available: Catppuccin, Catppuccin Latte, Ethereal, Everforest, Flexoki Light, Gruvbox, Hackerman, Kanagawa, Last Horizon, Lumon, Lupine, Matte Black, Miasma, Nord, Osaka Jade, Retro 82, Ristretto, Rose Pine, Solitude, "
+  },
+  "power(action=profiles)": {
+    "risk": "safe",
+    "ms": 0.0,
+    "ok": false,
+    "message": "Not available on this system: power-profiles-daemon is not available on this machine"
+  },
+  "diagnostics(action=temperatures)": {
+    "risk": "safe",
+    "ms": 0.5,
+    "ok": true,
+    "message": "No temperature sensors exposed."
+  },
+  "diagnostics(action=battery)": {
+    "risk": "safe",
+    "ms": 0.2,
+    "ok": false,
+    "message": "No battery."
+  },
+  "diagnostics(action=failed_units)": {
+    "risk": "safe",
+    "ms": 6.2,
+    "ok": true,
+    "message": "run-p682984-i682996.service"
+  },
+  "diagnostics(action=journal_errors)": {
+    "risk": "safe",
+    "ms": 4.3,
+    "ok": true,
+    "message": "5 error lines this boot. Most frequent: pipewire: pw.resource: client error -32 (Broken pipe)"
+  },
+  "diagnostics(action=updates)": {
+    "risk": "safe",
+    "ms": 985.1,
+    "ok": true,
+    "message": "71 package update(s) available. Run omarchy-update to install."
+  },
+  "network(action=wifi_list)": {
+    "risk": "safe",
+    "ms": 9.0,
+    "ok": true,
+    "message": "No Wi-Fi networks found."
+  },
+  "network(action=ping,host=1.1.1.1)": {
+    "risk": "safe",
+    "ms": 2029.6,
+    "ok": true,
+    "message": "1.1.1.1: 14.571 ms average, 0% loss"
+  },
+  "find_duplicates(folder=/home/omarchy/jarvis-cap-test/dups)": {
+    "risk": "safe",
+    "ms": 2.3,
+    "ok": true,
+    "message": "1 group(s) of duplicates, 0 MB redundant."
+  },
+  "processes(action=find,name=jarvis)": {
+    "risk": "safe",
+    "ms": 12.5,
+    "ok": true,
+    "message": "2 matching process(es)."
+  },
+  "file_ops(action=read_text,path=/home/omarchy/.bashrc)": {
+    "risk": "safe",
+    "ms": 0.5,
+    "ok": true,
+    "message": "# Omarchy environment (OMARCHY_PATH + PATH), needed even for non-interactive shells\n[[ -r /usr/share/omarchy/default/bash/env-bootstrap ]] && source /usr/share/omarchy/default/bash/env-bootstrap\n\n# If not running interactively, don't do any"
+  },
+  "phone(action=status)": {
+    "risk": "safe",
+    "ms": 0.1,
+    "ok": false,
+    "message": "Not available on this system: KDE Connect is not installed (sudo pacman -S kdeconnect, then pair your phone)"
+  },
+  "camera(action=photo)": {
+    "risk": "confirm",
+    "ms": 20030.6,
+    "ok": false,
+    "message": "TimeoutExpired: Command '['ffmpeg', '-hide_banner', '-loglevel', 'error', '-f', 'v4l2', '-i', '/dev/video42', '-ss', '0.6', '-frames:v', '1', '-q:v', '3', '-y', '/home/omarchy/Pictures/Jarvis/camera-20261021-184921.jpg']' timed out after 20"
+  },
+  "home(action=status)": {
+    "risk": "safe",
+    "ms": 17.0,
+    "ok": false,
+    "message": "Home Assistant is not set up: run `jarvis-workos config set home.url http://homeassistant.local:8123` and store a long-lived access token (HA profile -> Security) as HOME_ASSISTANT_TOKEN."
+  },
+  "email(action=unread)": {
+    "risk": "safe",
+    "ms": 0.1,
+    "ok": false,
+    "message": "Mail is not set up: `jarvis-workos config set mail.address you@example.com`, mail.imap_host and mail.smtp_host, then store an app password as MAIL_PASSWORD."
+  },
+  "calendar(action=today)": {
+    "risk": "safe",
+    "ms": 16.9,
+    "ok": true,
+    "message": "Nothing in the calendar."
+  }
+}

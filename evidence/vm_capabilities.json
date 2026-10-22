@@ -1,0 +1,826 @@
+{
+ "note": "jarvisd driven over its socket in the Try Omarchy VM (Omarchy 4.0.4) by scripts/vm-capabilities.py; approvals answered like the panel Allow button. Later runs supersede earlier ones for the same scenario (fixes in between: Claude temperature, Gemini model fallback, web-search routing, sandbox via systemd-run, skill test args).",
+ "runs": [
+  {
+   "run": "part0",
+   "started": "2026-10-21 18:26:19",
+   "scenarios": [
+    "timer",
+    "weather",
+    "briefing",
+    "health",
+    "network",
+    "appearance",
+    "focus",
+    "clipboard",
+    "screen_text"
+   ]
+  },
+  {
+   "run": "part1",
+   "started": "2026-10-21 18:35:29",
+   "scenarios": [
+    "clipboard",
+    "screen_text",
+    "files",
+    "maps",
+    "circuit",
+    "document",
+    "image",
+    "search"
+   ]
+  },
+  {
+   "run": "part2",
+   "started": "2026-10-21 18:40:56",
+   "scenarios": [
+    "image",
+    "search",
+    "skill",
+    "delegate",
+    "meeting",
+    "diagnose",
+    "watch",
+    "reminder"
+   ]
+  },
+  {
+   "run": "part3",
+   "started": "2026-10-21 18:48:46",
+   "scenarios": [
+    "skill",
+    "meeting"
+   ]
+  }
+ ],
+ "scenarios": {
+  "timer": {
+   "run": "part0",
+   "steps": [
+    {
+     "text": "поставь таймер на 10 секунд",
+     "routed": "reminders",
+     "ms": 708,
+     "state": "succeeded",
+     "result": "Таймер на 10 сек поставлен.",
+     "error": null,
+     "tools": [
+      "reminders"
+     ],
+     "cards": [],
+     "notices": [],
+     "approvals": []
+    },
+    {
+     "after_12s_notices": [
+      "⏰ Jarvis / Таймер: время вышло."
+     ]
+    }
+   ]
+  },
+  "weather": {
+   "run": "part0",
+   "steps": [
+    {
+     "text": "какая погода в Лиссабоне",
+     "routed": "weather",
+     "ms": 3313,
+     "state": "succeeded",
+     "result": "Лиссабон, Португалия: 20°, ощущается как 17°, ясно. Сегодня от 12° до 21°.",
+     "error": null,
+     "tools": [
+      "weather"
+     ],
+     "cards": [
+      {
+       "kind": "weather",
+       "title": "Лиссабон, Португалия"
+      }
+     ],
+     "notices": [],
+     "approvals": [],
+     "screenshot": "/home/omarchy/jarvis/evidence/tmp/hud/hud-weather-1.png"
+    }
+   ]
+  },
+  "briefing": {
+   "run": "part0",
+   "steps": [
+    {
+     "text": "брифинг",
+     "routed": "daily_briefing",
+     "ms": 705,
+     "state": "succeeded",
+     "result": "Сегодня 21.10, 18:26. Не завершено: «объясни ошибку из буфера обмена».",
+     "error": null,
+     "tools": [
+      "daily_briefing"
+     ],
+     "cards": [
+      {
+       "kind": "briefing",
+       "title": "Briefing"
+      }
+     ],
+     "notices": [],
+     "approvals": []
+    }
+   ]
+  },
+  "health": {
+   "run": "part0",
+   "steps": [
+    {
+     "text": "проверь систему",
+     "routed": "diagnostics",
+     "ms": 1114,
+     "state": "succeeded",
+     "result": "CPU 2%, RAM 35%, load 1.14. Everything looks healthy.",
+     "error": null,
+     "tools": [
+      "diagnostics"
+     ],
+     "cards": [
+      {
+       "kind": "gauges",
+       "title": "System health"
+      }
+     ],
+     "notices": [],
+     "approvals": [],
+     "screenshot": "/home/omarchy/jarvis/evidence/tmp/hud/hud-health-1.png"
+    },
+    {
+     "text": "что грузит процессор",
+     "routed": "processes",
+     "ms": 1304,
+     "state": "succeeded",
+     "result": "Hyprland 3.3% CPU 164.6 MB; jarvis-workos 3.3% CPU 501.0 MB; systemd 1.7% CPU 16.8 MB; systemd-journal 1.7% CPU 29.8 MB; wireplumber 1.7% CPU 23.3 MB",
+     "error": null,
+     "tools": [
+      "processes"
+     ],
+     "cards": [
+      {
+       "kind": "processes",
+       "title": "Top cpu"
+      }
+     ],
+     "notices": [],
+     "approvals": [],
+     "screenshot": "/home/omarchy/jarvis/evidence/tmp/hud/hud-health-2.png"
+    },
+    {
+     "text": "сколько места на диске",
+     "routed": "disk",
+     "ms": 711,
+     "state": "succeeded",
+     "result": "/: 37% used, 13.9 GB free",
+     "error": null,
+     "tools": [
+      "disk"
+     ],
+     "cards": [
+      {
+       "kind": "gauges",
+       "title": "Disk"
+      }
+     ],
+     "notices": [],
+     "approvals": [],
+     "screenshot": "/home/omarchy/jarvis/evidence/tmp/hud/hud-health-3.png"
+    },
+    {
+     "text": "почисти диск",
+     "routed": "disk",
+     "ms": 704,
+     "state": "succeeded",
+     "result": "48.8 MB can be freed: pip_cache 48.8 MB",
+     "error": null,
+     "tools": [
+      "disk"
+     ],
+     "cards": [
+      {
+       "kind": "cleanup",
+       "title": "Cleanup"
+      }
+     ],
+     "notices": [],
+     "approvals": [],
+     "screenshot": "/home/omarchy/jarvis/evidence/tmp/hud/hud-health-4.png"
+    }
+   ]
+  },
+  "network": {
+   "run": "part0",
+   "steps": [
+    {
+     "text": "есть ли интернет",
+     "routed": "network",
+     "ms": 704,
+     "state": "succeeded",
+     "result": "Online via Wired connection 1, 15 ms",
+     "error": null,
+     "tools": [
+      "network"
+     ],
+     "cards": [],
+     "notices": [],
+     "approvals": [],
+     "screenshot": "/home/omarchy/jarvis/evidence/tmp/hud/hud-network-1.png"
+    },
+    {
+     "text": "покажи устройства в сети",
+     "routed": "network",
+     "ms": 706,
+     "state": "succeeded",
+     "result": "2 device(s) seen on the local network.",
+     "error": null,
+     "tools": [
+      "network"
+     ],
+     "cards": [
+      {
+       "kind": "radar",
+       "title": "Local network"
+      }
+     ],
+     "notices": [],
+     "approvals": [],
+     "screenshot": "/home/omarchy/jarvis/evidence/tmp/hud/hud-network-2.png"
+    }
+   ]
+  },
+  "appearance": {
+   "run": "part0",
+   "steps": [
+    {
+     "text": "не беспокоить",
+     "routed": "appearance",
+     "ms": 703,
+     "state": "succeeded",
+     "result": "Do not disturb on.",
+     "error": null,
+     "tools": [
+      "appearance"
+     ],
+     "cards": [],
+     "notices": [],
+     "approvals": []
+    },
+    {
+     "text": "выключи режим не беспокоить",
+     "routed": "appearance",
+     "ms": 705,
+     "state": "succeeded",
+     "result": "Do not disturb off.",
+     "error": null,
+     "tools": [
+      "appearance"
+     ],
+     "cards": [],
+     "notices": [],
+     "approvals": []
+    },
+    {
+     "text": "следующие обои",
+     "routed": "appearance",
+     "ms": 705,
+     "state": "succeeded",
+     "result": "Next wallpaper.",
+     "error": null,
+     "tools": [
+      "appearance"
+     ],
+     "cards": [],
+     "notices": [],
+     "approvals": []
+    }
+   ]
+  },
+  "focus": {
+   "run": "part0",
+   "steps": [
+    {
+     "text": "включи режим фокуса на 25 минут",
+     "routed": "focus_mode",
+     "ms": 709,
+     "state": "succeeded",
+     "result": "Focus for 25 min: do-not-disturb on.",
+     "error": null,
+     "tools": [
+      "focus_mode"
+     ],
+     "cards": [],
+     "notices": [],
+     "approvals": []
+    },
+    {
+     "text": "выключи фокус",
+     "routed": "focus_mode",
+     "ms": 703,
+     "state": "succeeded",
+     "result": "Focus mode off; 0 window(s) back.",
+     "error": null,
+     "tools": [
+      "focus_mode"
+     ],
+     "cards": [],
+     "notices": [],
+     "approvals": []
+    }
+   ]
+  },
+  "clipboard": {
+   "run": "part1",
+   "steps": [
+    {
+     "text": "объясни ошибку из буфера обмена",
+     "routed": "clipboard",
+     "ms": 14552,
+     "state": "succeeded",
+     "result": "**Ошибка:** Деление на ноль (`ZeroDivisionError`).\n\n**Причина:** В файле `app.py` на строке 12 программа пытается разделить переменную `price` на `count`, но значение `count` равно нулю. На ноль делить нельзя.\n\n**Как исправить:** \nУбедитесь, что перед делением переменная `count` не равна нулю. Например, добавьте проверку:\n\n```python\nif count != 0:\n    total = price / count\nelse:\n    total = 0  # и",
+     "error": null,
+     "tools": [
+      "clipboard"
+     ],
+     "cards": [
+      {
+       "kind": "text",
+       "title": "Explain"
+      }
+     ],
+     "notices": [],
+     "approvals": []
+    }
+   ]
+  },
+  "screen_text": {
+   "run": "part1",
+   "steps": [
+    {
+     "text": "прочитай текст на экране",
+     "routed": "model",
+     "ms": 19571,
+     "state": "succeeded",
+     "result": "На экране виден текст с объяснением ошибки `ZeroDivisionError` в файле `app.py`, а также текущая погода и время (среда, 18:35).",
+     "error": null,
+     "tools": [
+      "read_screen"
+     ],
+     "cards": [
+      {
+       "kind": "weather",
+       "title": "Лиссабон, Португалия"
+      },
+      {
+       "kind": "text",
+       "title": "Screen text"
+      }
+     ],
+     "notices": [],
+     "approvals": []
+    }
+   ]
+  },
+  "files": {
+   "run": "part1",
+   "steps": [
+    {
+     "text": "organize ~/jarvis-cap-test/Downloads by type",
+     "routed": "model",
+     "ms": 20750,
+     "state": "succeeded",
+     "result": "Папка `~/jarvis-cap-test/Downloads` упорядочена по типам файлов (перемещено 5 файлов). Отменить можно командой «отмени».",
+     "error": null,
+     "tools": [
+      "organize_folder"
+     ],
+     "cards": [],
+     "notices": [],
+     "approvals": [
+      "organize_folder(mode='type', action='apply', folder='~/jarvis-cap-test/Downloads')"
+     ]
+    },
+    {
+     "text": "верни как было",
+     "routed": "undo",
+     "ms": 703,
+     "state": "succeeded",
+     "result": "Moved 5 item(s) back.",
+     "error": null,
+     "tools": [
+      "undo"
+     ],
+     "cards": [],
+     "notices": [],
+     "approvals": []
+    }
+   ]
+  },
+  "maps": {
+   "run": "part1",
+   "steps": [
+    {
+     "text": "где находится Лиссабон",
+     "routed": "maps",
+     "ms": 703,
+     "state": "succeeded",
+     "result": "Лиссабон, Португалия: 38.73°N, 9.15°W.",
+     "error": null,
+     "tools": [
+      "maps"
+     ],
+     "cards": [
+      {
+       "kind": "globe",
+       "title": "Лиссабон, Португалия"
+      }
+     ],
+     "notices": [],
+     "approvals": [],
+     "screenshot": "/home/omarchy/jarvis/evidence/tmp/hud/hud-maps-1.png"
+    },
+    {
+     "text": "где находится мкс",
+     "routed": "maps",
+     "ms": 2107,
+     "state": "succeeded",
+     "result": "МКС сейчас над точкой 42.14°N, 95.36°W, высота 428 км, скорость 27567 км/ч.",
+     "error": null,
+     "tools": [
+      "maps"
+     ],
+     "cards": [
+      {
+       "kind": "globe",
+       "title": "ISS"
+      }
+     ],
+     "notices": [],
+     "approvals": [],
+     "screenshot": "/home/omarchy/jarvis/evidence/tmp/hud/hud-maps-2.png"
+    },
+    {
+     "text": "маршрут от Лиссабона до Порту",
+     "routed": "maps",
+     "ms": 1305,
+     "state": "succeeded",
+     "result": "Не нашёл место «лиссабона».",
+     "error": null,
+     "tools": [
+      "maps"
+     ],
+     "cards": [],
+     "notices": [],
+     "approvals": [],
+     "screenshot": "/home/omarchy/jarvis/evidence/tmp/hud/hud-maps-3.png"
+    }
+   ]
+  },
+  "circuit": {
+   "run": "part1",
+   "steps": [
+    {
+     "text": "как подключить DHT11 к Arduino Pro Mini",
+     "routed": "circuit",
+     "ms": 707,
+     "state": "succeeded",
+     "result": "DHT11 → Arduino Pro Mini 5V: проводов — 3, шагов — 4. Предупреждений: 1, смотрите карточку.",
+     "error": null,
+     "tools": [
+      "circuit"
+     ],
+     "cards": [
+      {
+       "kind": "circuit",
+       "title": "DHT11 → Arduino Pro Mini 5V"
+      }
+     ],
+     "notices": [],
+     "approvals": [],
+     "screenshot": "/home/omarchy/jarvis/evidence/tmp/hud/hud-circuit-1.png"
+    }
+   ]
+  },
+  "document": {
+   "run": "part1",
+   "steps": [
+    {
+     "text": "создай документ docx «План недели»: три пункта — спорт, чтение, проект Jarvis",
+     "routed": "model",
+     "ms": 23353,
+     "state": "succeeded",
+     "result": "Создал документ «План недели.docx» в папке документов.",
+     "error": null,
+     "tools": [
+      "create_document"
+     ],
+     "cards": [
+      {
+       "kind": "file",
+       "title": "План недели.docx"
+      }
+     ],
+     "notices": [],
+     "approvals": []
+    }
+   ]
+  },
+  "image": {
+   "run": "part2",
+   "steps": [
+    {
+     "text": "нарисуй минималистичный логотип в виде синего кольца",
+     "routed": "generate_image",
+     "ms": 120715,
+     "state": "succeeded",
+     "result": "Модель картинок не справилась: TimeoutError: ",
+     "error": null,
+     "tools": [
+      "generate_image"
+     ],
+     "cards": [],
+     "notices": [],
+     "approvals": [],
+     "screenshot": "/home/omarchy/jarvis/evidence/tmp/hud/hud-image-1.png"
+    }
+   ]
+  },
+  "search": {
+   "run": "part2",
+   "steps": [
+    {
+     "text": "найди в интернете, какая последняя версия Hyprland",
+     "routed": "web_search",
+     "ms": 5335,
+     "state": "succeeded",
+     "result": "Последней стабильной версией Hyprland является 0.56.2, выпущенная 5 августа 2026 года. До этого, 20 июля 2026 года, был выпущен Hyprland 0.56, который включал множество исправлений и новых функций.",
+     "error": null,
+     "tools": [
+      "web_search"
+     ],
+     "cards": [
+      {
+       "kind": "search",
+       "title": "какая последняя версия Hyprland"
+      }
+     ],
+     "notices": [],
+     "approvals": []
+    }
+   ]
+  },
+  "skill": {
+   "run": "part3",
+   "steps": [
+    {
+     "text": "научись считать площадь круга по радиусу",
+     "routed": "skills",
+     "ms": 6328,
+     "state": "succeeded",
+     "result": "Draft skill 'calculate_circle_area' is ready (code). Install it with skills create draft=calculate_circle_area — the user will see exactly what it does and approve it.",
+     "error": null,
+     "tools": [
+      "skills"
+     ],
+     "cards": [
+      {
+       "kind": "skill_draft",
+       "title": "calculate_circle_area"
+      }
+     ],
+     "notices": [],
+     "approvals": []
+    },
+    {
+     "text": "install the skill you just drafted",
+     "routed": "model",
+     "ms": 3314,
+     "state": "succeeded",
+     "result": "Навык `calculate_circle_area` успешно установлен и готов к использованию.",
+     "error": null,
+     "tools": [
+      "skills"
+     ],
+     "cards": [],
+     "notices": [],
+     "approvals": [
+      "Install skill 'calculate_circle_area' (code): Calculate the area of a circle given its radius.\nPython code, sandboxed, no internet access:\nimport math\n\ndef run(args: dict) -> dict:\n    radius = float(args.get(\"radius\", 0))\n    if radius < 0:\n        return {\"error\": \"Radius cannot be negative\"}\n    "
+     ]
+    },
+    {
+     "text": "use the circle area skill with radius 2",
+     "routed": "model",
+     "ms": 4111,
+     "state": "succeeded",
+     "result": "Площадь круга с радиусом 2 составляет 12.57 (π · 2²).",
+     "error": null,
+     "tools": [
+      "skills"
+     ],
+     "cards": [],
+     "notices": [],
+     "approvals": []
+    },
+    {
+     "text": "delete the circle area skill",
+     "routed": "model",
+     "ms": 4510,
+     "state": "succeeded",
+     "result": "Навык `calculate_circle_area` удалён.",
+     "error": null,
+     "tools": [
+      "skills"
+     ],
+     "cards": [],
+     "notices": [],
+     "approvals": [
+      "Delete skill 'calculate_circle_area'"
+     ]
+    }
+   ]
+  },
+  "delegate": {
+   "run": "part2",
+   "steps": [
+    {
+     "text": "в фоне: посмотри, какие окна открыты, и создай заметку markdown со списком окон",
+     "routed": "model",
+     "ms": 8723,
+     "state": "succeeded",
+     "result": "Задача запущена в фоне (t8dcf9-10): соберу список открытых окон, создам Markdown-заметку и сообщу путь к файлу.",
+     "error": null,
+     "tools": [
+      "delegate"
+     ],
+     "cards": [
+      {
+       "kind": "plan",
+       "title": "Посмотреть, какие окна сейчас открыты (список окон с приложением и заголовком), "
+      }
+     ],
+     "notices": [],
+     "approvals": []
+    },
+    {
+     "plan_state": "succeeded",
+     "plan_result": "Готово: найдено одно открытое окно (foot, заголовок «omarchy@try-omarchy:~», рабочий стол 1, в фокусе), и по нему создана Markdown-заметка `/home/omarchy/Documents/Jarvis/Открытые окна 21.10.2026 18 43.md`. Заметка не открывалась, и её содержимое после создания я не проверял, так что ошибок в ходе работы не было, но корректность текста остаётся непроверенной.",
+     "plan_steps": [
+      "1/3 Получить список открытых окон",
+      "list_windows()",
+      "1 windows open.",
+      "Получить список открытых окон: Открыто одно окно:\n\n- **foot**: «omarchy@try-omarchy:~», рабочий стол 1 (в фокусе)",
+      "2/3 Создать Markdown-заметку со списком окон",
+      "allowed (user): run_command(command='date \"+%d.%m.%Y %H:%M\"', timeout_s=10)",
+      "run_command(command='date \"+%d.%m.%Y %H:%M\"', timeout_s=10)",
+      "21.10.2026 18:43",
+      "create_document(kind='md', title='Открытые окна 21.10.2026 18:43', content={'title': 'Открытые окна — 21.10.2026 18:43',",
+      "Готово: Открытые окна 21.10.2026 18 43.md.",
+      "Создать Markdown-заметку со списком окон: Заметка создана: `/home/omarchy/Documents/Jarvis/Открытые окна 21.10.2026 18 4",
+      "3/3 Сообщить пользователю путь к заметке",
+      "Сообщить пользователю путь к заметке: Найдено одно открытое окно: foot с заголовком «omarchy@try-omarchy:~» на рабочем с"
+     ]
+    }
+   ]
+  },
+  "meeting": {
+   "run": "part3",
+   "steps": [
+    {
+     "text": "запиши встречу",
+     "routed": "meeting_notes",
+     "ms": 1510,
+     "state": "succeeded",
+     "result": "Recording 'Meeting'. Say 'stop the meeting notes' when it ends.",
+     "error": null,
+     "tools": [
+      "meeting_notes"
+     ],
+     "cards": [],
+     "notices": [],
+     "approvals": [
+      "meeting_notes(action='start')"
+     ]
+    },
+    {
+     "text": "останови запись встречи",
+     "routed": "meeting_notes",
+     "ms": 4113,
+     "state": "succeeded",
+     "result": "The transcript is empty.",
+     "error": null,
+     "tools": [
+      "meeting_notes"
+     ],
+     "cards": [
+      {
+       "kind": "file",
+       "title": "Meeting"
+      }
+     ],
+     "notices": [],
+     "approvals": []
+    }
+   ]
+  },
+  "diagnose": {
+   "run": "part2",
+   "steps": [
+    {
+     "text": "диагностируй себя",
+     "routed": "diagnose",
+     "ms": 7148,
+     "state": "succeeded",
+     "result": "Голосовой контур в норме: микрофон открыт, wake/VAD/Piper готовы, сервисы работают. Основные сбои связаны с моделями и песочницей навыков: квота Gemini исчерпана, Claude API отклоняет параметр temperature, а песочница навыков не запускается из-за bwrap. Fixes: Перезапустить сервис skills и проверить, что он поднялся. Если bwrap снова падает с 'Can't open source /usr', проверить, что user namespace",
+     "error": null,
+     "tools": [
+      "diagnose"
+     ],
+     "cards": [
+      {
+       "kind": "diagnosis",
+       "title": "Diagnosis"
+      }
+     ],
+     "notices": [
+      "Diagnosis"
+     ],
+     "approvals": []
+    }
+   ]
+  },
+  "watch": {
+   "run": "part2",
+   "steps": [
+    {
+     "text": "tell me when memory usage is above 99 percent",
+     "routed": "model",
+     "ms": 3719,
+     "state": "succeeded",
+     "result": "Готово: я сообщу, как только использование памяти превысит 99%.",
+     "error": null,
+     "tools": [
+      "watch"
+     ],
+     "cards": [],
+     "notices": [],
+     "approvals": []
+    },
+    {
+     "text": "list my watches",
+     "routed": "model",
+     "ms": 4517,
+     "state": "succeeded",
+     "result": "У вас одно активное наблюдение: #1 — уведомить, когда использование памяти превысит 99%. Значение пока не снималось.",
+     "error": null,
+     "tools": [
+      "watch"
+     ],
+     "cards": [],
+     "notices": [],
+     "approvals": []
+    }
+   ]
+  },
+  "reminder": {
+   "run": "part2",
+   "steps": [
+    {
+     "text": "напомни через 30 минут проверить почту",
+     "routed": "reminders",
+     "ms": 705,
+     "state": "succeeded",
+     "result": "Напомню в 19:14: проверить почту.",
+     "error": null,
+     "tools": [
+      "reminders"
+     ],
+     "cards": [],
+     "notices": [],
+     "approvals": []
+    },
+    {
+     "text": "какие у меня напоминания",
+     "routed": "reminders",
+     "ms": 705,
+     "state": "succeeded",
+     "result": "#5 2026-10-21 19:14 проверить почту",
+     "error": null,
+     "tools": [
+      "reminders"
+     ],
+     "cards": [
+      {
+       "kind": "reminders",
+       "title": "Reminders"
+      }
+     ],
+     "notices": [],
+     "approvals": []
+    }
+   ]
+  }
+ }
+}

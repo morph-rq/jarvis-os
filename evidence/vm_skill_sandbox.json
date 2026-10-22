@@ -1,0 +1,76 @@
+{
+  "control_math": {
+    "expected": "succeeds",
+    "ok": true,
+    "passed": true,
+    "detail": "{'area': 12.566370614359172}"
+  },
+  "read_secrets": {
+    "expected": "blocked",
+    "ok": false,
+    "passed": true,
+    "detail": "FileNotFoundError: [Errno 2] No such file or directory: '/home/omarchy/.config/jarvis-workos/secrets.env'"
+  },
+  "list_home": {
+    "expected": "blocked",
+    "ok": false,
+    "passed": true,
+    "detail": "FileNotFoundError: [Errno 2] No such file or directory: '/home/omarchy'"
+  },
+  "read_ssh": {
+    "expected": "blocked",
+    "ok": false,
+    "passed": true,
+    "detail": "FileNotFoundError: [Errno 2] No such file or directory: '/home/omarchy/.ssh/authorized_keys'"
+  },
+  "env_secrets": {
+    "expected": "blocked",
+    "ok": false,
+    "passed": true,
+    "detail": "RuntimeError: env clean: LANG,PATH,PWD,PYTHONDONTWRITEBYTECODE"
+  },
+  "network_offline": {
+    "expected": "blocked",
+    "ok": false,
+    "passed": true,
+    "detail": "URLError: <urlopen error [Errno 101] Network is unreachable>"
+  },
+  "spawn_process": {
+    "expected": "blocked",
+    "ok": false,
+    "passed": true,
+    "detail": "BlockingIOError: [Errno 11] Resource temporarily unavailable"
+  },
+  "write_usr": {
+    "expected": "blocked",
+    "ok": false,
+    "passed": true,
+    "detail": "OSError: [Errno 30] Read-only file system: '/usr/jarvis-escape'"
+  },
+  "jarvis_socket": {
+    "expected": "blocked",
+    "ok": false,
+    "passed": true,
+    "detail": "FileNotFoundError: [Errno 2] No such file or directory"
+  },
+  "memory_bomb": {
+    "expected": "blocked",
+    "ok": false,
+    "passed": true,
+    "detail": "MemoryError: "
+  },
+  "cpu_spin": {
+    "expected": "blocked",
+    "ok": false,
+    "passed": true,
+    "detail": "no result (exit 137): "
+  },
+  "control_network": {
+    "expected": "succeeds",
+    "ok": true,
+    "passed": true,
+    "detail": "iss"
+  },
+  "_argv_offline": "systemd-run --user --quiet --pipe --wait --collect -p MemoryMax=600M -p TasksMax=16 -p CPUQuota=100% -p RuntimeMaxSec=30 -p NoNewPrivileges=yes -- bwrap --unshare-all --die-with-parent --new-session --clearenv --setenv PATH /usr/bin --setenv LANG C.UTF-8 --setenv PYTHONDONTWRITEBYTECODE 1 --ro-bind /usr /usr --symlink usr/lib /lib --symlink usr/lib64 /lib64 --symlink usr/bin /bin --proc /proc --dev /dev --tmpfs /tmp --dir /skill --ro-bind /home/omarchy/jarvis/service/jarvis/capabilities/skill_runner.py /skill/runner.py --ro-bind /tmp/sandbox-check-ey5mgnk8/x.py /skill/skill.py --chdir /tmp /usr/bin/python3 -I -B /skill/runner.py",
+  "_all_passed": true
+}

@@ -1,0 +1,69 @@
+{
+  "active_window()": {
+    "risk": "safe",
+    "ms": 16.9,
+    "ok": false,
+    "message": "No window is focused."
+  },
+  "list_workspaces()": {
+    "risk": "safe",
+    "ms": 6.3,
+    "ok": true,
+    "message": "1 workspaces, active: 1"
+  },
+  "system_status()": {
+    "risk": "safe",
+    "ms": 12.3,
+    "ok": true,
+    "message": "memory_used_pct: 31; load_1m: 2.69; uptime_h: 4.9; volume: Volume: 1.00"
+  },
+  "file_info(path=/home/omarchy/.bashrc)": {
+    "risk": "safe",
+    "ms": 0.2,
+    "ok": true,
+    "message": ".bashrc: file, 592 bytes, modified 2026-08-25 13:12"
+  },
+  "file_info(path=/etc/shadow)": {
+    "risk": "safe",
+    "ms": 0.0,
+    "ok": false,
+    "message": "That path is outside the folders Jarvis may read (files.roots)."
+  },
+  "recent_files(days=2)": {
+    "risk": "safe",
+    "ms": 2.5,
+    "ok": true,
+    "message": "1 file(s) changed in the last 2 day(s)."
+  },
+  "omarchy_action(action=battery)": {
+    "risk": "safe",
+    "ms": 19.1,
+    "ok": true,
+    "message": "battery: done"
+  },
+  "omarchy_action(action=nightlight)": {
+    "risk": "safe",
+    "ms": 75.9,
+    "ok": true,
+    "message": "nightlight: done"
+  },
+  "list_tasks()": {
+    "risk": "safe",
+    "ms": 0.2,
+    "ok": true,
+    "message": "No tasks yet."
+  },
+  "active_window(focused foot)": {
+    "ok": true,
+    "message": "foot: omarchy@try-omarchy:~ (workspace 1)",
+    "monitor": {
+      "name": "Virtual-1",
+      "description": "Red Hat Inc. QEMU Monitor",
+      "width": 1920,
+      "height": 1009,
+      "scale": 1,
+      "focused": true,
+      "workspace": "1"
+    }
+  }
+}
