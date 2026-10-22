@@ -747,6 +747,8 @@ async def serve(cfg: configmod.Config) -> None:
         await jarvis.gateway.stop()
         await jarvis.hub.stop()
         await jarvis.workspace.stop()
+        from jarvis.capabilities import browser
+        await browser.close_browser()
         await jarvis.integrations.close()
         if jarvis.voice:
             await jarvis.voice.shutdown()

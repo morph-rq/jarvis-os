@@ -3,8 +3,9 @@ tool, through the `REMOTE` context variable: anything started by a remote reques
 background jobs it delegates) carries it, so no path around the policy exists.
 
 Rules, strictest first:
-* Never from chat: a shell, keyboard/mouse injection, self-granted input control, code skills, the
-  webcam and meeting recording (`DENY`). These need the person at the desk.
+* Never from chat: a shell, keyboard/mouse injection, self-granted input control, Jarvis's browser (it may
+  hold the owner's sign-ins), code skills, the webcam and meeting recording (`DENY`). These need the
+  person at the desk.
 * Members (people the owner let in) get conversation plus harmless lookups (`MEMBER_ALLOW`), and file
   arguments must stay inside their own inbox folder.
 * Remote requests never run anything above "safe" without an approval, whatever approval.auto says.
@@ -22,8 +23,8 @@ from pathlib import Path
 
 from jarvis.tools import CONFIRM, DANGER, SAFE
 
-DENY = frozenset({"run_command", "computer_input", "control_session", "click_on_screen", "navigate", "skills", "camera",
-                  "meeting_notes"})
+DENY = frozenset({"run_command", "computer_input", "control_session", "click_on_screen", "navigate", "browser", "skills",
+                  "camera", "meeting_notes"})
 MEMBER_ALLOW = frozenset({"web_search", "weather", "maps", "circuit", "generate_image", "read_document", "send_file",
                           "youtube"})
 ESCALATE = frozenset({"analyze_screen", "read_screen", "screenshot", "clipboard", "screen_controls"})

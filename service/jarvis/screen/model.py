@@ -32,7 +32,7 @@ MAX_AREA_SHARE = 0.4
 @dataclass
 class Element:
     id: int
-    source: str                 # "atspi" or "ocr"
+    source: str                 # "atspi", "cdp" (a page in Jarvis's browser) or "ocr"
     role: str
     name: str
     rect: Rect                  # layout coordinates
@@ -45,11 +45,11 @@ class Element:
 
     @property
     def clickable(self) -> bool:
-        return self.source == "atspi" and self.role in CLICKABLE
+        return self.source in ("atspi", "cdp") and self.role in CLICKABLE
 
     @property
     def usable(self) -> bool:
-        if self.source != "atspi":
+        if self.source not in ("atspi", "cdp"):
             return True
         return "sensitive" in self.states or "enabled" in self.states
 

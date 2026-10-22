@@ -248,6 +248,17 @@ DEFAULTS: dict = {
         # Let Jarvis write small interactive UIs (calculators, explainers); they run sandboxed.
         "generated_ui": True,
     },
+    "browser": {
+        # Jarvis's own browser window for web tasks (the browser tool): a Chromium-family browser driven over
+        # a private DevTools pipe, with its own profile, never your everyday one.
+        "enabled": True,
+        # "" = chromium / google-chrome / brave, in that order.
+        "binary": "",
+        # "" = ~/.local/share/jarvis-workos/browser. Sign-ins you make in that window stay there.
+        "profile_dir": "",
+        # Run without a window (tests, servers); normally the window shows so you can watch and take over.
+        "headless": False,
+    },
 }
 
 # Validation for `jarvis-workos config set` and the settings panel: (type, choices | (min, max) | None).
@@ -313,6 +324,8 @@ SCHEMA: dict[str, tuple] = {
     "integrations.download_dir": (str, None),
     "workspace.enabled": (bool, None), "workspace.offline": (bool, None), "workspace.generated_ui": (bool, None),
     "workspace.browser": (str, None),
+    "browser.enabled": (bool, None), "browser.binary": (str, None), "browser.profile_dir": (str, None),
+    "browser.headless": (bool, None),
     "gateway.enabled": (bool, None),
     "gateway.dm_policy": (str, ("pairing", "allowlist", "disabled")),
     "gateway.groups": (bool, None),

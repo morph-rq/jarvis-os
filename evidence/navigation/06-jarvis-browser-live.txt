@@ -1,0 +1,20 @@
+Jarvis's browser on the headless test desktop (sway + Caelestia + Jarvis), recorded 2026-10-22.
+Chromium 141 as a visible Wayland window, driven through the `browser` tool over its private DevTools
+pipe (no TCP port). A local test shop on http://127.0.0.1:8765. Script: /tmp/browser_live.py in the
+chroot. It builds a tool Context directly, the way service/tests/test_browser.py does.
+
+open http://127.0.0.1:8765/index.html  -> ok, "Northwind — Lamps", 0.64 s (5.8 s on a cold profile)
+   numbered controls: 12 search box "Search products"; 9 link "Docs"; 10 "Pricing"; 11 "Support";
+   3, 5, 7 push button "Add to cart"; headings and prices as text
+type "brass lamp" into "Search products" -> ok, 0.01 s (a search box: no approval needed)
+key Enter                                -> ok, title "Results for brass lamp", 0.50 s
+click "Docs"                             -> ok, title "Northwind docs", 0.53 s (hit-tested first)
+click "Add to cart"                      -> refused: "3 controls are called 'Add to cart' (3, 5, 7):
+                                            say which by its number." (never guessed)
+
+Screenshots 03–05: after open, after the search, after clicking Docs. The --no-sandbox banner comes from the
+test wrapper /opt/chrome-test.sh: this container has no user namespaces for Chromium's sandbox. Jarvis
+itself passes --no-sandbox only when it runs as root.
+
+Not done here: do mode with a live vision model (no API key); the unit test drives it with a scripted
+model. No on-screen ring is drawn for browser actions yet: the window shows them.

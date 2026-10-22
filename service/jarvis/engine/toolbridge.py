@@ -42,7 +42,7 @@ def function_schemas(exclude: tuple[str, ...] = ()) -> list:
 
 
 # Slow even when safe: a vision call, a whole resumed task, a shell command, a disk walk.
-SLOW_TOOLS = {"analyze_screen", "continue_task", "run_command", "recent_files",
+SLOW_TOOLS = {"analyze_screen", "continue_task", "run_command", "recent_files", "browser",
               # capabilities: network, model or disk work that can take several seconds
               "web_search", "daily_briefing", "create_document", "read_document", "pdf_tools", "generate_image",
               "delegate", "diagnose", "maps", "circuit", "youtube", "meeting_notes", "read_screen", "click_on_screen",

@@ -15,6 +15,7 @@ and nothing depends on Hermes Agent. VYRSE's name, logo and prompt identity text
 | `hermes-plugin/vyrse/point/locate.ps1` | item filters and the change signature (`model.py`, algorithm only) |
 | `app/public/overlay.html`, `overlay.js` | the ring, tip and arrow design, re-drawn in QML (`omarchy/plugin/Guide.qml`) |
 | `hermes-plugin/vyrse/navigator.py` `_RISKY`, `app/android/.../PhoneControl.java` `SENSITIVE` | the consequential-click word list, extended (`policy.py`) |
+| `hermes-plugin/vyrse/browser.py`, `chrome.py` | the idea of a dedicated, persistent browser profile for automation and numbered page controls; reimplemented over a private DevTools pipe instead of a debugging port or extension (`cdp.py`, `web.py`, `capabilities/browser.py`) |
 | `hermes-plugin/vyrse/quiz.py` | option parsing (`picked`), forgiving match (`close_enough`), answer detection (`is_answer`, `on_topic`), the made-up-answer check (`given_in`), the scorecard and its verdicts; extended with flashcards, Leitner review, stored progress and Russian/Portuguese (`learn.py`) |
 
 ```
