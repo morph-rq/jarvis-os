@@ -1,15 +1,22 @@
 #version 440
-// The Jarvis orb: a dark core with two eyes inside luminous strands of light that drift, fold and
-// interweave. Original work for Jarvis WorkOS (MIT). Every input is a uniform driven by real jarvisd
-// state in JarvisOrb.qml; this shader is a pure function of them and of `time`.
+// The Jarvis orb: a dark core with two eyes inside a glass shell of light. Original work for Jarvis
+// WorkOS (MIT). Every input is a uniform driven by real jarvisd state in JarvisOrb.qml; this shader
+// is a pure function of them and of `time`.
 //
-// Layout of a strand: a closed curve r = 1 + f(θ, t) around the core, where f is a few slow
-// harmonics, two travelling folds (the "kinks" of the reference), a thinking weave, and the voice:
-// the FFT bands mapped around the circle. Each strand is drawn as a crisp anti-aliased line plus an
-// exponential glow, coloured along its length between cyan and violet, and summed additively with
-// a soft tone curve so crossings bloom to white without clipping.
+// The model is a small 3D scene, drawn analytically per pixel:
+//   shell    the silhouette of a soft sphere: one crisp neon rim whose outline folds and dents (the
+//            travelling folds of the reference), a faint glass fill that brightens toward the rim
+//            (Fresnel) and a wide bloom. A slowly drifting light makes one side white-cyan and lets
+//            the far side fall to violet.
+//   strands  great circles on that sphere, each tilted a little and turning on its own axis, so their
+//            projections are ellipses that hug the rim, cross each other and swing in and out like
+//            ribbons; the half behind the core is hidden by it, the half in front is lit.
+//   core     a dark sphere with a faint rim light, and the eyes.
+// Strands and shell are summed additively and tone-mapped softly, so crossings bloom to white without
+// clipping. The voice (FFT bands mapped around the circle) pushes the outline; thinking tilts the
+// strands further and spins them; working sends a comet along the rim.
 //
-// Compile: /usr/lib/qt6/bin/qsb --glsl "100 es,120,150" --hlsl 50 --msl 12 -o orb.frag.qsb orb.frag
+// Compile: qsb --glsl "100 es,120,150" --hlsl 50 --msl 12 -o orb.frag.qsb orb.frag
 
 layout(location = 0) in vec2 qt_TexCoord0;
 layout(location = 0) out vec4 fragColor;
@@ -19,10 +26,10 @@ layout(std140, binding = 0) uniform buf {
     float qt_Opacity;
     float time;        // phase, seconds scaled by the state's speed (advanced in QML)
     float level;       // smoothed voice level 0..1 (microphone or Jarvis's voice)
-    float energy;      // overall brightness of the strands 0..1.5
-    float deform;      // how far the strands bend 0..1.5
-    float twist;       // thinking: strands weave around each other 0..1
-    float orbit;       // working: a comet of light travelling the ring 0..1
+    float energy;      // overall brightness of the light 0..1.5
+    float deform;      // how far the outline folds 0..1.5
+    float twist;       // thinking: strands tilt further and spin, weaving around each other 0..1
+    float orbit;       // working: a comet of light travelling the rim 0..1
     float contract;    // 0 awake .. 1 collapsed to a small blob (sleep / hidden)
     float pulse;       // success: brief expansion 0..1
     float attention;   // approval: steady, restrained throb 0..1
@@ -31,24 +38,25 @@ layout(std140, binding = 0) uniform buf {
     float eyeVisible;  // 0..1
     float detail;      // 0 tiny (island pill) .. 1 large (bolder lines when small)
     float pxSize;      // item size in device pixels, for anti-aliasing
-    float strands;     // strands to draw, 2..5
+    float strands;     // light lines to draw (the rim counts as one), 2..5
     vec2 look;         // where the eyes look, -1..1
     vec4 bandsA;       // 8 spectrum bands 0..1
     vec4 bandsB;
-    vec4 colorA;       // strand colour one end (electric blue)
-    vec4 colorB;       // strand colour other end (violet)
-    vec4 highlight;    // the hottest parts of a strand (cyan)
+    vec4 colorA;       // electric blue
+    vec4 colorB;       // violet
+    vec4 highlight;    // the hottest light (cyan)
     vec4 tint;         // state tint; tint.a = how much it takes over
 };
 
 const float PI = 3.14159265;
 const float TAU = 6.28318531;
+const float CORE = 0.70;            // core radius, relative to the shell
 
 float angDist(float a, float b) {
     return mod(a - b + PI, TAU) - PI;
 }
 
-// Spectrum around the circle, mirrored so the curve stays closed and symmetric-ish.
+// Spectrum around the circle, mirrored so the outline stays closed.
 float band(float u) {
     float x = abs(fract(u) * 2.0 - 1.0) * 7.0;
     int i = int(floor(x));
@@ -57,122 +65,146 @@ float band(float u) {
     return mix(b[i], b[min(i + 1, 7)], f);
 }
 
-float strandRadius(float th, float k, float t) {
-    float ph = k * 2.39996;                 // golden angle: strands never line up
-    float d = deform * (0.65 + 0.35 * sin(t * 0.37 + ph));
+// The shell's outline at screen angle th: two slow harmonics, an inward fold and an outward lobe that
+// travel around in opposite directions, the voice, and the approval throb. 1 = round.
+float outline(float th, float t) {
+    float d = deform;
     float r = 1.0;
-    r += 0.035 * (k - 2.0) * (0.5 + 0.5 * d);                 // strands fan out a little
-    r += d * 0.050 * sin(2.0 * th + t * 0.61 + ph);
-    r += d * 0.034 * sin(3.0 * th - t * 0.83 + ph * 1.7);
-    r += d * 0.018 * sin(5.0 * th + t * 1.13 + ph * 0.6);
-    // Two folds travel around the ring in opposite directions: the inward pinch and the outward lobe.
-    float g1 = angDist(th, t * 0.23 + ph * 1.3);
-    r -= d * 0.17 * exp(-g1 * g1 * 16.0) * (0.55 + 0.45 * sin(t * 0.5 + ph));
-    float g2 = angDist(th, -t * 0.17 + ph * 2.1 + 2.0);
-    r += d * 0.08 * exp(-g2 * g2 * 9.0) * sin(t * 0.7 + ph * 0.5);
-    // Thinking: neighbouring strands cross over each other.
-    r += twist * 0.055 * sin(4.0 * th + t * 2.1 + ph * 3.0);
-    // Voice: the spectrum pushes the strands out, with a ripple that runs around the ring.
-    float b = band(th / TAU + k * 0.07 + t * 0.02);
-    r += level * (0.045 + 0.13 * b) * (0.75 + 0.25 * sin(6.0 * th - t * 3.0 + ph));
-    // Approval: all strands breathe together, slowly.
-    r += attention * 0.025 * sin(t * 2.4);
+    r += d * 0.040 * sin(2.0 * th + t * 0.53);
+    r += d * 0.026 * sin(3.0 * th - t * 0.71 + 1.3);
+    float g1 = angDist(th, t * 0.19 + 0.7);
+    r -= d * 0.17 * exp(-g1 * g1 * 6.0) * (0.55 + 0.45 * sin(t * 0.43));
+    float g2 = angDist(th, -t * 0.13 + 3.1);
+    r += d * 0.06 * exp(-g2 * g2 * 4.0) * sin(t * 0.61 + 0.4);
+    float b = band(th / TAU + t * 0.015);
+    r += level * (0.035 + 0.15 * b) * (0.8 + 0.2 * sin(5.0 * th - t * 2.6));
+    r += attention * 0.018 * sin(t * 2.4);
     return r;
 }
 
 // Signed distance to one eye: a soft vertical capsule that morphs into a happy arc.
-float eyeDist(vec2 q, vec2 c, float px) {
-    vec2 h = vec2(0.062, max(0.012, 0.118 * eyeOpen));
+float eyeDist(vec2 q, vec2 c) {
+    vec2 h = vec2(0.058, max(0.012, 0.11 * eyeOpen));
     vec2 e = (q - c) / h;
     float round = (length(e) - 1.0) * min(h.x, h.y);
-    // Happy: an upward arc (the top of a circle below the eye centre).
     vec2 a = q - c - vec2(0.0, 0.07);
     float arc = abs(length(a) - 0.085) - 0.022;
     arc = max(arc, a.y + 0.01);              // keep the top half only
     return mix(round, arc, eyeHappy);
 }
 
+vec3 tinted(vec3 c) {
+    return mix(c, tint.rgb, tint.a);
+}
+
 void main() {
     vec2 p = (qt_TexCoord0 - 0.5) * 2.0;    // -1..1 across the item
-    float R = mix(0.62, 0.07, contract) * (1.0 + 0.07 * pulse);
-    vec2 q = p / R;                          // ring base radius = 1
+    float breathe = 1.0 + 0.014 * sin(time * 1.25) * (1.0 - contract);
+    float R = mix(0.60, 0.07, contract) * (1.0 + 0.07 * pulse + 0.04 * level) * breathe;
+    vec2 q = p / R;                          // shell radius = 1
     float r = length(q);
     float th = atan(q.y, q.x);
     float px = 2.0 / max(pxSize * R, 1.0);   // one device pixel in q units
+    float shape = outline(th, time);
 
-    // ------------------------------------------------------------ strands
-    vec3 rings = vec3(0.0);
-    float lineW = mix(0.05, 0.011, detail);  // half width: bolder when the orb is tiny
-    float glowW = mix(0.16, 0.07, detail) * (0.8 + 0.4 * energy);
-    for (int i = 0; i < 5; i++) {
+    // The light: from the upper side, drifting around slowly.
+    float la = time * 0.17 + 2.3;
+    vec3 L = normalize(vec3(cos(la), 0.35 + 0.65 * sin(la), 0.6));
+
+    float lineW = mix(0.05, 0.014, detail);                  // half width: bolder when tiny
+    float glowW = mix(0.17, 0.09, detail) * (0.8 + 0.4 * energy);
+    float coreR = CORE * (1.0 + 0.04 * level);
+    float coreMask = 1.0 - smoothstep(coreR - px, coreR + px, r);
+
+    vec3 back = vec3(0.0);    // light behind the core plane (hidden where the core is)
+    vec3 front = vec3(0.0);   // light in front of the core
+
+    // ------------------------------------------------------------ shell
+    {
+        float d = abs(r - shape);
+        float lit = max(0.0, dot(vec3(cos(th), sin(th), 0.0), L));
+        float hot = lit * lit * lit;
+        vec3 c = mix(colorB.rgb, colorA.rgb, smoothstep(0.0, 0.75, lit));
+        c = tinted(mix(c, highlight.rgb, hot * 0.85));
+        float w = lineW * (0.75 + 0.55 * lit) + px * 0.6;
+        float line = 1.0 - smoothstep(w * 0.3, w + px, d);
+        float glow = exp(-d / glowW) * 0.46 + 0.0055 / (d + 0.02);
+        back += c * (line * 1.45 + glow) * mix(0.28, 1.0, lit);
+        // Bloom: wide and faint, warmer toward the light.
+        back += tinted(mix(colorB.rgb, colorA.rgb, lit)) * exp(-d / 0.42) * 0.09 * (0.45 + lit);
+        // Glass: a faint fill that brightens toward the rim.
+        float inside = 1.0 - smoothstep(shape - 0.01, shape + px, r);
+        float fres = pow(clamp(r / shape, 0.0, 1.0), 5.0);
+        back += tinted(mix(colorB.rgb, colorA.rgb, lit)) * inside * fres * 0.13 * (0.5 + lit);
+    }
+
+    // ------------------------------------------------------------ strands (great circles)
+    for (int i = 0; i < 4; i++) {
         float k = float(i);
-        float present = clamp(strands - k, 0.0, 1.0);
+        float present = clamp(strands - 1.0 - k, 0.0, 1.0);
         if (present <= 0.0) break;
-        // Each strand sees the plane through its own slow domain warp (three rotated sine layers), so
-        // the strands twist and cross like ribbons instead of staying concentric.
-        vec2 wq = q;
-        float f = 1.7;
-        float amp = (0.10 + 0.05 * twist) * deform;
-        mat2 rot = mat2(0.8, -0.6, 0.6, 0.8);
-        for (int j = 0; j < 3; j++) {
-            float fj = float(j);
-            vec2 s = sin(f * (rot * wq) + vec2(time * (0.55 + 0.21 * fj) + k * 1.9, time * (0.43 - 0.17 * fj) + k * 2.7));
-            wq += (amp / f) * vec2(s.y, s.x);
-            rot = rot * mat2(0.6, -0.8, 0.8, 0.6);
-            f *= 1.55;
-        }
-        float wr = length(wq);
-        float wth = atan(wq.y, wq.x);
-        float rr = strandRadius(wth, k, time);
-        float d = abs(wr - rr);
+        float ph = k * 2.39996;                              // golden angle: they never line up
         float dir = mod(k, 2.0) * 2.0 - 1.0;
-        float s = 0.5 + 0.5 * sin(th * (1.0 + mod(k, 2.0)) + dir * time * (0.35 + 0.12 * k) + k * 1.7);
-        float bright = mix(0.22, 1.0, s * s);
-        float w = lineW * (0.6 + 0.6 * s) + px * 0.6;
-        float core = 1.0 - smoothstep(w * 0.35, w + px, d);
-        float glow = exp(-d / glowW) * 0.34 + 0.0055 / (d + 0.02);
-        float hue = 0.5 + 0.5 * sin(th + k * 1.3 + time * 0.21);
-        vec3 c = mix(colorA.rgb, colorB.rgb, hue);
-        c = mix(c, highlight.rgb, s * s * s * s * 0.65);
-        c = mix(c, tint.rgb, tint.a);
-        rings += c * (core * 1.25 + glow) * bright * present;
+        float tilt = 0.36 + 0.16 * sin(time * 0.31 + ph * 1.7) + twist * (0.36 + 0.12 * sin(time * 0.9 + ph));
+        float psi = ph + dir * time * (0.16 + 0.05 * k) * (1.0 + 2.2 * twist);
+        vec2 w2 = vec2(cos(psi), sin(psi));                  // the tilt's direction (minor axis)
+        vec2 m2 = vec2(-w2.y, w2.x);                         // the major axis
+        float nz = cos(tilt);
+        float a = dot(q, m2);
+        float b = dot(q, w2) / nz;
+        float L2 = max(length(vec2(a, b)), 1e-4);
+        float u = atan(b, a);
+        float grad = length(vec2(a, b / nz)) / L2;           // |∇L2|, for a true pixel distance
+        float target = shape * (1.0 + 0.028 * (k - 1.0));    // they fan out a little around the rim
+        float d = abs(L2 - target) / max(grad, 0.35);
+        float z = sin(u) * sin(tilt);                        // depth on the sphere
+        vec3 P = vec3(cos(u) * m2 + sin(u) * nz * w2, z);
+        float lit = max(0.0, dot(P, L));
+        float near = smoothstep(-0.3, 0.3, z);               // the near half is the bright one
+        float s = 0.5 + 0.5 * sin(u * (1.0 + mod(k, 2.0)) + dir * time * (0.4 + 0.1 * k) + ph);
+        vec3 c = mix(colorA.rgb, colorB.rgb, 0.5 + 0.5 * sin(u + k * 1.3 + time * 0.21));
+        c = tinted(mix(c, highlight.rgb, lit * lit * lit * 0.7));
+        float w = lineW * 0.8 * (0.55 + 0.6 * near) + px * 0.6;
+        float line = 1.0 - smoothstep(w * 0.3, w + px, d);
+        float glow = exp(-d / (glowW * 0.8)) * 0.34 + 0.0038 / (d + 0.02);
+        vec3 add = c * (line * 1.2 + glow) * mix(0.16, 1.0, near) * mix(0.45, 1.0, s * s) * present;
+        if (z >= 0.0) front += add; else back += add;
     }
 
-    // Working: a comet of light runs around the ring with a fading tail.
+    // Working: a comet of light runs along the rim, a soft head with a fading tail.
     if (orbit > 0.0) {
-        float head = time * 1.9;
-        float g = mod(head - th, TAU);                       // distance behind the head
-        float tail = exp(-g * 2.2) * smoothstep(0.0, 0.05, g + 0.05);
-        float rr = strandRadius(head, 0.0, time) * 1.08;
-        float d = abs(r - rr);
-        rings += mix(vec3(0.9, 0.97, 1.0), tint.rgb, tint.a * 0.5) * tail * exp(-d / (glowW * 0.6)) * orbit * 0.9;
+        float g = angDist(time * 1.9, th);                   // > 0 behind the head, < 0 ahead of it
+        float comet = g >= 0.0 ? exp(-g * 2.4) : exp(-g * g * 120.0);
+        float d = abs(r - shape);
+        vec3 c = tinted(mix(highlight.rgb, vec3(1.0), 0.5));
+        back += c * comet * (exp(-d / (lineW * 2.0 + px)) * 1.1 + exp(-d * d / (glowW * glowW)) * 0.35) * orbit;
     }
 
-    rings *= energy;
-    rings = vec3(1.0) - exp(-rings * 1.05);                 // soft tone curve: overlaps bloom to white
-    rings *= smoothstep(1.0, 0.82, length(p));              // never clip at the item's edge
+    // The core hides what is behind it; light in front of it stays, softened so the face reads.
+    vec3 light = back * (1.0 - coreMask * 0.92) + front * (1.0 - coreMask * 0.45);
+    light *= energy;
+    light = vec3(1.0) - exp(-light * 1.2);                   // soft tone curve: overlaps bloom to white
+    light *= smoothstep(1.0, 0.8, length(p));                // never clip at the item's edge
 
     // ------------------------------------------------------------ core
-    float coreR = 0.7;
-    float coreMask = 1.0 - smoothstep(coreR - px, coreR + px, r);
-    vec3 core = mix(vec3(0.006, 0.007, 0.022), vec3(0.025, 0.03, 0.085), smoothstep(0.0, coreR, r));
-    vec3 rim = mix(colorA.rgb, colorB.rgb, 0.5 + 0.5 * sin(th + time * 0.3));
-    rim = mix(rim, tint.rgb, tint.a);
-    core += rim * pow(smoothstep(coreR * 0.5, coreR, r), 3.0) * 0.38 * energy;
+    vec3 core = mix(vec3(0.004, 0.005, 0.016), vec3(0.018, 0.02, 0.06), smoothstep(0.0, coreR, r));
+    float litc = max(0.0, dot(normalize(vec3(cos(th), sin(th), 0.3)), L));
+    float edge = pow(smoothstep(coreR * 0.5, coreR, r), 3.0);
+    core += tinted(mix(colorB.rgb, colorA.rgb, litc)) * edge * (0.10 + 0.28 * litc) * energy;
 
     // ------------------------------------------------------------ eyes
     vec3 eyes = vec3(0.0);
     if (eyeVisible > 0.0) {
         vec2 off = look * vec2(0.075, 0.06);
-        float de = min(eyeDist(q, vec2(-0.2, 0.0) + off, px), eyeDist(q, vec2(0.2, 0.0) + off, px));
+        float de = min(eyeDist(q, vec2(-0.19, 0.0) + off), eyeDist(q, vec2(0.19, 0.0) + off));
         float body = 1.0 - smoothstep(-px, px, de);
-        float halo = exp(-max(de, 0.0) / 0.05) * 0.45;
-        vec3 ec = mix(vec3(0.86, 0.93, 1.0), tint.rgb, tint.a * 0.35);
+        float halo = exp(-max(de, 0.0) / 0.045) * 0.42;
+        vec3 ec = mix(vec3(0.88, 0.94, 1.0), tint.rgb, tint.a * 0.35);
         eyes = ec * (body + halo) * eyeVisible * coreMask;
     }
 
-    vec3 rgb = core * coreMask + eyes + rings;
-    float a = clamp(max(coreMask, max(rings.r, max(rings.g, rings.b))), 0.0, 1.0);
-    rgb = min(rgb, vec3(a));                                  // premultiplied
-    fragColor = vec4(rgb, a) * qt_Opacity;
+    vec3 rgb = core * coreMask + eyes + light;
+    float alpha = clamp(max(coreMask, max(light.r, max(light.g, light.b))), 0.0, 1.0);
+    rgb = min(rgb, vec3(alpha));                              // premultiplied
+    fragColor = vec4(rgb, alpha) * qt_Opacity;
 }
