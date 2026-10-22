@@ -10,6 +10,7 @@ Rectangle {
   property bool active: false              // toggles (mic on, pinned…)
   property color activeColor: Tokens.blue
   property int size: 30
+  property bool hintAbove: false           // for buttons along a card's bottom edge (the card clips)
   signal clicked()
 
   readonly property bool hot: mouse.containsMouse || btn.activeFocus
@@ -49,7 +50,8 @@ Rectangle {
   Rectangle {   // hover hint
     visible: mouse.containsMouse && btn.label !== ""
     opacity: visible ? 1 : 0
-    anchors { top: parent.bottom; topMargin: 6; horizontalCenter: parent.horizontalCenter }
+    anchors.horizontalCenter: parent.horizontalCenter
+    y: btn.hintAbove ? -height - 6 : btn.height + 6
     width: hint.implicitWidth + 14
     height: hint.implicitHeight + 8
     radius: 6

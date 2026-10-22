@@ -124,6 +124,10 @@ DEFAULTS: dict = {
         # "auto" follows the system locale; Russian, English and Portuguese are complete.
         "language": "auto",
         "floating_companion": False,
+        # Where the floating companion sits: its distance from the screen's right and bottom edges (px);
+        # dragging it sets these.
+        "companion_right": 30,
+        "companion_bottom": 30,
         # Floating HUD cards (weather, results, plans, notices) at the screen edge.
         "hud": True,
         # Bar/floating companion look: "jarvis" (the GPU orb with eyes), "pebble" (eyes) or "orb" (rings and glow).
@@ -283,6 +287,8 @@ SCHEMA: dict[str, tuple] = {
     "files.projects_dir": (str, None),
     "ui.language": (str, ("auto", "ru", "en", "pt")),
     "ui.floating_companion": (bool, None),
+    "ui.companion_right": (int, (0, 8000)),
+    "ui.companion_bottom": (int, (0, 8000)),
     "ui.hud": (bool, None),
     "ui.companion_style": (str, ("jarvis", "pebble", "orb")),
     "ui.island": (bool, None),

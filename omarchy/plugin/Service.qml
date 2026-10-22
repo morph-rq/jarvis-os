@@ -59,6 +59,10 @@ Item {
   property var signalLink: ({})       // sgnl:// link (and QR) while linking Signal
   property var gatewayNote: ({})      // {channel, ok, message} of the last connect/test
   property var _gatewayPending: ({})  // request id -> action
+  // Microphones and speakers for the voice card's picker (op devices, asked for when it opens):
+  // {inputs: [{name, label, default}], outputs: […], input, output (the settings; "" = default), error}
+  property var devices: ({ inputs: [], outputs: [], input: "", output: "", error: "" })
+  property int _devicesRequest: -1
   property var call: ({})             // the WhatsApp call in progress: {call_id, state, direction, name, connected_at…}
   readonly property bool inCall: !!(root.call && (root.call.state === "connected" || root.call.state === "ringing"
                                                   || root.call.state === "connecting"))
@@ -131,6 +135,12 @@ Item {
       send({ op: "approval_seen", approval_id: a.id })
   }
   function refreshAgents() { return send({ op: "agents" }) }
+  function refreshDevices() {
+    var req = { op: "devices" }
+    if (!send(req)) return false
+    root._devicesRequest = req.id
+    return true
+  }
   function cancel(taskId) { return send({ op: "cancel", task_id: taskId || null }) }
   function setSetting(key, value) { return send({ op: "config", action: "set", key: key, value: value }) }
   function openWorkspace(view) { return send({ op: "workspace", view: view || "" }) }
@@ -338,6 +348,13 @@ Item {
         root.gatewayNote = { channel: req.channel, ok: !!msg.ok, message: msg.message || "" }
       return
     }
+    if (msg.reply !== undefined && msg.reply === root._devicesRequest) {
+      root._devicesRequest = -1
+      root.devices = msg.ok ? { inputs: msg.inputs || [], outputs: msg.outputs || [], input: msg.input || "",
+                                output: msg.output || "", error: "" }
+                            : { inputs: [], outputs: [], input: "", output: "", error: msg.message || "unavailable" }
+      return
+    }
     if (msg.reply !== undefined && msg.sessions !== undefined) {
       root.agents = msg.sessions
       return
@@ -500,12 +517,23 @@ Item {
   }
 
   // Optional floating companion (ui.floating_companion); the bar companion is the default.
+  // Drag it anywhere: a layer-shell surface has no screen coordinates and its own coordinates shift
+  // when it moves, so it stays put while dragged (shown picked up) and then glides to where it was
+  // dropped; the place is saved (ui.companion_right / ui.companion_bottom).
   PanelWindow {
     id: companionWindow
     visible: root.settings["ui.floating_companion"] === true
     screen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
     anchors { bottom: true; right: true }
-    margins { bottom: Style.gapsOut * 3; right: Style.gapsOut * 3 }
+    readonly property int savedRight: root.settings["ui.companion_right"] !== undefined ? root.settings["ui.companion_right"] : 30
+    readonly property int savedBottom: root.settings["ui.companion_bottom"] !== undefined ? root.settings["ui.companion_bottom"] : 30
+    property real rightNow: savedRight
+    property real bottomNow: savedBottom
+    onSavedRightChanged: rightNow = savedRight
+    onSavedBottomChanged: bottomNow = savedBottom
+    Behavior on rightNow { NumberAnimation { duration: Tokens.durMedium; easing.type: Easing.OutCubic } }
+    Behavior on bottomNow { NumberAnimation { duration: Tokens.durMedium; easing.type: Easing.OutCubic } }
+    margins { bottom: companionWindow.bottomNow; right: companionWindow.rightNow }
     implicitWidth: floating.implicitWidth
     implicitHeight: floating.implicitHeight
     color: "transparent"
@@ -515,9 +543,48 @@ Item {
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
     mask: Region { item: floating }
 
+    // Clicks and drags for every companion style: left opens (the panel for the pebble, the
+    // conversation otherwise), right talks; a press that moves more than a few pixels is a drag.
+    MouseArea {
+      id: mover
+      anchors.fill: floating
+      z: 1
+      acceptedButtons: Qt.LeftButton | Qt.RightButton
+      cursorShape: dragging ? Qt.ClosedHandCursor : Qt.PointingHandCursor
+      property point start
+      property bool dragging: false
+      onPressed: function(e) { start = Qt.point(e.x, e.y); dragging = false }
+      onPositionChanged: function(e) {
+        if (pressed && !dragging && Math.abs(e.x - start.x) + Math.abs(e.y - start.y) > 6) dragging = true
+      }
+      onReleased: function(e) {
+        if (!dragging) return
+        var scr = companionWindow.screen
+        var maxR = (scr ? scr.width : 1920) - floating.width
+        var maxB = (scr ? scr.height : 1080) - floating.height
+        var r = Math.round(Math.max(0, Math.min(maxR, companionWindow.savedRight - (e.x - start.x))))
+        var b = Math.round(Math.max(0, Math.min(maxB, companionWindow.savedBottom - (e.y - start.y))))
+        companionWindow.rightNow = r
+        companionWindow.bottomNow = b
+        root.setSetting("ui.companion_right", r)
+        root.setSetting("ui.companion_bottom", b)
+        dragging = false
+      }
+      onClicked: function(e) {
+        if (dragging) return
+        if (e.button === Qt.RightButton) root.listen()
+        else if (root.settings["ui.companion_style"] === "pebble") root.togglePanel()
+        else root.toggleCommandBar()
+      }
+    }
+
     Loader {
       id: floating
       anchors.centerIn: parent
+      scale: mover.dragging ? 0.9 : 1
+      opacity: mover.dragging ? 0.75 : 1
+      Behavior on scale { NumberAnimation { duration: Tokens.durFast } }
+      Behavior on opacity { NumberAnimation { duration: Tokens.durFast } }
       sourceComponent: root.settings["ui.companion_style"] === "orb" ? orbComponent
         : root.settings["ui.companion_style"] === "pebble" ? pebbleComponent : jarvisComponent
     }
@@ -541,12 +608,6 @@ Item {
         bands: root.bands
         vad: root.vad
         Connections { target: root; function onReaction(kind) { floatingOrb.react(kind) } }
-        MouseArea {
-          anchors.fill: parent
-          acceptedButtons: Qt.LeftButton | Qt.RightButton
-          cursorShape: Qt.PointingHandCursor
-          onClicked: function(e) { if (e.button === Qt.RightButton) root.listen(); else root.toggleCommandBar() }
-        }
       }
     }
     Component {

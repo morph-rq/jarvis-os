@@ -110,10 +110,10 @@ FaceBase {
       visible: !!face.s && face.s.connected
       spacing: 10
       JButton { glyph: "🎙"; text: face.t("talk", "Talk"); kind: "primary"; onClicked: face.s.listen() }
-      JIconButton { glyph: "⌨"; label: face.t("conversation", "Conversation"); onClicked: face.island.request("conversation") }
-      JIconButton { glyph: "✎"; label: face.t("dictate", "Dictate"); onClicked: face.s.dictate("toggle") }
-      JIconButton { glyph: "▣"; label: face.t("workspace", "Workspace"); onClicked: face.s.openWorkspace("") }
-      JIconButton { glyph: "⚙"; label: face.t("settings", "Settings"); onClicked: { face.s.togglePanel(); face.island.fold() } }
+      JIconButton { hintAbove: true; glyph: "⌨"; label: face.t("conversation", "Conversation"); onClicked: face.island.request("conversation") }
+      JIconButton { hintAbove: true; glyph: "✎"; label: face.t("dictate", "Dictate"); onClicked: face.s.dictate("toggle") }
+      JIconButton { hintAbove: true; glyph: "▣"; label: face.t("workspace", "Workspace"); onClicked: face.s.openWorkspace("") }
+      JIconButton { hintAbove: true; glyph: "⚙"; label: face.t("settings", "Settings"); onClicked: { face.s.togglePanel(); face.island.fold() } }
     }
   }
 }

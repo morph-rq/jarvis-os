@@ -11,7 +11,7 @@ from __future__ import annotations
 import math
 import time
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import QRect, Qt, QTimer
 
 MINI = (760, 96)
 PEEK = (760, 110)
@@ -118,11 +118,26 @@ def gallery(p, fake, shots):
     yield 1.3
     _expect(p, "voice expanded")
     shot("voice-listening")
+    # Audio devices: the picker lists what jarvisd reports and a choice is a setting.
+    assert p.click_text("🎧"), "the devices button"
+    yield 1.0
+    shot("voice-devices", (760, 560))
+    assert p.click_text("○ Built-in Mic"), "a microphone in the picker"
+    yield 0.5
+    sets = [r for r in fake.sent("config") if r.get("action") == "set"]
+    assert sets and sets[-1]["key"] == "voice.input_source" and sets[-1]["value"].endswith("pci-0000_00_1f.3.analog-stereo"), sets
+    assert p.find_text("● Built-in Mic"), "the picker shows the new choice after jarvisd confirms it"
+    assert p.click_text("🎧")
     fake.push("vad", speaking=False, engine="pipecat")
     levels.stop()
     fake.push("status", status="thinking")
     yield 1.0
     shot("voice-thinking")
+    # Gemini Live drops: the card says so while Pipecat reconnects.
+    fake.push("pipeline", engine="pipecat", state="reconnecting")
+    yield 0.8
+    shot("voice-reconnecting")
+    fake.push("pipeline", engine="pipecat", state="connected", model="gemini-live")
     fake.push("status", status="speaking")
     levels.start("out")
     fake.push("transcript", role="assistant", text="Tomorrow in Lisbon: sunny, 24 degrees, a light breeze", final=False)
@@ -374,4 +389,31 @@ def gallery(p, fake, shots):
     assert not leftover, "QML warnings:\n" + "\n".join(leftover)
 
 
-SCENARIOS = {"smoke": smoke, "gallery": gallery}
+def companion(p, fake, shots):
+    """The optional floating companion: shown by its setting, dragged with the pointer, dropped where
+    released (the place is saved as two settings), clicks still open the conversation."""
+    from PySide6.QtCore import QPoint
+    from PySide6.QtTest import QTest
+    W, H = p.window.width(), p.window.height()
+    fake.snapshot["settings"]["ui.floating_companion"] = True
+    yield 1.5
+    size = 112
+    c = QPoint(W - 30 - size // 2, H - 30 - size // 2)
+    p.shot(shots / "companion-before.png", QRect(W - 420, H - 300, 420, 300))
+    QTest.mousePress(p.window, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, c)
+    for i in range(1, 11):
+        QTest.mouseMove(p.window, QPoint(c.x() - 30 * i, c.y() - 18 * i))
+        yield 0.02
+    p.shot(shots / "companion-dragging.png", QRect(W - 420, H - 300, 420, 300))
+    QTest.mouseRelease(p.window, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, QPoint(c.x() - 300, c.y() - 180))
+    yield 0.8
+    sets = {r["key"]: r["value"] for r in fake.sent("config") if r.get("action") == "set"}
+    assert sets.get("ui.companion_right") == 330 and sets.get("ui.companion_bottom") == 210, sets
+    p.shot(shots / "companion-dropped.png", QRect(W - 720, H - 480, 720, 480))
+    # A plain click on it (no drag) still opens the conversation.
+    p.click(W - 330 - size // 2, H - 210 - size // 2)
+    yield 1.4
+    _expect(p, "idle conversation", "click on the companion")
+
+
+SCENARIOS = {"smoke": smoke, "gallery": gallery, "companion": companion}

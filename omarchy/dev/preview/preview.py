@@ -93,6 +93,14 @@ class FakeDaemon(QObject):
             self._send(c, {"reply": rid, "ok": True, "providers": [], "apps": [], "pending": []})
         elif op == "agents":
             self._send(c, {"reply": rid, "ok": True, "sessions": self.snapshot.get("agents", [])})
+        elif op == "devices":
+            st = self.snapshot["settings"]
+            self._send(c, {"reply": rid, "ok": True, **FAKE_DEVICES, "input": st.get("voice.input_source", ""),
+                           "output": st.get("voice.output_target", "")})
+        elif op == "config" and req.get("action") == "set":
+            self.snapshot["settings"][req["key"]] = req.get("value")
+            self._send(c, {"reply": rid, "ok": True, "key": req["key"], "value": req.get("value")})
+            self.push("settings", settings=dict(self.snapshot["settings"]), ui=self.snapshot["ui"], lang="en")
         else:
             self._send(c, {"reply": rid, "ok": True})
 
@@ -119,6 +127,14 @@ class FakeDaemon(QObject):
         self.server.listen(self.path)
 
 
+FAKE_DEVICES = {
+    "inputs": [{"name": "alsa_input.usb-Blue_Yeti-00.analog-stereo", "label": "Yeti Stereo Microphone", "default": True},
+               {"name": "alsa_input.pci-0000_00_1f.3.analog-stereo", "label": "Built-in Mic", "default": False}],
+    "outputs": [{"name": "alsa_output.pci-0000_00_1f.3.analog-stereo", "label": "Built-in Audio Analog Stereo",
+                 "default": True},
+                {"name": "bluez_output.AC_80_0A.1", "label": "WH-1000XM5", "default": False}]}
+
+
 def default_snapshot() -> dict:
     from_service = {}
     try:
@@ -130,7 +146,8 @@ def default_snapshot() -> dict:
             "provider": "gemini", "lang": "en", "ui": from_service.get("ui", {}),
             "voice": {"mode": "wake", "phase": "idle", "mic_open": False, "muted": False, "engine": "pipecat",
                       "model": "gemini-live"},
-            "settings": {"ui.island": True, "ui.hud": True, "approval.timeout_s": 120},
+            "settings": {"ui.island": True, "ui.hud": True, "approval.timeout_s": 120, "voice.input_source": "",
+                         "voice.output_target": ""},
             "history": [], "approvals": [], "tasks": [],
             "activities": {"reminders": [], "focus": {"active": False, "until": 0, "minutes": 0},
                            "meeting": {"state": "idle"}}}

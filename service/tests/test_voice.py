@@ -306,3 +306,80 @@ def test_config_validation(tmp_path):
     again = configmod.load(tmp_path / "c.toml")
     assert again["wake"]["threshold"] == 0.7 and again["wake"]["enabled"] is False
     assert again["voice"]["engine"] == "live"   # untouched defaults are not written
+
+
+# ------------------------------------------------------------------ audio devices (the island's picker)
+
+PW_DUMP = [
+    {"id": 30, "type": "PipeWire:Interface:Metadata", "props": {"metadata.name": "default"},
+     "metadata": [{"subject": 0, "key": "default.audio.sink", "type": "Spa:String:JSON",
+                   "value": {"name": "alsa_output.pci-0000_00_1f.3.analog-stereo"}},
+                  {"subject": 0, "key": "default.audio.source", "type": "Spa:String:JSON",
+                   "value": {"name": "alsa_input.usb-Blue_Yeti-00.analog-stereo"}}]},
+    {"id": 41, "type": "PipeWire:Interface:Node", "info": {"props": {
+        "media.class": "Audio/Sink", "node.name": "alsa_output.pci-0000_00_1f.3.analog-stereo",
+        "node.description": "Built-in Audio Analog Stereo"}}},
+    {"id": 42, "type": "PipeWire:Interface:Node", "info": {"props": {
+        "media.class": "Audio/Source", "node.name": "alsa_input.usb-Blue_Yeti-00.analog-stereo",
+        "node.description": "Yeti Stereo Microphone"}}},
+    {"id": 43, "type": "PipeWire:Interface:Node", "info": {"props": {
+        "media.class": "Audio/Source", "node.name": "alsa_input.pci-0000_00_1f.3.analog-stereo",
+        "node.nick": "Built-in Mic"}}},
+    {"id": 44, "type": "PipeWire:Interface:Node", "info": {"props": {   # an app's stream: not a device
+        "media.class": "Stream/Output/Audio", "node.name": "Firefox"}}},
+    {"id": 45, "type": "PipeWire:Interface:Node", "info": {"props": {   # Jarvis's own capture
+        "media.class": "Audio/Source", "node.name": "jarvis-workos-capture"}}},
+    {"id": 46, "type": "PipeWire:Interface:Port", "info": {"props": {}}},
+]
+
+
+def test_pw_dump_lists_real_devices_and_the_default():
+    from jarvis.audio import parse_pw_dump
+    got = parse_pw_dump(PW_DUMP)
+    assert got["outputs"] == [{"name": "alsa_output.pci-0000_00_1f.3.analog-stereo",
+                               "label": "Built-in Audio Analog Stereo", "default": True}]
+    assert [d["label"] for d in got["inputs"]] == ["Yeti Stereo Microphone", "Built-in Mic"]
+    assert [d["default"] for d in got["inputs"]] == [True, False]
+    assert parse_pw_dump([]) == {"inputs": [], "outputs": []}
+
+
+def test_devices_op_and_switching_devices_live(jarvis, monkeypatch):
+    """The picker lists devices through op devices; choosing one is a setting that retargets the open
+    microphone and the speaker at once (no restart)."""
+    from jarvis import daemon
+    from jarvis.audio import parse_pw_dump
+
+    class TrackingMic(FileMic):
+        def __init__(self):
+            super().__init__([], gap_s=0.1)
+            self.source, self.reopened = "", 0
+
+        async def retarget(self, source):
+            self.source = source
+            self.reopened += 1
+
+    class TrackingSpeaker(RecordingSpeaker):
+        async def retarget(self, target):
+            self.target = target
+
+    monkeypatch.setattr(daemon, "audio_devices", lambda: parse_pw_dump(PW_DUMP))
+
+    async def main():
+        from jarvis.voice import VoiceController
+        vc = VoiceController(jarvis)
+        vc.mic, vc.speaker = TrackingMic(), TrackingSpeaker()
+        jarvis.voice = vc
+        listed = await jarvis.dispatch({"op": "devices"})
+        assert listed["ok"] and len(listed["inputs"]) == 2 and listed["input"] == ""
+        yeti = listed["inputs"][0]["name"]
+        assert (await jarvis.dispatch({"op": "config", "action": "set", "key": "voice.input_source", "value": yeti}))["ok"]
+        assert vc.mic.source == yeti and vc.mic.reopened == 1
+        out = listed["outputs"][0]["name"]
+        assert (await jarvis.dispatch({"op": "config", "action": "set", "key": "voice.output_target", "value": out}))["ok"]
+        assert vc.speaker.target == out
+        assert (await jarvis.dispatch({"op": "devices"}))["input"] == yeti
+
+        monkeypatch.setattr(daemon, "audio_devices", lambda: (_ for _ in ()).throw(RuntimeError("pw-dump not found")))
+        failed = await jarvis.dispatch({"op": "devices"})
+        assert failed == {"ok": False, "message": "pw-dump not found"}
+    asyncio.run(main())

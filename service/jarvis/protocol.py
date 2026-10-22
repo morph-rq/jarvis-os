@@ -127,6 +127,8 @@ def markdown() -> str:
               "| `agents` | — | `sessions` |",
               "| `activity` | `action` cancel_reminder (+ `reminder_id`), end_focus, stop_meeting or cancel_meeting | "
               "`task_id`: runs as a visible task, not awaited |",
+              "| `devices` | — | `inputs`, `outputs` [{name, label, default}], `input`, `output` (the voice.input_source / "
+              "voice.output_target settings; setting one switches the open device at once) |",
               "| `listen` / `stop_speaking` / `mute` / `ask` / `cancel` | see daemon.py | |", ""]
     return "\n".join(lines)
 

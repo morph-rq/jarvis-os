@@ -49,7 +49,7 @@ QML_IMPORT_NAME = "Quickshell"
 def _group(name, kind, default):
     """A grouped property object (anchors { top: true }, margins { top: 6 }) with one notify per field."""
     fields = ("top", "bottom", "left", "right")
-    ns = {"changed": Signal()}
+    ns = {}
     for f in fields:
         ns[f + "Changed"] = Signal()
 
@@ -66,7 +66,6 @@ def _group(name, kind, default):
             if self._v[f] != value:
                 self._v[f] = value
                 getattr(self, f + "Changed").emit()
-                self.changed.emit()
         ns[f] = Property(kind, getter, setter, notify=ns[f + "Changed"])
     return QmlAnonymous(type(name, (QObject,), ns))
 
@@ -170,8 +169,12 @@ class PanelWindow(QObject):
         self.namespace = ""
         self.keyboardFocus = 0
         self._pending = False
-        self._anchors.changed.connect(self._schedule)
-        self._margins.changed.connect(self._schedule)
+        # Plain callables, not bound slots of this object: QML extends its metaobject with the
+        # properties and functions the plugin declares on the window, which breaks PySide's slot
+        # connections to it.
+        for group in (self._anchors, self._margins):
+            for f in ("top", "bottom", "left", "right"):
+                getattr(group, f + "Changed").connect(lambda win=self: win._schedule())
         WINDOWS.append(self)
         QTimer.singleShot(0, self._attach)
 

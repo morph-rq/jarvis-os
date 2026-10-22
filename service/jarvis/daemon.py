@@ -15,6 +15,7 @@ from pathlib import Path
 
 from jarvis import __version__, config as configmod, i18n, protocol, router
 from jarvis.agents import AgentMonitor
+from jarvis.audio import devices as audio_devices
 from jarvis.brain import Brain
 from jarvis.capabilities import Hub
 from jarvis.memory import Memory
@@ -500,6 +501,13 @@ class Jarvis:
             return {"ok": True, "sessions": self.agents.public()}
         if op == "activity":
             return self.activity_action(req)
+        if op == "devices":
+            try:
+                found = await asyncio.to_thread(audio_devices)
+            except Exception as exc:   # no PipeWire / sounddevice: say so, the picker shows it
+                return {"ok": False, "message": str(exc)}
+            return {"ok": True, **found, "input": self.config["voice"]["input_source"],
+                    "output": self.config["voice"]["output_target"]}
         if op == "tasks":
             return {"ok": True, "tasks": self.memory.recent_tasks(int(req.get("limit", 20)))}
         if op == "memory":
@@ -578,6 +586,10 @@ class Jarvis:
             self.last_lang = i18n.resolve(self.config["ui"]["language"])
         elif key == "vision.continuous" and v.session is not None and v.session.engine == "live":
             v.session.set_screen_sharing(bool(self.config["vision"]["continuous"]))
+        elif key == "voice.input_source":
+            await v.mic.retarget(self.config["voice"]["input_source"])
+        elif key == "voice.output_target":
+            await v.speaker.retarget(self.config["voice"]["output_target"])
         elif key == "voice.runtime":
             v._engine_problem = None   # re-check on the next conversation
         v._publish()

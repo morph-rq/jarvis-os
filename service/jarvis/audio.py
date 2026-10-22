@@ -77,6 +77,52 @@ def resample(pcm: bytes, src: int, dst: int) -> bytes:
     return y.astype(np.int16).tobytes()
 
 
+def parse_pw_dump(objects: list) -> dict:
+    """Microphones and speakers from `pw-dump`'s JSON: real devices only (no monitors or app streams),
+    with PipeWire's own default marked. {"inputs": [{name, label, default}], "outputs": [...]}."""
+    defaults = {}
+    for obj in objects:
+        if obj.get("type") == "PipeWire:Interface:Metadata" and (obj.get("props") or {}).get("metadata.name") == "default":
+            for entry in obj.get("metadata") or []:
+                value = entry.get("value")
+                if isinstance(value, dict) and entry.get("key") in ("default.audio.source", "default.audio.sink"):
+                    defaults[entry["key"]] = value.get("name", "")
+    out: dict = {"inputs": [], "outputs": []}
+    for obj in objects:
+        if obj.get("type") != "PipeWire:Interface:Node":
+            continue
+        props = (obj.get("info") or {}).get("props") or {}
+        cls = props.get("media.class", "")
+        kind = "inputs" if cls == "Audio/Source" else "outputs" if cls == "Audio/Sink" else None
+        name = props.get("node.name", "")
+        if kind is None or not name or name.startswith("jarvis-workos"):
+            continue
+        key = "default.audio.source" if kind == "inputs" else "default.audio.sink"
+        out[kind].append({"name": name, "label": props.get("node.description") or props.get("node.nick") or name,
+                          "default": defaults.get(key) == name})
+    return out
+
+
+def devices() -> dict:
+    """The microphones and speakers jarvisd can use (blocking: run it in a thread)."""
+    if sys.platform == "win32":
+        import sounddevice as sd
+        default_in, default_out = sd.default.device
+        out: dict = {"inputs": [], "outputs": []}
+        for i, d in enumerate(sd.query_devices()):
+            for kind, chans, default in (("inputs", d["max_input_channels"], default_in),
+                                         ("outputs", d["max_output_channels"], default_out)):
+                if chans > 0:
+                    out[kind].append({"name": d["name"], "label": d["name"], "default": i == default})
+        return out
+    if not shutil.which("pw-dump"):
+        raise RuntimeError("pw-dump not found (PipeWire)")
+    import json
+    import subprocess
+    raw = subprocess.run(["pw-dump"], capture_output=True, text=True, timeout=5, check=True).stdout
+    return parse_pw_dump(json.loads(raw or "[]"))
+
+
 class Mic:
     """Owned by the VoiceController. `frames` yields 80 ms chunks while open."""
 
@@ -141,6 +187,15 @@ class Mic:
     def drain(self) -> None:
         while not self.queue.empty():
             self.queue.get_nowait()
+
+    async def retarget(self, source: str) -> None:
+        """Capture from another microphone ("" = PipeWire's default); reopens only if it was open."""
+        if source == self.source:
+            return
+        self.source = source
+        if self.is_open:
+            await self.close()
+            await self.open()
 
     async def close(self) -> None:
         self.is_open = False
@@ -292,6 +347,15 @@ class Speaker:
         self.owner = ""
         if self.on_level:
             self.on_level(0.0)
+
+    async def retarget(self, target: str) -> None:
+        """Play on another output ("" = PipeWire's default). What was queued is dropped (it would
+        otherwise start mid-sentence on the new device)."""
+        if target == self.target:
+            return
+        self.target = target
+        if self._proc is not None:
+            await self.clear()   # restarts pw-play, now with the new --target
 
     def backlog_s(self) -> float:
         """Seconds of audio accepted but not yet heard (queued plus what the player is ahead by)."""
