@@ -243,6 +243,39 @@ POI = {"аптек": "pharmacy", "больниц": "hospital", "заправк":
        "hospita": "hospital", "posto": "fuel", "caixa eletr": "atm", "restaurante": "restaurant", "mercado": "supermarket"}
 
 
+QUIZ_ME = re.compile(r"^(?:(?:can you |please )?(?:quiz|test) me|(?:give me|make me|start|let s do) (?:a )?(?:quick )?(?:quiz|test))"
+                     r"(?: (?:on|about|in|from))?\s*(.*)$|"
+                     r"^(?:проверь меня|проверь мои знания|устрой (?:мне )?(?:тест|викторину)|(?:дай|сделай|давай) (?:мне )?"
+                     r"(?:тест|викторину))(?: (?:по|про|на тему|о|об))?\s*(.*)$|"
+                     r"^(?:me teste|me testa|me fa[cç]a (?:um )?(?:quiz|teste)|fa[cç]a (?:um )?(?:quiz|teste)|(?:um )?quiz)"
+                     r"(?: (?:sobre|de|em))?\s*(.*)$")
+WEAK = re.compile(r"\bweak (?:spots?|areas?|topics?|points?)\b|слаб\w* (?:мест|тем|сторон)|pontos? fracos?")
+DECK = re.compile(r"^(?:my |the |мои |моим |meus |minhas )?(.+?)(?: (?:flash ?cards?|cards?|deck)| (?:карточк\w*|колод\w*)|"
+                  r" (?:cart[oõ]es|baralho))$|^(?:(?:flash ?cards?|deck|карточк\w*|колод\w*|cart[oõ]es|baralho) (?:de |по )?(.+))$")
+
+
+def _learn(t: str) -> Route | None:
+    """"quiz me on photosynthesis", "test me on my spanish flashcards", "review my flashcards", "how am I doing"."""
+    if m := QUIZ_ME.match(t):
+        rest = next((g for g in m.groups() if g is not None), "").strip()
+        if WEAK.search(rest) or WEAK.search(t):
+            return Route("learn", {"action": "quiz", "weak": True})
+        if d := DECK.match(rest):
+            return Route("learn", {"action": "quiz", "deck": next(g for g in d.groups() if g)})
+        return Route("learn", {"action": "quiz", **({"topic": rest} if rest else {})})
+    if m := re.match(r"^(?:review|study|practi[sc]e|go through) (?:my |the )?(?:(.+?) )?(?:flash ?cards?|cards|deck)$|"
+                     r"^(?:повтори|повторим|давай повторим|повторить) (?:мои )?карточки(?: (?:по )?(.+))?$|"
+                     r"^(?:revisar|revise|vamos revisar) (?:os |meus )?cart[oõ]es(?: de (.+))?$", t):
+        deck = next((g for g in m.groups() if g), "")
+        return Route("learn", {"action": "review", **({"deck": deck} if deck else {})})
+    if re.match(r"^(?:my |show (?:me )?my )?(?:study|learning|quiz) (?:progress|stats)$|^how am i doing (?:with|in|on) (?:my )?"
+                r"(?:studies|studying|learning|revision|quizzes|flashcards)$|^what are my weak (?:spots|areas|topics)$|"
+                r"^(?:мой|покажи мой) прогресс(?: в учёбе| в учебе| по учёбе| по учебе)?$|^(?:какие )?(?:у меня )?(?:мои )?"
+                r"слабые (?:места|темы)$|^(?:meu progresso(?: nos estudos)?|quais (?:são )?meus pontos fracos)$", t):
+        return Route("learn", {"action": "progress"})
+    return None
+
+
 def _capability(t: str, text: str) -> Route | None:
     """Fast-path commands for the capabilities (RU / EN / PT). `t` is cleaned, `text` the raw words."""
     # ---- reminders and timers (the tool parses the time phrase from the raw text)
@@ -318,6 +351,10 @@ def _capability(t: str, text: str) -> Route | None:
         return Route("appearance", {"action": "set_theme", "theme": m.group(1)})
     if re.match(r"^(?:следующие обои|смени обои|другие обои|next wallpaper|change (?:the )?wallpaper|próximo papel de parede)$", t):
         return Route("appearance", {"action": "next_wallpaper"})
+
+    # ---- teaching: quizzes, flashcards, progress
+    if r := _learn(t):
+        return r
 
     # ---- focus, undo, clipboard
     if m := re.match(r"^(?:включи |начни |запусти )?(?:режим фокуса|фокус(?:-| )?режим|помодоро|фокус)(?: на (\d+) мин\w*)?$|"

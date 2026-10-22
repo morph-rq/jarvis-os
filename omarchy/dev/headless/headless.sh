@@ -12,6 +12,7 @@
 #   headless.sh run CMD...   run a command as the desktop user inside the session
 #   headless.sh ipc ARGS...  `qs ipc call ARGS` on the running Caelestia + Jarvis shell
 #   headless.sh shot NAME [X Y W H]   screenshot to $ROOT/tmp/NAME.png (cropped to the box)
+#   headless.sh click X Y    a real pointer click at layout px (wlpointer.py, a virtual pointer)
 #   headless.sh stop         stop everything the desktop user runs in the chroot
 #
 # Hyprland itself needs a GPU render node, so sway stands in as the compositor (same wlroots
@@ -98,8 +99,11 @@ setup() {
 
   # Screenshots through wlr-screencopy (grim's ext-image-copy-capture path gets no formats from pixman).
   mkdir -p "$ROOT/opt/shot"
+  # Clicks through a virtual pointer (the headless seat has no pointer device of its own): wlpointer.py.
   cp "$ROOT/build/quickshell/src/wayland/screencopy/wlr_screencopy/wlr-screencopy-unstable-v1.xml" "$ROOT/opt/shot/"
-  in_root sh -c 'cd /opt/shot && pywayland-scanner -i /usr/share/wayland/wayland.xml wlr-screencopy-unstable-v1.xml -o protocols && touch protocols/__init__.py'
+  cp "$here/protocols/wlr-virtual-pointer-unstable-v1.xml" "$ROOT/opt/shot/"
+  in_root sh -c 'cd /opt/shot && pywayland-scanner -i /usr/share/wayland/wayland.xml wlr-screencopy-unstable-v1.xml \
+    wlr-virtual-pointer-unstable-v1.xml -o protocols && touch protocols/__init__.py'
 
   cert=(); [ -f "$ROOT/usr/local/share/ca-certificates/proxy.crt" ] && cert=(--cert /usr/local/share/ca-certificates/proxy.crt)
   in_root python3 -m venv /opt/caelestia-cli
@@ -179,6 +183,7 @@ case $cmd in
   run) in_session "$@" ;;
   ipc) in_session qs -p /opt/caelestia-jarvis ipc call "$@" ;;
   shot) shot "$@" ;;
+  click) in_session timeout 15 python3 /work/omarchy/dev/headless/wlpointer.py "$@" ;;
   stop) stop ;;
   *) sed -n '2,21p' "$0"; exit 2 ;;
 esac

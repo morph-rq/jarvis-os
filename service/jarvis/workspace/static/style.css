@@ -745,3 +745,47 @@ dialog.lightbox::backdrop { background: rgb(5 6 10 / .72); backdrop-filter: blur
     scroll-behavior: auto !important;
   }
 }
+
+/* ---------------------------------------------------------------- teaching (quiz, flashcards, progress) */
+.quiz-dots { display: flex; gap: 5px; margin-bottom: var(--space-2); }
+.quiz-dot { width: 22px; height: 4px; border-radius: 2px; background: var(--color-background-tertiary); transition: background var(--duration) var(--ease); }
+.quiz-dot.current { background: var(--color-accent); }
+.quiz-dot.right { background: var(--color-border-success); }
+.quiz-dot.wrong { background: var(--color-border-danger); }
+.quiz-verdict { margin: 0 0 var(--space-2); font-size: 13px; }
+.quiz-verdict.right { color: var(--color-text-success); }
+.quiz-verdict.wrong { color: var(--color-text-danger); }
+.quiz-question { margin: var(--space-1) 0 var(--space-3); font-size: 16px; font-weight: 600; line-height: 1.35; }
+.quiz-options { display: grid; gap: var(--space-2); margin-bottom: var(--space-3); }
+.quiz-option { display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: 40px; padding: var(--space-2) var(--space-3);
+  text-align: left; font: inherit; color: var(--color-text-primary); background: var(--color-background-secondary);
+  border: 1px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); cursor: pointer;
+  transition: background var(--duration-fast) var(--ease), border-color var(--duration-fast) var(--ease); }
+.quiz-option:hover:not(:disabled) { background: var(--color-background-tertiary); border-color: var(--color-border-secondary); }
+.quiz-option:disabled { cursor: default; opacity: .65; }
+.quiz-option.chosen { opacity: 1; border-color: var(--color-accent); background: var(--color-background-accent); }
+.quiz-letter { font-size: 12px; font-weight: 700; color: var(--color-text-tertiary); width: 1em; }
+.score-head { display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-3); }
+.score-big { font-size: 34px; font-weight: 700; letter-spacing: -.02em; }
+.score-verdict { font-weight: 600; }
+.topic-bars { display: grid; gap: var(--space-2); }
+.topic-head { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 3px; }
+.topic-track { height: 5px; border-radius: 3px; background: var(--color-background-tertiary); overflow: hidden; }
+.topic-fill { height: 100%; border-radius: 3px; background: var(--color-border-success); transition: width var(--duration-slow) var(--ease); }
+.topic-bar.weak .topic-head span:first-child { color: var(--color-text-warning); }
+.topic-bar.weak .topic-fill { background: var(--color-border-warning); }
+.quiz-missed, .deck-list { margin: var(--space-3) 0 0; padding-left: 1.1em; font-size: 13px; display: grid; gap: 4px; }
+.flash-face { display: grid; gap: var(--space-3); place-items: center; text-align: center; min-height: 120px; margin: var(--space-2) 0 var(--space-3);
+  padding: var(--space-5) var(--space-4); border-radius: var(--border-radius-xl); background: var(--color-background-secondary);
+  border: 1px solid var(--color-border-tertiary); }
+.flash-front { font-size: 20px; font-weight: 600; }
+.flash-back { padding-top: var(--space-3); border-top: 1px solid var(--color-border-tertiary); width: 100%; font-size: 16px; }
+.flash-said { font-size: 13px; }
+.flash-said.right { color: var(--color-text-success); }
+.flash-said.wrong { color: var(--color-text-danger); }
+.btn.grade-again { color: var(--color-text-danger); }
+.btn.grade-hard { color: var(--color-text-warning); }
+.btn.grade-easy { color: var(--color-text-success); }
+@media (prefers-reduced-motion: reduce) {
+  .quiz-dot, .quiz-option, .topic-fill { transition: none; }
+}

@@ -132,6 +132,9 @@ Item {
     return true
   }
   function ask(text) { return send({ op: "ask", text: text }) }
+  // The quiz and flashcard cards (op learn): a tapped option {action: "answer", question, choice}, "reveal",
+  // {action: "grade", grade} or "stop". Marked by jarvisd, never by the card.
+  function learn(args) { return send(Object.assign({ op: "learn" }, args)) }
   function listen() { return send({ op: "listen", action: root.conversing ? "stop" : "start" }) }
   function stopSpeaking() { return send({ op: "stop_speaking" }) }
   function toggleMute() { return send({ op: "mute" }) }
@@ -293,10 +296,12 @@ Item {
                 ttl: card.ttl === undefined ? 15 : card.ttl, born: Date.now(), pinned: false }
     for (var i = 0; i < cardModel.count; i++) {
       if (cardModel.get(i).cardId === card.id) {   // same id: update in place (plans, progress)
+        cardModel.setProperty(i, "kind", row.kind)        // a quiz becomes its scorecard
         cardModel.setProperty(i, "payload", row.payload)
         cardModel.setProperty(i, "title", row.title)
         cardModel.setProperty(i, "ttl", row.ttl)
         cardModel.setProperty(i, "born", row.born)
+        if (i > 0) cardModel.move(i, 0, 1)   // updated is newest: the island shows it (a quiz's next question)
         return
       }
     }

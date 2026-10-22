@@ -134,6 +134,8 @@ def markdown() -> str:
               "voice.output_target settings; setting one switches the open device at once) |",
               "| `guide` | `action` next, stop or status | `active`, `step`, `label`, `caption`: the walkthrough "
               "on screen (navigate) |",
+              "| `learn` | `action` answer (+ `question` number, `choice` index: a tapped option), reveal, grade (+ `grade` "
+              "again/hard/good/easy) or stop | the `learn` tool's result; the quiz or flashcard card updates by `hud` |",
               "| `listen` / `stop_speaking` / `mute` / `ask` / `cancel` | see daemon.py | |", ""]
     return "\n".join(lines)
 

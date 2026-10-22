@@ -62,6 +62,11 @@ const STRINGS = {
     kind_text: 'Note', kind_chart: 'Chart', kind_table: 'Table', kind_email: 'Email', kind_document: 'Document',
     expired_session: 'This workspace session has expired. Open the workspace from Jarvis again.',
     load_failed: 'Couldn’t reach Jarvis: {msg}',
+    quiz_q: 'Question {i} of {n}', quiz_right: 'Right', quiz_wrong: 'Not quite', quiz_free: 'Type or say your answer.',
+    quiz_stop: 'Stop quiz', quiz_score: '{n} right so far', quiz_weak: 'Quiz my weak spots', show_answer: 'Show answer',
+    again: 'Again', hard: 'Hard', good: 'Good', easy: 'Easy', due_n: '{n} due', reviewed_n: '{n} reviewed',
+    review_done: 'Review done: {n} cards, {right} remembered.', answers_n: '{n} answers', streak_n: '{n}-day streak',
+    review: 'Review', cards_n: '{n} cards', you_said: 'You said: {s}', stop: 'Stop',
   },
   ru: {
     title: 'Рабочее пространство Jarvis', conversation: 'Разговор', canvas: 'Холст', activity: 'Активность',
@@ -113,6 +118,11 @@ const STRINGS = {
     kind_text: 'Заметка', kind_chart: 'График', kind_table: 'Таблица', kind_email: 'Письмо', kind_document: 'Документ',
     expired_session: 'Сеанс истёк. Откройте рабочее пространство из Джарвиса заново.',
     load_failed: 'Не удалось связаться с Джарвисом: {msg}',
+    quiz_q: 'Вопрос {i} из {n}', quiz_right: 'Верно', quiz_wrong: 'Не совсем', quiz_free: 'Напишите или скажите ответ.',
+    quiz_stop: 'Закончить тест', quiz_score: 'Верно: {n}', quiz_weak: 'Тест по слабым местам', show_answer: 'Показать ответ',
+    again: 'Снова', hard: 'Трудно', good: 'Хорошо', easy: 'Легко', due_n: 'к повторению: {n}', reviewed_n: 'повторено: {n}',
+    review_done: 'Повторение окончено: {n} карт., помню {right}.', answers_n: 'ответов: {n}', streak_n: 'дней подряд: {n}',
+    review: 'Повторить', cards_n: 'карточек: {n}', you_said: 'Ваш ответ: {s}', stop: 'Стоп',
   },
   pt: {
     title: 'Espaço de trabalho Jarvis', conversation: 'Conversa', canvas: 'Tela', activity: 'Atividade',
@@ -164,6 +174,11 @@ const STRINGS = {
     kind_text: 'Nota', kind_chart: 'Gráfico', kind_table: 'Tabela', kind_email: 'E-mail', kind_document: 'Documento',
     expired_session: 'A sessão expirou. Abra o espaço de trabalho pelo Jarvis novamente.',
     load_failed: 'Não foi possível falar com o Jarvis: {msg}',
+    quiz_q: 'Pergunta {i} de {n}', quiz_right: 'Certo', quiz_wrong: 'Não exatamente', quiz_free: 'Escreva ou diga sua resposta.',
+    quiz_stop: 'Encerrar quiz', quiz_score: '{n} certas até agora', quiz_weak: 'Quiz dos pontos fracos', show_answer: 'Mostrar resposta',
+    again: 'De novo', hard: 'Difícil', good: 'Bom', easy: 'Fácil', due_n: '{n} para revisar', reviewed_n: '{n} revisados',
+    review_done: 'Revisão concluída: {n} cartões, {right} lembrados.', answers_n: '{n} respostas', streak_n: '{n} dias seguidos',
+    review: 'Revisar', cards_n: '{n} cartões', you_said: 'Você disse: {s}', stop: 'Parar',
   },
 };
 
@@ -435,6 +450,10 @@ const RENDERERS = {
   text: renderText,
   diagnosis: renderText,
   briefing: renderText,
+  quiz: renderQuiz,
+  scorecard: renderScorecard,
+  flashcard: renderFlashcard,
+  progress: renderProgress,
 };
 
 function renderChart(card, body, ctx, d) {
@@ -901,6 +920,124 @@ function renderPlan(card, body, ctx, d) {
       h('span', { class: 'mark', 'aria-hidden': 'true' }, mark),
       h('span', { class: 'txt' }, str(s.text ?? s.title ?? s.step), h('span', { class: 'sr-only' }, ` (${st})`)));
   })));
+}
+
+// ---------------------------------------------------------------- teaching (capabilities/learn.py)
+// jarvisd marks every answer: these send only what was tapped (an option's number, show answer, a grade)
+// through the card's declared `tool:learn` action, and show what comes back.
+
+const learnAction = (card, ctx, args) => ctx.uiAction(card.id, 'tool:learn', { args });
+
+function topicBars(topics) {
+  return h('div', { class: 'topic-bars' }, arr(topics).filter(isObj).slice(0, 12).map((tp) => {
+    const v = clamp(parseNumber(tp.value) ?? 0, 0, 1);
+    const shown = tp.of != null ? `${str(tp.right)}/${str(tp.of)}` : `${Math.round(v * 100)}%`;
+    const fill = h('div', { class: 'topic-fill' });
+    fill.style.width = `${Math.max(2, v * 100).toFixed(1)}%`;   // CSSOM: the page CSP blocks style attributes
+    return h('div', { class: ['topic-bar', tp.weak ? 'weak' : ''], role: 'meter', 'aria-valuemin': '0', 'aria-valuemax': '100',
+      'aria-valuenow': String(Math.round(v * 100)), 'aria-label': `${str(tp.label)}: ${shown}` },
+      h('div', { class: 'topic-head' }, h('span', null, str(tp.label)), h('span', { class: 'muted' }, shown)),
+      h('div', { class: 'topic-track' }, fill));
+  }));
+}
+
+function renderQuiz(card, body, ctx, d) {
+  const { t } = ctx;
+  const qs = arr(d.questions).filter(isObj);
+  const cur = Number.isInteger(d.current) ? d.current : -1;
+  body.append(h('div', { class: 'quiz-dots', 'aria-hidden': 'true' }, qs.map((q, i) =>
+    h('span', { class: ['quiz-dot', i === cur ? 'current' : q.given == null ? '' : q.correct ? 'right' : 'wrong'] }))));
+  const prev = cur > 0 ? qs[cur - 1] : null;
+  if (prev && prev.given != null) {
+    body.append(h('p', { class: ['quiz-verdict', prev.correct ? 'right' : 'wrong'], role: 'status' },
+      prev.correct ? `✓ ${t('quiz_right')}${prev.note ? ` · ${str(prev.note)}` : ''}`
+        : `✗ ${t('quiz_wrong')}${prev.right_answer ? `: ${str(prev.right_answer)}` : ''}`));
+  }
+  const q = cur >= 0 ? qs[cur] : null;
+  if (!q) return;
+  body.append(h('div', { class: 'card-meta' }, t('quiz_q', { i: cur + 1, n: qs.length })),
+    h('p', { class: 'quiz-question' }, str(q.question)));
+  const status = h('span', { class: 'note' });
+  const choices = arr(q.choices).map(str);
+  if (choices.length) {
+    const buttons = choices.map((c, i) => {
+      const b = h('button', { type: 'button', class: 'quiz-option' }, h('span', { class: 'quiz-letter' }, 'ABCDEF'[i]), h('span', null, c));
+      b.onclick = async () => {
+        buttons.forEach((x) => { x.disabled = true; });
+        b.classList.add('chosen');
+        const ok = await runAction(b, status, t, () => learnAction(card, ctx, { action: 'answer', question: cur + 1, choice: i }), ' ');
+        if (!ok) buttons.forEach((x) => { x.disabled = false; });
+      };
+      return b;
+    });
+    body.append(h('div', { class: 'quiz-options' }, buttons));
+  } else {
+    body.append(h('p', { class: 'muted' }, t('quiz_free')));
+  }
+  const stop = button(t('quiz_stop'), () => runAction(stop, status, t, () => learnAction(card, ctx, { action: 'stop' }), ' '), 'btn ghost small');
+  body.append(h('div', { class: 'card-actions' }, stop, h('span', { class: 'muted' }, t('quiz_score', { n: d.score ?? 0 })), status));
+}
+
+function renderScorecard(card, body, ctx, d) {
+  const { t } = ctx;
+  body.append(h('div', { class: 'score-head' },
+    h('div', { class: 'score-big' }, `${str(d.score ?? 0)}/${str(d.total ?? 0)}`),
+    h('div', null, h('div', { class: 'score-verdict' }, str(d.verdict)), d.subject ? h('div', { class: 'muted' }, str(d.subject)) : null)),
+  topicBars(d.topics));
+  const missed = arr(d.questions).filter((q) => isObj(q) && !q.correct).slice(0, 8);
+  if (missed.length) {
+    body.append(h('ul', { class: 'quiz-missed' }, missed.map((q) =>
+      h('li', null, h('span', null, str(q.question)), q.right_answer ? h('span', { class: 'muted' }, ` → ${str(q.right_answer)}`) : null))));
+  }
+}
+
+function renderFlashcard(card, body, ctx, d) {
+  const { t } = ctx;
+  if (d.done) {
+    body.append(h('p', null, t('review_done', { n: d.reviewed ?? 0, right: d.right ?? 0 })));
+    return;
+  }
+  body.append(h('div', { class: 'card-meta' }, [t('due_n', { n: d.due_left ?? 0 }), d.reviewed ? t('reviewed_n', { n: d.reviewed }) : '',
+    str(d.topic)].filter(Boolean).join(' · ')));
+  if (isObj(d.last)) {
+    body.append(h('p', { class: ['quiz-verdict', d.last.right ? 'right' : 'wrong'], role: 'status' },
+      `${d.last.right ? '✓' : '✗'} ${str(d.last.front)} → ${str(d.last.back)}`));
+  }
+  const face = h('div', { class: ['flash-face', d.revealed ? 'revealed' : ''] }, h('div', { class: 'flash-front' }, str(d.front)));
+  if (d.revealed) {
+    face.append(h('div', { class: 'flash-back' }, str(d.back)));
+    if (d.said) face.append(h('div', { class: ['flash-said', d.matched ? 'right' : 'wrong'] }, t('you_said', { s: str(d.said) })));
+  }
+  body.append(face);
+  const status = h('span', { class: 'note' });
+  const actions = h('div', { class: 'card-actions' });
+  if (!d.revealed) {
+    const b = button(t('show_answer'), () => runAction(b, status, t, () => learnAction(card, ctx, { action: 'reveal' }), ' '), 'btn primary small');
+    actions.append(b);
+  } else {
+    for (const g of ['again', 'hard', 'good', 'easy']) {
+      const b = button(t(g), () => runAction(b, status, t, () => learnAction(card, ctx, { action: 'grade', grade: g }), ' '), `btn small grade-${g}`);
+      actions.append(b);
+    }
+  }
+  const stop = button(t('stop'), () => runAction(stop, status, t, () => learnAction(card, ctx, { action: 'stop' }), ' '), 'btn ghost small');
+  actions.append(stop, status);
+  body.append(actions);
+}
+
+function renderProgress(card, body, ctx, d) {
+  const { t } = ctx;
+  const stats = [];
+  if (d.accuracy != null) stats.push(h('div', { class: 'metric' }, h('div', { class: 'metric-value' }, `${Math.round((parseNumber(d.accuracy) ?? 0) * 100)}%`),
+    h('div', { class: 'metric-label' }, t('answers_n', { n: d.answered ?? 0 }))));
+  if (d.streak) stats.push(h('div', { class: 'metric' }, h('div', { class: 'metric-value' }, str(d.streak)), h('div', { class: 'metric-label' }, t('streak_n', { n: d.streak }))));
+  if (stats.length) body.append(h('div', { class: 'metrics' }, stats));
+  if (arr(d.topics).length) body.append(topicBars(d.topics));
+  const decks = arr(d.decks).filter(isObj);
+  if (decks.length) {
+    body.append(h('ul', { class: 'deck-list' }, decks.map((dk) =>
+      h('li', null, h('span', null, str(dk.name)), h('span', { class: 'muted' }, ` · ${t('cards_n', { n: dk.cards ?? 0 })}${dk.due ? ` · ${t('due_n', { n: dk.due })}` : ''}`)))));
+  }
 }
 
 const TEXT_KEYS = ['text', 'summary', 'answer', 'body', 'message'];

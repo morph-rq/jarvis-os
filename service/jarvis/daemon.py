@@ -289,11 +289,13 @@ class Jarvis:
             return {"ok": True, "cancelled": cancelled}
         if self.answer_approval(text, spoken=source == "voice"):
             return {"ok": True, "approval_answer": True}
-        from jarvis.capabilities import navigator
+        from jarvis.capabilities import learn, navigator
         if navigator.heard_next(text):   # "next" while a walkthrough waits on the user: no model call
             return {"ok": True, "guide": "next"}
 
+        learn.heard(text)
         route = router.route(text, self.session)
+        route = learn.claim(text, route) or route   # an answer to the open quiz question or flashcard: no model call
         if route is None:
             from jarvis.capabilities import skills as skillsmod
             hit = skillsmod.match_trigger(text)
@@ -427,6 +429,8 @@ class Jarvis:
     async def voice_heard(self, text: str) -> None:
         """Every final user utterance in a Live session: approvals by voice, cancel and stop."""
         self.last_lang = i18n.detect(text, self.last_lang)
+        from jarvis.capabilities import learn
+        learn.heard(text)   # a quiz answer the model records must come from these words
         if self.answer_approval(text, spoken=True):
             return
         if router.is_cancel(text):
@@ -511,6 +515,13 @@ class Jarvis:
             if action not in ("next", "stop", "status"):
                 return {"ok": False, "message": "action: next, stop or status"}
             return await navigator.navigate(self.ctx, {"action": action})
+        if op == "learn":
+            # The quiz and flashcard cards' buttons: a tapped option, show answer, a grade, stop.
+            from jarvis.capabilities import learn
+            got = learn.ui_request(req)
+            if "error" in got:
+                return {"ok": False, "message": got["error"]}
+            return await self.run_ui_tool("learn", got["args"])
         if op == "devices":
             try:
                 found = await asyncio.to_thread(audio_devices)

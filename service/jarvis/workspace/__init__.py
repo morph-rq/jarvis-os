@@ -295,6 +295,13 @@ class Workspace:
             if wanted not in _card_paths(card.get("data") or {}):
                 raise HttpError(403, "that file is not part of this card")
             return await self._as_task("open_path", {"path": wanted})
+        if action == "tool:learn":
+            # A quiz or flashcard button: a tapped option is sent as its number and recorded as the user's words.
+            from jarvis.capabilities import learn
+            got = learn.ui_request(payload.get("args") if isinstance(payload.get("args"), dict) else {})
+            if "error" in got:
+                return {"ok": False, "message": got["error"]}
+            return await self._as_task("learn", got["args"])
         if action.startswith("tool:"):
             name = action[5:]
             args = payload.get("args") if isinstance(payload.get("args"), dict) else {}

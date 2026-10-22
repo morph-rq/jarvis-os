@@ -32,7 +32,8 @@ Item {
     "media": mediaCard, "briefing": briefingCard, "search": textCard, "text": textCard, "document": textCard,
     "diagnosis": textCard, "skill_draft": textCard, "comparison": compareCard, "chart": chartCard,
     "table": tableCard, "metrics": compareCard, "generated": textCard, "files": listCard, "apps": listCard,
-    "calendar": listCard, "email": listCard
+    "calendar": listCard, "email": listCard, "quiz": quizCard, "scorecard": scoreCard, "flashcard": flashCard,
+    "progress": progressCard
   })
 
   implicitHeight: body.height
@@ -786,6 +787,261 @@ Item {
                textFormat: Text.PlainText; wrapMode: Text.Wrap; color: Util.alpha(root.fg, 0.8); font.family: Style.fontFamily; font.pixelSize: Style.font.caption }
       }
       Btn { small: true; visible: !!d.code; text: root.t("copy_code", "Copy code"); onClicked: root.s.copyText(d.code) }
+    }
+  }
+
+
+  // ================================================================ teaching (capabilities/learn.py)
+  // jarvisd marks every answer; these only send what was tapped (op learn) and show what came back. A
+  // question's right answer is in the data only after it was answered wrongly.
+
+  Component {
+    id: quizCard
+    Column {
+      id: quiz
+      width: parent ? parent.width : 300
+      readonly property var d: parent && parent.d ? parent.d : ({})
+      readonly property var qs: d.questions || []
+      readonly property int cur: d.current === undefined ? -1 : d.current
+      readonly property var q: cur >= 0 ? qs[cur] : null
+      // The answer just given (the question before the open one): its verdict stays in view.
+      readonly property var prev: cur > 0 ? qs[cur - 1] : null
+      property int sentFor: -1   // a tap waits for jarvisd; one tap per question
+      spacing: 9
+      Row {
+        width: parent.width
+        spacing: 5
+        Repeater {
+          model: quiz.qs.length
+          Rectangle {
+            required property int index
+            readonly property var item: quiz.qs[index]
+            width: Math.min(28, (quiz.width - 5 * (quiz.qs.length - 1)) / Math.max(1, quiz.qs.length)); height: 4; radius: 2
+            color: index === quiz.cur ? root.accent : !item.given ? Util.alpha(root.fg, 0.14)
+                 : item.correct ? root.green : root.red
+            Behavior on color { ColorAnimation { duration: 180 } }
+          }
+        }
+      }
+      Text {
+        visible: !!quiz.prev
+        width: parent.width
+        text: !quiz.prev ? "" : quiz.prev.correct ? "✓  " + root.t("quiz_right", "Right") + (quiz.prev.note ? " · " + quiz.prev.note : "")
+              : "✗  " + root.t("quiz_wrong", "Not quite") + (quiz.prev.right_answer ? ": " + quiz.prev.right_answer : "")
+        textFormat: Text.PlainText; wrapMode: Text.Wrap
+        color: quiz.prev && quiz.prev.correct ? root.green : root.red
+        font.family: Style.fontFamily; font.pixelSize: Style.font.caption
+      }
+      Text {
+        visible: !!quiz.q
+        width: parent.width
+        text: quiz.q ? (quiz.cur + 1) + "/" + quiz.qs.length + "  " + quiz.q.question : ""
+        textFormat: Text.PlainText; wrapMode: Text.Wrap; color: root.fg
+        font.family: Style.fontFamily; font.pixelSize: Style.font.body; font.bold: true
+      }
+      Repeater {
+        model: quiz.q && quiz.q.choices ? quiz.q.choices : []
+        Rectangle {
+          required property var modelData
+          required property int index
+          width: quiz.width; height: Math.max(34, optText.implicitHeight + 14); radius: 10
+          readonly property bool chosen: quiz.sentFor === quiz.cur && quiz.chosenIndex === index
+          color: chosen ? Util.alpha(root.accent, 0.28) : Util.alpha(root.fg, optMouse.pressed ? 0.16 : optMouse.containsMouse ? 0.10 : 0.05)
+          border.width: 1
+          border.color: chosen ? Util.alpha(root.accent, 0.8) : Util.alpha(root.fg, optMouse.containsMouse ? 0.22 : 0.08)
+          Behavior on color { ColorAnimation { duration: 120 } }
+          Text {
+            id: letter
+            anchors { left: parent.left; leftMargin: 12; verticalCenter: parent.verticalCenter }
+            text: "ABCDEF".charAt(index); color: Util.alpha(root.fg, 0.5)
+            font.family: Style.fontFamily; font.pixelSize: Style.font.caption; font.bold: true
+          }
+          Text {
+            id: optText
+            anchors { left: letter.right; leftMargin: 10; right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
+            text: modelData; textFormat: Text.PlainText; wrapMode: Text.Wrap; color: root.fg
+            font.family: Style.fontFamily; font.pixelSize: Style.font.bodySmall
+          }
+          MouseArea {
+            id: optMouse
+            anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+            enabled: quiz.sentFor !== quiz.cur
+            onClicked: {
+              quiz.chosenIndex = index
+              quiz.sentFor = quiz.cur
+              root.s.learn({ action: "answer", question: quiz.cur + 1, choice: index })
+            }
+          }
+          Accessible.role: Accessible.Button
+          Accessible.name: "ABCDEF".charAt(index) + ": " + modelData
+        }
+      }
+      property int chosenIndex: -1
+      Timer { interval: 4000; running: quiz.sentFor === quiz.cur && quiz.cur >= 0; onTriggered: quiz.sentFor = -1 }  // no reply: tap again
+      Text {
+        visible: !!quiz.q && !(quiz.q.choices && quiz.q.choices.length)
+        width: parent.width
+        text: root.t("quiz_free", "Type or say your answer.")
+        color: Util.alpha(root.fg, 0.5); font.family: Style.fontFamily; font.pixelSize: Style.font.caption
+      }
+      Row {
+        spacing: 6
+        Btn { small: true; text: root.t("quiz_stop", "Stop quiz"); onClicked: root.s.learn({ action: "stop" }) }
+        Text { anchors.verticalCenter: parent.verticalCenter; text: (quiz.d.score || 0) + " " + root.t("quiz_so_far", "right so far")
+               color: Util.alpha(root.fg, 0.5); font.family: Style.fontFamily; font.pixelSize: Style.font.caption }
+      }
+    }
+  }
+
+  Component {
+    id: scoreCard
+    Column {
+      width: parent ? parent.width : 300
+      readonly property var d: parent && parent.d ? parent.d : ({})
+      spacing: 8
+      Row {
+        spacing: 12
+        Text { text: (d.score || 0) + "/" + (d.total || 0); color: root.fg; font.family: Style.fontFamily; font.pixelSize: 30; font.bold: true }
+        Column {
+          anchors.verticalCenter: parent.verticalCenter
+          Text { text: d.verdict || ""; textFormat: Text.PlainText; color: root.fg; font.family: Style.fontFamily
+                 font.pixelSize: Style.font.bodySmall; font.bold: true }
+          Text { text: d.subject || ""; textFormat: Text.PlainText; color: Util.alpha(root.fg, 0.55); font.family: Style.fontFamily
+                 font.pixelSize: Style.font.caption }
+        }
+      }
+      Repeater {
+        model: (d.topics || []).slice(0, 8)
+        TopicBar { required property var modelData; topic: modelData; width: parent.width }
+      }
+      Repeater {
+        model: (d.questions || []).filter(function(q) { return !q.correct }).slice(0, 4)
+        Text { required property var modelData; width: parent.width
+               text: "✗  " + modelData.question + (modelData.right_answer ? "  →  " + modelData.right_answer : "")
+               textFormat: Text.PlainText; wrapMode: Text.Wrap; color: Util.alpha(root.fg, 0.75)
+               font.family: Style.fontFamily; font.pixelSize: Style.font.caption }
+      }
+      Btn { small: true; strong: true; visible: (d.weak || []).length > 0; text: root.t("quiz_weak", "Quiz my weak spots")
+            onClicked: root.s.ask("quiz me on my weak spots") }
+    }
+  }
+
+  Component {
+    id: flashCard
+    Column {
+      id: fc
+      width: parent ? parent.width : 300
+      readonly property var d: parent && parent.d ? parent.d : ({})
+      spacing: 9
+      Text {
+        width: parent.width
+        text: d.done ? root.t("review_done", "Review done") + ": " + (d.reviewed || 0) + " · " + (d.right || 0) + " " + root.t("remembered", "remembered")
+              : (d.due_left || 0) + " " + root.t("due", "due") + (d.reviewed ? "  ·  " + d.reviewed + " " + root.t("reviewed", "reviewed") : "")
+                + (d.topic ? "  ·  " + d.topic : "")
+        textFormat: Text.PlainText; elide: Text.ElideRight; color: Util.alpha(root.fg, 0.55)
+        font.family: Style.fontFamily; font.pixelSize: Style.font.caption
+      }
+      Text {
+        visible: !!d.last && !d.done
+        width: parent.width
+        text: d.last ? (d.last.right ? "✓  " : "✗  ") + d.last.front + "  →  " + d.last.back : ""
+        textFormat: Text.PlainText; elide: Text.ElideRight
+        color: d.last && d.last.right ? root.green : root.red
+        font.family: Style.fontFamily; font.pixelSize: Style.font.caption
+      }
+      Rectangle {
+        visible: !d.done
+        width: parent.width; height: faceCol.implicitHeight + 32; radius: 14
+        color: Util.alpha(root.fg, 0.05)
+        border.width: 1; border.color: Util.alpha(root.fg, 0.10)
+        Column {
+          id: faceCol
+          anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; margins: 16 }
+          spacing: 10
+          Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: d.front || ""; textFormat: Text.PlainText
+                 wrapMode: Text.Wrap; color: root.fg; font.family: Style.fontFamily; font.pixelSize: Style.font.heading; font.bold: true }
+          Rectangle { visible: !!d.revealed; width: parent.width; height: 1; color: Util.alpha(root.fg, 0.12) }
+          Text { visible: !!d.revealed; width: parent.width; horizontalAlignment: Text.AlignHCenter; text: d.back || ""
+                 textFormat: Text.PlainText; wrapMode: Text.Wrap; color: root.fg; font.family: Style.fontFamily; font.pixelSize: Style.font.body }
+          Text { visible: !!d.said; width: parent.width; horizontalAlignment: Text.AlignHCenter
+                 text: (d.matched ? "✓ " : "✗ ") + (d.said || ""); textFormat: Text.PlainText; wrapMode: Text.Wrap
+                 color: d.matched ? root.green : root.red; font.family: Style.fontFamily; font.pixelSize: Style.font.caption }
+        }
+      }
+      Row {
+        visible: !d.done
+        spacing: 6
+        Btn { visible: !d.revealed; small: true; strong: true; text: root.t("show_answer", "Show answer")
+              onClicked: root.s.learn({ action: "reveal" }) }
+        Repeater {
+          model: d.revealed ? [["again", root.t("again", "Again"), root.red], ["hard", root.t("hard", "Hard"), root.amber],
+                               ["good", root.t("good", "Good"), root.accent], ["easy", root.t("easy", "Easy"), root.green]] : []
+          Btn { required property var modelData; small: true; strong: true; tint: modelData[2]; text: modelData[1]
+                onClicked: root.s.learn({ action: "grade", grade: modelData[0] }) }
+        }
+        Btn { small: true; text: root.t("stop", "Stop"); onClicked: root.s.learn({ action: "stop" }) }
+      }
+    }
+  }
+
+  Component {
+    id: progressCard
+    Column {
+      width: parent ? parent.width : 300
+      readonly property var d: parent && parent.d ? parent.d : ({})
+      spacing: 8
+      Row {
+        spacing: 16
+        visible: d.accuracy !== undefined && d.accuracy !== null
+        Column {
+          Text { text: Math.round((d.accuracy || 0) * 100) + "%"; color: root.fg; font.family: Style.fontFamily; font.pixelSize: 26; font.bold: true }
+          Text { text: (d.answered || 0) + " " + root.t("answers", "answers"); color: Util.alpha(root.fg, 0.55)
+                 font.family: Style.fontFamily; font.pixelSize: Style.font.caption }
+        }
+        Column {
+          visible: (d.streak || 0) > 0
+          Text { text: String(d.streak || 0); color: root.fg; font.family: Style.fontFamily; font.pixelSize: 26; font.bold: true }
+          Text { text: root.t("day_streak", "day streak"); color: Util.alpha(root.fg, 0.55); font.family: Style.fontFamily
+                 font.pixelSize: Style.font.caption }
+        }
+      }
+      Repeater {
+        model: (d.topics || []).slice(0, 8)
+        TopicBar { required property var modelData; topic: modelData; width: parent.width }
+      }
+      Repeater {
+        model: (d.decks || []).slice(0, 5)
+        Item {
+          required property var modelData
+          width: parent.width; height: 26
+          Text { anchors { left: parent.left; verticalCenter: parent.verticalCenter; right: reviewBtn.left; rightMargin: 8 }
+                 text: modelData.name + "  ·  " + modelData.cards + " " + root.t("cards", "cards") + (modelData.due ? "  ·  " + modelData.due + " " + root.t("due", "due") : "")
+                 textFormat: Text.PlainText; elide: Text.ElideRight; color: root.fg; font.family: Style.fontFamily; font.pixelSize: Style.font.caption }
+          Btn { id: reviewBtn; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; small: true
+                visible: modelData.due > 0; text: root.t("review", "Review")
+                onClicked: root.s.ask("review my " + modelData.name + " flashcards") }
+        }
+      }
+      Btn { small: true; strong: true; visible: (d.weak || []).length > 0; text: root.t("quiz_weak", "Quiz my weak spots")
+            onClicked: root.s.ask("quiz me on my weak spots") }
+    }
+  }
+
+  // One topic's share of right answers; weak topics (under 60 %) in amber.
+  component TopicBar: Column {
+    property var topic: ({})
+    spacing: 3
+    Item {
+      width: parent.width; height: 15
+      Text { anchors.left: parent.left; text: topic.label || ""; textFormat: Text.PlainText; elide: Text.ElideRight
+             width: parent.width - 60; color: topic.weak ? root.amber : root.fg; font.family: Style.fontFamily; font.pixelSize: Style.font.caption }
+      Text { anchors.right: parent.right; text: (topic.right !== undefined ? topic.right + "/" + topic.of : Math.round((topic.value || 0) * 100) + "%")
+             color: Util.alpha(root.fg, 0.6); font.family: Style.fontFamily; font.pixelSize: Style.font.caption }
+    }
+    Rectangle {
+      width: parent.width; height: 4; radius: 2; color: Util.alpha(root.fg, 0.1)
+      Rectangle { height: parent.height; radius: 2; width: parent.width * Math.max(0.02, Math.min(1, topic.value || 0))
+                  color: topic.weak ? root.amber : root.green }
     }
   }
 
