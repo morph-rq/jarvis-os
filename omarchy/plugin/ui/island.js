@@ -8,12 +8,18 @@
 //   call      a WhatsApp call is ringing / connected              -> expanded while ringing, then peek
 //   question  a coding agent asks the user something              -> expanded
 //   voice     a conversation, dictation or reply is live          -> peek (captions), expanded on demand
+//   message   a chat app message to Jarvis just arrived           -> peek for a few seconds
 //   task      a Jarvis task is running                            -> peek with its current step
 //   result    a fresh rich result (weather, email, file, plan…)   -> expanded until its time is up
 //   notice    a proactive suggestion with actions                 -> expanded
 //   agent     a coding agent is working / just finished           -> peek
+//   recording meeting notes are recording                          -> mini with the elapsed time
+//   timer     a timer runs (or a reminder is due within 10 min)   -> mini with the countdown, peek at the end
+//   focus     a focus session runs                                -> mini with the time left
 //   media     music is playing                                    -> mini (peek on hover)
 //   idle / offline                                                -> mini, or hidden with auto-hide
+// The background activities (recording, timer, focus, media) never hide a foreground one; the
+// recording, microphone and screen-sharing indicators are drawn by the faces whatever is shown.
 // Modes: hidden < mini < peek < expanded < conversation. The user's own choice (click, shortcut) wins
 // over everything except an approval, and do-not-disturb / a fullscreen window keep only urgent
 // activities (approval, call, question) from opening the island.
@@ -21,10 +27,30 @@
 var MODES = ["hidden", "mini", "peek", "expanded", "conversation"]
 
 var URGENT = { approval: true, call: true, question: true }
+// Background activities that put a live value (a clock) in the mini pill.
+var LIVE = { media: true, agent: true, recording: true, timer: true, focus: true }
+var MESSAGE_S = 9          // a chat message stays in view this long
+var REMINDER_SOON_S = 600  // reminders count down in the pill this close to their time
+var TIMER_PEEK_S = 10      // a timer's last seconds open the pill a little
+
+// Seconds left until an epoch-seconds deadline (never negative).
+function remaining(dueS, now) { return Math.max(0, dueS - now / 1000) }
+
+// The soonest timer, or a reminder that is nearly due, among the pending ones jarvisd reported.
+function _nextTimer(timers, now) {
+  var best = null
+  for (var i = 0; i < (timers || []).length; i++) {
+    var t = timers[i]
+    if (!t || t.state === "fired" || t.state === "cancelled" || !(t.due * 1000 > now)) continue
+    if (t.kind !== "timer" && remaining(t.due, now) > REMINDER_SOON_S) continue
+    if (!best || t.due < best.due) best = t
+  }
+  return best
+}
 
 function _fresh(card, now) {
   if (!card) return false
-  if (card.pinned) return true
+  if (card.pinned || card.held) return true   // pinned by the user, or held while the pointer is on it
   var ttl = card.ttl === undefined ? 15 : card.ttl
   return ttl <= 0 ? false : (now - card.born) < ttl * 1000
 }
@@ -46,6 +72,7 @@ function activity(s) {
   for (var i = 0; i < agents.length; i++)
     if (agents[i].state === "question") return { kind: "question", item: agents[i] }
   if (_voiceLive(s)) return { kind: "voice", item: null }
+  if (s.inbound && s.inbound.at && s.now - s.inbound.at < MESSAGE_S * 1000) return { kind: "message", item: s.inbound }
   if (s.running && s.running.id) return { kind: "task", item: s.running }
   if (_fresh(s.card, s.now)) return { kind: "result", item: s.card }
   if (s.notice) return { kind: "notice", item: s.notice }
@@ -57,6 +84,10 @@ function activity(s) {
       if (!newest || (a.updated || 0) > (newest.updated || 0)) newest = a
   }
   if (newest) return { kind: "agent", item: newest }
+  if (s.meeting && s.meeting.state === "recording") return { kind: "recording", item: s.meeting }
+  var timer = _nextTimer(s.timers, s.now)
+  if (timer) return { kind: "timer", item: timer }
+  if (s.focus && s.focus.active && s.focus.until * 1000 > s.now) return { kind: "focus", item: s.focus }
   if (s.media && s.media.playing) return { kind: "media", item: s.media }
   return { kind: "idle", item: null }
 }
@@ -79,7 +110,11 @@ function mode(s, act) {
   case "result": natural = quiet ? "mini" : "expanded"; break
   case "notice": natural = quiet ? "mini" : "expanded"; break
   case "agent": natural = quiet ? "mini" : "peek"; break
-  case "media": natural = "mini"; break
+  case "message": natural = quiet ? "mini" : "peek"; break
+  case "timer":
+    natural = !quiet && act.item && remaining(act.item.due, s.now) <= TIMER_PEEK_S ? "peek" : "mini"
+    break
+  case "recording": case "focus": case "media": natural = "mini"; break
   case "offline": natural = "mini"; break
   default: natural = "mini"
   }
@@ -97,7 +132,7 @@ function size(m, act, contentHeight, screenHeight) {
   var maxH = Math.max(200, (screenHeight || 1000) * 0.62)
   switch (m) {
   case "hidden": return { w: 180, h: 5, r: 2.5 }
-  case "mini": return { w: act.kind === "media" || act.kind === "agent" ? 156 : 128, h: 32, r: 16 }
+  case "mini": return { w: act.kind === "media" || act.kind === "agent" ? 156 : LIVE[act.kind] ? 168 : 128, h: 32, r: 16 }
   case "peek": return { w: act.kind === "voice" ? 420 : 380, h: 44, r: 22 }
   case "expanded": return { w: 460, h: Math.min(maxH, Math.max(96, contentHeight || 140)), r: 26 }
   case "conversation": return { w: 620, h: Math.min(maxH, Math.max(320, contentHeight || 420)), r: 30 }
@@ -115,4 +150,4 @@ function collapseAfter(m, act) {
 }
 
 if (typeof module !== "undefined") module.exports = { activity: activity, mode: mode, size: size, rank: rank,
-                                                      collapseAfter: collapseAfter, MODES: MODES }
+                                                      collapseAfter: collapseAfter, remaining: remaining, MODES: MODES }

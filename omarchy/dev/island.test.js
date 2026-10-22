@@ -15,7 +15,8 @@ const NOW = 1_800_000_000_000
 function st(extra) {
   return Object.assign({ connected: true, status: "idle", approvals: [], call: {}, agents: [], running: {},
                          card: null, notice: null, media: null, now: NOW, request: "", hovered: false,
-                         dnd: false, fullscreen: false, autohide: false }, extra || {})
+                         dnd: false, fullscreen: false, autohide: false, timers: [], focus: {}, meeting: {},
+                         inbound: null }, extra || {})
 }
 const show = (s) => { const a = I.activity(s); return [a.kind, I.mode(s, a)] }
 
@@ -48,6 +49,8 @@ test("results expand while fresh, then fall back to idle", () => {
   assert.deepStrictEqual(show(st({ card: { born: NOW - 20000, ttl: 15 } })), ["idle", "mini"])
   assert.deepStrictEqual(show(st({ card: { born: NOW - 20000, ttl: 15, pinned: true } })), ["result", "expanded"])
   assert.deepStrictEqual(show(st({ card: { born: NOW - 2000, ttl: 0 } })), ["idle", "mini"])
+  // Held while the pointer is on it, without becoming pinned.
+  assert.deepStrictEqual(show(st({ card: { born: NOW - 20000, ttl: 15, held: true } })), ["result", "expanded"])
 })
 
 test("do-not-disturb keeps non-urgent things small but lets urgent ones through", () => {
@@ -100,4 +103,44 @@ test("sizes grow monotonically with the mode and clamp to the screen", () => {
   }
   assert.ok(I.size("conversation", act, 5000, 1000).h <= 620)
   assert.ok(I.size("expanded", act, 10, 1000).h >= 96)
+})
+
+test("a chat message peeks for a few seconds, under voice and over tasks", () => {
+  const inbound = { channel: "telegram", text: "what's on today?", at: NOW - 2000 }
+  assert.deepStrictEqual(show(st({ inbound, running: { id: "t" } })), ["message", "peek"])
+  assert.deepStrictEqual(show(st({ inbound: Object.assign({}, inbound, { at: NOW - 20000 }) })), ["idle", "mini"])
+  assert.deepStrictEqual(show(st({ inbound, status: "speaking" })), ["voice", "peek"])
+  assert.deepStrictEqual(show(st({ inbound, dnd: true })), ["message", "mini"])
+})
+
+test("timers count down in the mini pill and peek in their last seconds", () => {
+  const t = (s, extra) => Object.assign({ id: 1, kind: "timer", text: "tea", due: NOW / 1000 + s, state: "pending" }, extra || {})
+  assert.deepStrictEqual(show(st({ timers: [t(300)] })), ["timer", "mini"])
+  assert.deepStrictEqual(show(st({ timers: [t(8)] })), ["timer", "peek"])
+  assert.deepStrictEqual(show(st({ timers: [t(8)], dnd: true })), ["timer", "mini"])
+  assert.strictEqual(I.activity(st({ timers: [t(300, { id: 1 }), t(60, { id: 2 })] })).item.id, 2)   // soonest first
+  assert.deepStrictEqual(show(st({ timers: [t(-1)] })), ["idle", "mini"])                         // already due
+  assert.deepStrictEqual(show(st({ timers: [t(30, { state: "cancelled" })] })), ["idle", "mini"])
+  // Reminders count down only when they are close.
+  assert.deepStrictEqual(show(st({ timers: [t(3600, { kind: "reminder" })] })), ["idle", "mini"])
+  assert.deepStrictEqual(show(st({ timers: [t(300, { kind: "reminder" })] })), ["timer", "mini"])
+  assert.strictEqual(I.remaining(NOW / 1000 + 42, NOW), 42)
+  assert.strictEqual(I.remaining(NOW / 1000 - 5, NOW), 0)
+  assert.ok(I.size("mini", { kind: "timer" }).w > I.size("mini", { kind: "idle" }).w)
+})
+
+test("background activities never hide foreground ones; recording beats timers, focus and music", () => {
+  const meeting = { state: "recording", started: NOW / 1000 - 600, title: "Sync" }
+  const timers = [{ id: 1, kind: "timer", due: NOW / 1000 + 60, state: "pending" }]
+  const focus = { active: true, until: NOW / 1000 + 900, minutes: 25 }
+  const media = { playing: true }
+  assert.deepStrictEqual(show(st({ meeting, timers, focus, media })), ["recording", "mini"])
+  assert.deepStrictEqual(show(st({ timers, focus, media })), ["timer", "mini"])
+  assert.deepStrictEqual(show(st({ focus, media })), ["focus", "mini"])
+  assert.deepStrictEqual(show(st({ focus: { active: true, until: NOW / 1000 - 1 }, media })), ["media", "mini"])
+  assert.deepStrictEqual(show(st({ meeting, running: { id: "t" } })), ["task", "peek"])
+  assert.deepStrictEqual(show(st({ meeting, card: { born: NOW, ttl: 15 } })), ["result", "expanded"])
+  assert.deepStrictEqual(show(st({ meeting, approvals: [{ id: "a" }] })), ["approval", "expanded"])
+  assert.deepStrictEqual(show(st({ meeting, hovered: true })), ["recording", "peek"])
+  assert.deepStrictEqual(show(st({ meeting, autohide: true })), ["recording", "mini"])   // never auto-hidden
 })

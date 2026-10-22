@@ -28,6 +28,11 @@ FaceBase {
   readonly property real timeout: s && s.settings["approval.timeout_s"] ? s.settings["approval.timeout_s"] : 120
   readonly property real remaining: a.created ? timeout - (island.now / 1000 - a.created) : timeout
   readonly property int pending: s ? s.approvals.length : 0
+  // A card that appears under the pointer can't be answered by a click meant for something else:
+  // the buttons arm 600 ms after each new request (Coucou's guard).
+  property bool armed: false
+  onAChanged: { armed = false; arm.restart() }
+  Timer { id: arm; interval: 600; onTriggered: face.armed = true }
 
   Column {
     id: column
@@ -130,6 +135,9 @@ FaceBase {
         id: buttons
         anchors { right: parent.right; verticalCenter: parent.verticalCenter }
         spacing: 8
+        enabled: face.armed
+        opacity: face.armed ? 1 : 0.55
+        Behavior on opacity { NumberAnimation { duration: Tokens.durFast } }
         JButton {
           text: face.t("deny", "Deny")
           kind: "danger"

@@ -27,7 +27,7 @@ jarvisd pushes one JSON object per line over `$XDG_RUNTIME_DIR/jarvis-workos/jar
 | `settings` | `settings` dict, `ui` dict, `lang` str | Settings changed; UI labels in the language. |
 | `hud` | `card` dict | A rich result card: {id, kind, title, data, ttl}. |
 | `notice` | `notice` dict | A proactive suggestion: {id, kind, title, body, actions[]}. |
-| `reminder` | `reminder` dict | A reminder was set or fired. |
+| `reminder` | `reminder` dict | A timer or reminder was set, fired or cancelled: {id, kind timer|reminder, text, due, state pending|fired|cancelled}. |
 | `meeting` | `state` str | Meeting notes: recording, processing, idle. |
 | `focus` | `active` bool | Focus mode on (until, minutes) or off. |
 | `control` | `until` int/float | Keyboard/mouse control granted until (epoch s; 0 = none). |
@@ -42,10 +42,11 @@ jarvisd pushes one JSON object per line over `$XDG_RUNTIME_DIR/jarvis-workos/jar
 
 | op | Fields | Reply |
 |---|---|---|
-| `subscribe` | — | snapshot: status, voice, settings, ui, approvals, tasks, agents, history, protocol |
+| `subscribe` | — | snapshot: status, voice, settings, ui, approvals, tasks, agents, history, protocol, activities {reminders (due within a day), focus, meeting} |
 | `approve` | `approval_id`, `allow` | `ok` |
 | `approval_seen` | `approval_id` | `ok`: a surface is showing it (agents wait ≤2 s for this) |
 | `agent_hook` | `agent` (claude/codex), `event` (the hook's JSON) | PermissionRequest: `decision` allow/deny/null, `message`; others: `session` |
 | `agents` | — | `sessions` |
+| `activity` | `action` cancel_reminder (+ `reminder_id`), end_focus, stop_meeting or cancel_meeting | `task_id`: runs as a visible task, not awaited |
 | `listen` / `stop_speaking` / `mute` / `ask` / `cancel` | see daemon.py | |
 

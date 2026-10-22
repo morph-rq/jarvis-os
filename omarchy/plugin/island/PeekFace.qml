@@ -2,7 +2,8 @@ import QtQuick
 import "../ui"
 
 // One line of what is happening: live captions while talking, the running step of a task, a coding
-// agent's current action, a call, the track playing. Click to open it fully.
+// agent's current action, a call, a chat message and Jarvis's answer, a countdown, the track playing.
+// Click to open it fully.
 FaceBase {
   id: face
   implicitHeight: 44
@@ -19,6 +20,8 @@ FaceBase {
     case "media": return island && island.player ? (island.player.trackTitle || "") : ""
     case "result": return item ? (item.title || item.kind) : ""
     case "notice": return item ? item.title : ""
+    case "timer": case "focus": case "recording": return liveTitle(kind, item)
+    case "message": return item ? channelLabel(item.channel) : ""
     }
     return "Jarvis"
   }
@@ -31,11 +34,13 @@ FaceBase {
     case "task": return task.step || ""
     case "agent": case "question":
       return item ? (item.activity || item.summary || agentState(item.state)) : ""
-    case "call": return item ? t(item.state, item.state) + (item.connected_at ? "  " + clock(island.now / 1000 - item.connected_at) : "") : ""
+    case "call": return item ? t("call_" + item.state, item.state) + (item.connected_at ? "  " + clock(island.now / 1000 - item.connected_at) : "") : ""
     case "media": return island && island.player ? (island.player.trackArtist || "") : ""
+    case "message": return item ? (item.reply ? "↳ " + item.reply : item.text) : ""
+    case "timer": return item && item.due_local ? item.due_local.slice(11) : ""
     case "offline": return ""
     }
-    return s.status === "idle" ? t("hint_short", "Super+Alt+Space · “Hey Jarvis”") : ""
+    return s.status === "idle" ? t("hint_short", "Super+Alt+A · “Hey Jarvis”") : ""
   }
 
   JarvisOrb {
@@ -49,6 +54,7 @@ FaceBase {
     vad: !!face.s && face.s.vad
     Connections { target: face.s; function onReaction(kind) { orb.react(kind) } }
   }
+  PrivacyDots { s: face.s; x: orb.x + orb.width - 5; y: orb.y + 3 }
 
   Column {
     anchors { left: orb.right; leftMargin: 8; right: accessory.left; rightMargin: 10; verticalCenter: parent.verticalCenter }
@@ -119,6 +125,15 @@ FaceBase {
       glyph: face.island && face.island.player && face.island.player.isPlaying ? "⏸" : "▶"
       label: "Play / pause"
       onClicked: face.island.player.togglePlaying()
+    }
+    Text {
+      visible: face.kind === "timer" || face.kind === "focus" || face.kind === "recording"
+      anchors.verticalCenter: parent.verticalCenter
+      text: face.clock(face.liveSeconds(face.kind, face.item))
+      color: face.kind === "recording" ? Tokens.red : Tokens.text
+      font.family: Tokens.fontFamily
+      font.pixelSize: Tokens.fontTitle
+      font.features: { "tnum": 1 }
     }
     JIconButton {
       visible: face.kind === "offline"

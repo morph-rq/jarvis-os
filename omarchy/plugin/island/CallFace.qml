@@ -31,7 +31,7 @@ FaceBase {
       font.pixelSize: Tokens.fontTitle
     }
     Text {
-      text: (face.c.direction === "outbound" ? "↗ " : "↙ ") + face.t(face.c.state || "", face.c.state || "")
+      text: (face.c.direction === "outbound" ? "↗ " : "↙ ") + face.t("call_" + (face.c.state || ""), face.c.state || "")
             + (face.c.connected_at ? "  ·  " + face.clock(face.island.now / 1000 - face.c.connected_at) : "")
       color: Tokens.textDim
       font.family: Tokens.fontFamily

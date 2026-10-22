@@ -38,8 +38,13 @@ Item {
   property bool screenSharing: false  // a Live conversation is receiving screen frames right now
   property int latencyMs: 0           // last end-of-speech → first-audio, ms
   // Capabilities (HUD).
-  property var meeting: ({ state: "idle" })   // recording / processing / idle
+  property var meeting: ({ state: "idle" })   // recording (title, started) / processing / idle
   property real focusUntil: 0
+  property int focusMinutes: 0
+  // Pending timers and reminders due within a day: [{id, kind timer|reminder, text, due, created, state}].
+  property var timers: []
+  // The newest message a chat app (Telegram, WhatsApp…) sent to Jarvis: {channel, text, at, reply}.
+  property var inbound: null
   property real controlUntil: 0       // keyboard/mouse control session granted until (epoch s)
   property var running: ({})          // the newest running task: {id, title, step, tool, started}
   property string lastReply: ""
@@ -68,6 +73,7 @@ Item {
   property bool captionFinal: true
   property real captionAt: 0
   property var _taskStates: ({})      // task id -> last state, to notice real success / failure
+  property var _approvalAt: ({})      // approval id -> when it reached this shell (ms)
   // One-shot reactions to real events, for the orb: success, error, barge, wake.
   signal reaction(string kind)
   property bool panelOpen: false      // set by the panel, so the HUD steps aside
@@ -194,7 +200,14 @@ Item {
     return { kind: kind, text: text, done: done, taskId: "", taskState: "", steps: "", elapsed: 0 }
   }
 
-  function _transcript(role, text, isFinal) {
+  // Chat apps whose messages reach Jarvis through the messaging gateway (jarvis/gateway).
+  readonly property var chatChannels: ({ telegram: true, whatsapp: true, discord: true, slack: true, signal: true })
+
+  function _transcript(role, text, isFinal, chat) {
+    if (chat) {   // a chat conversation: in the transcript, never in the voice captions
+      _append(_row(role, text, true))
+      return
+    }
     if (role === "user" && isFinal) root.lastHeard = text
     if (role === "user" && root.captionRole !== "user") root.captionAssistant = ""
     if (role === "user") root.captionUser = text
@@ -268,6 +281,21 @@ Item {
       if (!cardModel.get(j).pinned) cardModel.remove(j)
   }
 
+  // Timers and reminders: pending ones within a day are live activities; fired or cancelled ones leave.
+  function _reminder(r) {
+    if (!r || r.id === undefined) return
+    var rest = root.timers.filter(function(t) { return t.id !== r.id })
+    if (r.state === "pending" && r.due - Date.now() / 1000 <= 24 * 3600)
+      rest = rest.concat([r]).sort(function(a, b) { return a.due - b.due })
+    root.timers = rest
+  }
+  // The island's buttons on a live activity (cancel a timer, end focus, stop the meeting recording).
+  function activity(action, reminderId) {
+    var req = { op: "activity", action: action }
+    if (reminderId !== undefined) req.reminder_id = reminderId
+    return send(req)
+  }
+
   function _notice(n) {
     noticeModel.insert(0, { noticeId: n.id, kind: n.kind || "info", title: n.title || "", body: n.body || "",
                             actions: JSON.stringify(n.actions || []), born: Date.now() })
@@ -288,6 +316,10 @@ Item {
       root.approvals = msg.approvals || []
       root.agents = msg.agents || []
       root.protocolVersion = msg.protocol || 1
+      var live = msg.activities || {}
+      root.timers = live.reminders || []
+      if (live.focus) { root.focusUntil = live.focus.active ? (live.focus.until || 0) : 0; root.focusMinutes = live.focus.minutes || 0 }
+      if (live.meeting) root.meeting = live.meeting
       for (var ai = 0; ai < root.approvals.length; ai++) _ackApproval(root.approvals[ai])
       refreshApps()
       refreshGateway()
@@ -330,14 +362,25 @@ Item {
       root.voice = v
       break
     case "settings": root.settings = msg.settings; root.ui = msg.ui; root.lang = msg.lang; break
-    case "transcript": _transcript(msg.role, msg.text, msg.final); break
-    case "reply": _transcript("assistant", msg.text, true); root.lastReply = msg.text; break
+    case "transcript":
+      if (chatChannels[msg.source] && msg.role === "user")
+        root.inbound = { channel: msg.source, text: msg.text, at: Date.now(), reply: "" }
+      _transcript(msg.role, msg.text, msg.final, !!chatChannels[msg.source])
+      break
+    case "reply":
+      if (chatChannels[msg.source] && root.inbound && root.inbound.channel === msg.source)
+        root.inbound = Object.assign({}, root.inbound, { reply: msg.text, at: Date.now() })
+      _transcript("assistant", msg.text, true, !!chatChannels[msg.source])
+      if (!chatChannels[msg.source]) root.lastReply = msg.text
+      break
+    case "reminder": _reminder(msg.reminder); break
     case "task": _task(msg.task); break
     case "dictation": root.dictation = msg; break
     case "live":
       if (msg.state === "unavailable") _append(_row("assistant", "Gemini Live: " + (msg.error || "unavailable"), true))
       break
     case "approval":
+      root._approvalAt[msg.approval.id] = Date.now()
       root.approvals = root.approvals.concat([msg.approval])
       _ackApproval(msg.approval)
       // The island (or the HUD) shows approvals wherever the user is; without either, the panel opens.
@@ -369,7 +412,7 @@ Item {
     case "hud": _card(msg.card); break
     case "notice": _notice(msg.notice); break
     case "meeting": root.meeting = msg; break
-    case "focus": root.focusUntil = msg.active ? (msg.until || 0) : 0; break
+    case "focus": root.focusUntil = msg.active ? (msg.until || 0) : 0; root.focusMinutes = msg.minutes || 0; break
     case "control": root.controlUntil = msg.until || 0; break
     }
     if (msg.event === "voice" && root.voice.mode !== "conversation") root.vad = false
@@ -427,9 +470,12 @@ Item {
     }
     function islandState(): string { return islandView.activityKind + " " + islandView.mode }
     // Same path as the panel's Allow / Deny buttons, for keyboard shortcuts and tests.
+    // Like the card's buttons, a request younger than 600 ms can't be answered (it may have appeared
+    // just as the keys were pressed for something else).
     function approveLatest(allow: string): string {
       if (root.approvals.length === 0) return "none"
       var a = root.approvals[root.approvals.length - 1]
+      if (Date.now() - (root._approvalAt[a.id] || 0) < 600) return "too soon"
       root.approve(a.id, allow === "true")
       return a.id
     }
@@ -439,16 +485,16 @@ Item {
   Island {
     id: islandView
     service: root
-    enabled: root.islandEnabled
+    active: root.islandEnabled
   }
 
   // Floating HUD (ui.hud): cards, notices, approvals and status pills at the screen edge.
   Hud {
     service: root
-    enabled: root.hudEnabled
+    active: root.hudEnabled
   }
 
-  // Command bar (Super+Alt+Space): orb, live spectrum, ask anything, quick actions.
+  // Command bar (Super+Alt+A, when the island is off): orb, live spectrum, ask anything, quick actions.
   CommandBar {
     service: root
   }

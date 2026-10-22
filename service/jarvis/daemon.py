@@ -136,7 +136,48 @@ class Jarvis:
                 "provider": self.brain.provider, "lang": lang, "ui": i18n.UI[lang],
                 "voice": self.voice.public() if self.voice else {"mode": "unavailable"},
                 "settings": {k: self.config.get(k) for k in configmod.SCHEMA},
-                "history": self.memory.recent_turns(30), **self.tasks.snapshot()}
+                "history": self.memory.recent_turns(30), "activities": self.activities(), **self.tasks.snapshot()}
+
+    def activities(self) -> dict:
+        """What the island shows as live activities after a (re)connect: timers and reminders due within
+        a day, a focus session, a meeting being recorded. Changes arrive as reminder/focus/meeting events."""
+        from jarvis.capabilities import focus, meeting, reminders
+        rec = meeting.STATE.get("active")
+        try:
+            due = reminders.upcoming(self.memory)
+        except Exception:
+            log.debug("reminders unavailable for the snapshot", exc_info=True)
+            due = []
+        return {"reminders": due,
+                "focus": {"active": bool(focus.STATE["until"]), "until": focus.STATE["until"],
+                          "minutes": focus.STATE["minutes"]},
+                "meeting": {"state": "recording", "title": rec.title, "started": rec.started} if rec else {"state": "idle"}}
+
+    # The island's buttons on a live activity -> (tool, arguments). Each runs as an ordinary visible task
+    # through run_tool (same risk policy and audit as any request) and is not awaited here, so the
+    # shell's single connection never waits behind a long tool such as summarising a meeting.
+    ACTIVITY_ACTIONS = {"cancel_reminder": "reminders", "end_focus": "focus_mode", "stop_meeting": "meeting_notes",
+                    "cancel_meeting": "meeting_notes"}
+
+    def activity_action(self, req: dict) -> dict:
+        action = str(req.get("action", ""))
+        name = self.ACTIVITY_ACTIONS.get(action)
+        if name is None:
+            return {"ok": False, "message": f"unknown activity action {action!r}"}
+        if action == "cancel_reminder":
+            try:
+                args = {"action": "cancel", "text": str(int(req.get("reminder_id")))}
+            except (TypeError, ValueError):
+                return {"ok": False, "message": "reminder_id must be a number"}
+        else:
+            args = {"action": "stop" if action != "cancel_meeting" else "cancel"}
+
+        async def work(task: Task) -> str:
+            result = await self.run_tool(task, name, args, origin="ui")
+            return str(result.get("message", ""))
+        title = REGISTRY[name].summary(args) if name in REGISTRY else name
+        task = self.tasks.start(title, "ui", work, text=title)
+        return {"ok": True, "task_id": task.id}
 
     # ---------------------------------------------------------------- tools
     # Actions a click in Jarvis's own UI may run without a second approval card: the button itself
@@ -457,6 +498,8 @@ class Jarvis:
             return {"ok": True, "session": session["id"]}
         if op == "agents":
             return {"ok": True, "sessions": self.agents.public()}
+        if op == "activity":
+            return self.activity_action(req)
         if op == "tasks":
             return {"ok": True, "tasks": self.memory.recent_tasks(int(req.get("limit", 20)))}
         if op == "memory":

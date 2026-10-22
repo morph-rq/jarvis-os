@@ -6,7 +6,7 @@ import qs.Commons
 import qs.Commons as Commons
 import "ui/commands.js" as Commands
 
-// Command bar (Super+Alt+Space, a four-finger swipe up, or clicking the orb): one line to ask
+// Command bar (Super+Alt+A, a four-finger swipe up, or clicking the orb): one line to ask
 // anything. The orb and the bars show what Jarvis is doing and hearing; quick chips and a filtered
 // palette offer common requests; the last item is always "Ask Jarvis: …". Esc or a click outside
 // closes it. Every choice is sent as an ordinary request (router or model, same approvals).

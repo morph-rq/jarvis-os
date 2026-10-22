@@ -155,7 +155,7 @@ Whisper and keeps the audio if everything fails); the model told the user to say
   when idle.
 - **Waveform** (`Waveform.qml`): 16 bars from **real FFT bands** jarvisd computes (12 log-spaced
   bands, 90 Hz–7.5 kHz) on the mic while you talk and on Jarvis's voice while it speaks.
-- **Command bar** (`CommandBar.qml`, Super+Alt+Space, four-finger swipe up): orb, spectrum, a text
+- **Command bar** (`CommandBar.qml`, Super+Alt+A, four-finger swipe up): orb, spectrum, a text
   field, what Jarvis heard or said last, quick chips, and a filtered palette ending in "Ask Jarvis: …".
 
 All text Jarvis or a model produced is rendered as plain text; every button sends an ordinary
@@ -196,5 +196,5 @@ New sections in `config.toml` (all optional; `jarvis-workos config set KEY VALUE
 `ui.{hud,companion_style}`. New secrets (keyring): `HOME_ASSISTANT_TOKEN`, `MAIL_PASSWORD`,
 `TELEGRAM_BOT_TOKEN`, `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `CALENDAR_ICS_URLS`.
 
-Install adds the document libraries (`--no-documents` skips them) and binds Super+Alt+Space plus the
+Install adds the document libraries (`--no-documents` skips them) and binds Super+Alt+A plus the
 four-finger touchpad gestures in `~/.config/hypr/jarvis.lua`.

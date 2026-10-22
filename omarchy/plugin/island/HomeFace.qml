@@ -42,7 +42,7 @@ FaceBase {
         Text {
           width: parent.width
           visible: text !== ""
-          text: face.s ? face.s.lastReply : ""
+          text: face.s && face.s.connected ? face.s.lastReply : ""
           textFormat: Text.PlainText
           wrapMode: Text.Wrap
           maximumLineCount: 2
@@ -90,8 +90,24 @@ FaceBase {
       }
     }
 
+    // jarvisd is down: nothing below would reach it, so offer what works (the shell restarts the
+    // systemd user service; the island reconnects by itself when it is back).
     Row {
       anchors.horizontalCenter: parent.horizontalCenter
+      visible: !!face.s && !face.s.connected
+      spacing: 10
+      Text {
+        anchors.verticalCenter: parent.verticalCenter
+        text: face.t("offline_hint", "The jarvisd service has stopped. Restart it?")
+        color: Tokens.textDim
+        font.family: Tokens.fontFamily
+        font.pixelSize: Tokens.fontSmall
+      }
+      JButton { glyph: "↻"; text: face.t("restart", "Restart"); kind: "primary"; onClicked: face.s.restartService() }
+    }
+    Row {
+      anchors.horizontalCenter: parent.horizontalCenter
+      visible: !!face.s && face.s.connected
       spacing: 10
       JButton { glyph: "🎙"; text: face.t("talk", "Talk"); kind: "primary"; onClicked: face.s.listen() }
       JIconButton { glyph: "⌨"; label: face.t("conversation", "Conversation"); onClicked: face.island.request("conversation") }

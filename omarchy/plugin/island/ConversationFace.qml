@@ -4,14 +4,20 @@ import "../ui"
 import "../ui/commands.js" as Commands
 import ".."
 
-// The conversation view (Super+Alt+Space, or ⌨ on any card): the transcript with tasks inline, the
+// The conversation view (Super+Alt+A, or ⌨ on any card): the transcript with tasks inline, the
 // live captions of whoever is talking, the newest rich result, and one line to type into, with the
 // quick requests while it is empty. Voice and text are the same conversation. Esc or a click outside
 // folds it back; the Living Workspace and the panel are one click away for anything bigger.
 FaceBase {
   id: face
-  implicitHeight: Math.min(header.height + list.contentHeight + result.height + inputBox.height + chips.height + 64,
-                           island ? island.maxH : 620)
+  // Grows with the conversation up to the island's limit. Sized from the number of rows, not the
+  // list's contentHeight: a ListView's content height depends on its own height (it creates the
+  // delegates that fit), so measuring it here would be a binding loop through the island's size.
+  readonly property int rows: s ? s.messages.count : 0
+  // (The island clamps it to the screen; `island` itself is assigned after loading, so reading it
+  // here would also loop.)
+  implicitHeight: header.height + Math.max(96, Math.min(7, rows) * 46) + result.height + inputBox.height
+                  + chips.height + 64
 
   function focusInput() { input.forceActiveFocus() }
   Component.onCompleted: Qt.callLater(focusInput)
@@ -221,22 +227,26 @@ FaceBase {
     }
   }
 
-  Flow {
+  // Quick requests, or the ones matching what is typed: one row that scrolls sideways. A fixed height
+  // (a wrapping Flow measures itself in a later polish pass, which fed back into the island's size).
+  ListView {
     id: chips
     anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 14 }
+    readonly property var options: input.text.trim() ? face.matches : Commands.list(face.s ? face.s.lang : "en").slice(0, 6)
+    height: options.length > 0 ? 26 : 0   // not `visible ? …`: that is the effective visibility, which
+    visible: height > 0                   // changes with the face loader's own while it is measured
+    orientation: ListView.Horizontal
     spacing: 6
-    height: visible ? implicitHeight : 0
-    readonly property var options: input.text.trim() ? face.matches : Commands.list(face.s ? face.s.lang : "en").slice(0, 5)
-    visible: options.length > 0
-    Repeater {
-      model: chips.options
-      JButton {
-        required property var modelData
-        small: true
-        kind: "quiet"
-        text: modelData[0]
-        onClicked: face.submit(modelData[1])
-      }
+    clip: true
+    boundsBehavior: Flickable.StopAtBounds
+    model: options
+    delegate: JButton {
+      required property var modelData
+      small: true
+      kind: "quiet"
+      text: modelData[0]
+      onClicked: face.submit(modelData[1])
     }
   }
+
 }

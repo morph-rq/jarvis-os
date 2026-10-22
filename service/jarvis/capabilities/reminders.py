@@ -102,8 +102,8 @@ class Scheduler(Service):
 
 
 def _public(row: dict) -> dict:
-    return {"id": row["id"], "text": row["text"], "due": row["due"], "kind": row["kind"], "repeat": row.get("repeat", ""),
-            "state": row["state"], "due_local": datetime.fromtimestamp(row["due"]).strftime("%Y-%m-%d %H:%M")}
+    return {"id": row["id"], "text": row["text"], "due": row["due"], "created": row.get("created"), "kind": row["kind"],
+            "repeat": row.get("repeat", ""), "state": row["state"], "due_local": datetime.fromtimestamp(row["due"]).strftime("%Y-%m-%d %H:%M")}
 
 
 def _scheduler(ctx: Context) -> Scheduler | None:
@@ -133,6 +133,14 @@ def pending(ctx: Context, limit: int = 20) -> list[dict]:
         "SELECT * FROM reminders WHERE state='pending' ORDER BY due LIMIT ?", (limit,))]
 
 
+def upcoming(memory, horizon_s: float = 24 * 3600, limit: int = 8) -> list[dict]:
+    """Pending timers and reminders due within the horizon, soonest first (the island's live activities)."""
+    memory.schema(SCHEMA)
+    return [_public(r) for r in memory.query(
+        "SELECT * FROM reminders WHERE state='pending' AND due <= ? ORDER BY due LIMIT ?",
+        (time.time() + horizon_s, limit))]
+
+
 @tool("reminders", "Reminders and timers. add: 'remind me in 10 minutes to…', 'at 15:30', 'tomorrow at 9'; timer: a "
       "countdown ('timer for 5 minutes'); list: what is pending; cancel: by id or words.",
       {"action": {"type": "string", "enum": ["add", "timer", "list", "cancel"]},
@@ -160,6 +168,8 @@ async def reminders(ctx: Context, args: dict) -> dict:
             return {"ok": False, "message": f"No pending reminder matches '{query}'."}
         for r in picked[:5]:
             ctx.memory.execute("UPDATE reminders SET state='cancelled' WHERE id=?", (r["id"],))
+            if ctx.hub:
+                ctx.hub.j.bus.publish("reminder", reminder={**r, "state": "cancelled"})
         if (sched := _scheduler(ctx)):
             sched.changed.set()
         return {"ok": True, "cancelled": [r["id"] for r in picked[:5]], "message": f"Cancelled {len(picked[:5])} reminder(s)."}

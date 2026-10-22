@@ -17,7 +17,7 @@ Item {
   id: root
 
   property var service: null
-  property bool enabled: true
+  property bool active: true          // ui.hud (not Item.enabled, which it would shadow)
   readonly property var s: service
 
   readonly property color fg: Commons.Color.popups.text
@@ -41,7 +41,7 @@ Item {
   Timer {
     interval: 250
     repeat: true
-    running: root.enabled && root.busy
+    running: root.active && root.busy
     onTriggered: root.now = Date.now()
   }
 
@@ -58,7 +58,7 @@ Item {
 
   PanelWindow {
     id: win
-    visible: root.enabled && root.busy
+    visible: root.active && root.busy
     screen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
     anchors { top: true; right: true }
     readonly property int topGap: Style.bar.sizeHorizontal + Style.gapsOut * 2

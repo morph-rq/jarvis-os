@@ -178,6 +178,34 @@ def test_reminders_add_list_cancel_and_fire(jarvis):
     run(main())
 
 
+def test_island_activities_snapshot_and_cancel_button(jarvis):
+    """The island learns pending timers from the snapshot and cancels one through op activity: a
+    visible task, not awaited, whose result is the reminder's own cancelled event."""
+    async def main():
+        drain = events(jarvis)
+        await jarvis.hub.start()
+        task = jarvis.tasks.start("t", "text", lambda t: asyncio.sleep(0))
+        timer = (await jarvis.run_tool(task, "reminders", {"action": "timer", "in_minutes": 5, "text": "tea"}))["reminder"]
+        later = (await jarvis.run_tool(task, "reminders", {"action": "add", "in_minutes": 3 * 24 * 60, "text": "dentist"}))
+        live = jarvis.snapshot()["activities"]
+        assert [r["id"] for r in live["reminders"]] == [timer["id"]]          # only what is due within a day
+        assert live["reminders"][0]["kind"] == "timer" and live["reminders"][0]["due"] > time.time()
+        assert later["ok"] and live["focus"]["active"] is False and live["meeting"] == {"state": "idle"}
+
+        reply = await jarvis.dispatch({"op": "activity", "action": "cancel_reminder", "reminder_id": timer["id"]})
+        assert reply["ok"] and reply["task_id"]
+        await jarvis.tasks.tasks[reply["task_id"]].handle
+        cancelled = [e["reminder"] for e in drain() if e["event"] == "reminder" and e["reminder"]["state"] == "cancelled"]
+        assert [r["id"] for r in cancelled] == [timer["id"]]
+        assert jarvis.snapshot()["activities"]["reminders"] == []
+        assert jarvis.tasks.tasks[reply["task_id"]].source == "ui"
+
+        assert not (await jarvis.dispatch({"op": "activity", "action": "rm -rf"}))["ok"]
+        assert not (await jarvis.dispatch({"op": "activity", "action": "cancel_reminder", "reminder_id": "x"}))["ok"]
+        await jarvis.hub.stop()
+    run(main())
+
+
 def test_reminder_missed_while_off_fires_late_once(jarvis):
     from jarvis.capabilities import reminders
     jarvis.memory.schema(reminders.SCHEMA)

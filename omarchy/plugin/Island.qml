@@ -11,10 +11,10 @@ import "island"
 // The Jarvis Island: a small black pill at the top centre of the focused screen that grows into
 // whatever is happening, and back.
 //
-//   mini          the orb with its eyes (plus a hint when music plays or an agent works)
+//   mini          the orb with its eyes (plus a live value: a countdown, a recording's time, music, an agent)
 //   peek          one line: live captions, the running step, an agent's activity, a call
 //   expanded      a card: an approval, a result, a suggestion, music, the home view
-//   conversation  transcript, live captions and a text box (Super+Alt+Space)
+//   conversation  transcript, live captions and a text box (Super+Alt+A)
 //   hidden        a thin strip (auto-hide, or a fullscreen window); hover brings it back
 //
 // What to show is decided by ui/island.js from jarvisd's real state (unit-tested). The surface is one
@@ -27,7 +27,7 @@ Item {
   id: root
 
   property var service: null
-  property bool enabled: true
+  property bool active: true          // ui.island (not Item.enabled, which it would shadow)
   readonly property var s: service
 
   // ------------------------------------------------------------ what the user asked for
@@ -47,11 +47,13 @@ Item {
   Timer {
     interval: 500
     repeat: true
-    running: root.enabled && win.visible && (root.activityKind === "result" || root.activityKind === "agent"
-                                             || root.activityKind === "task" || root.activityKind === "call"
-                                             || root.activityKind === "approval")
+    running: root.active && win.visible && root.ticking[root.activityKind] === true
     onTriggered: root.now = Date.now()
   }
+
+  // Activities whose view depends on the clock (countdowns, elapsed times, a result's fuse).
+  readonly property var ticking: ({ result: true, agent: true, task: true, call: true, approval: true, timer: true,
+                                    focus: true, recording: true, message: true })
 
   property var newestCard: null
   property var newestNotice: null
@@ -87,14 +89,16 @@ Item {
     connected: !!s && s.connected, status: s ? s.status : "offline",
     approvals: s ? s.approvals : [], call: s ? s.call : ({}), agents: s ? s.agents : [],
     running: s ? s.running : ({}), conversing: !!s && s.conversing, dictating: !!s && s.dictating,
-    card: newestCard ? Object.assign({}, newestCard, { pinned: newestCard.pinned || hovered }) : null,
+    timers: s ? s.timers : [], meeting: s ? s.meeting : ({}), inbound: s ? s.inbound : null,
+    focus: s && s.focusUntil > 0 ? { active: true, until: s.focusUntil, minutes: s.focusMinutes } : ({}),
+    card: newestCard ? Object.assign({}, newestCard, { held: hovered }) : null,
     notice: newestNotice, media: player ? { playing: true } : null, now: now, request: requested,
     hovered: hovered, dnd: settings["ui.island_quiet"] === true, fullscreen: fullscreen,
     autohide: settings["ui.island_autohide"] === true
   })
   readonly property var act: Logic.activity(input)
   readonly property string activityKind: act.kind
-  readonly property string mode: root.enabled ? Logic.mode(input, act) : "hidden"
+  readonly property string mode: root.active ? Logic.mode(input, act) : "hidden"
   readonly property string faceKey: _keyFor(mode, act)
   function _keyFor(m, a) { return (m === "hidden" || m === "mini" ? "mini" : m) + ":" + a.kind }
   // Swap faces when the key changes; the outgoing face keeps the data it was showing.
@@ -120,8 +124,14 @@ Item {
     running: root.requested === "peek" && !root.hovered
     onTriggered: root.requested = ""
   }
-  // An answered approval or a finished call closes the card the user was looking at.
-  onActivityKindChanged: if (requested === "expanded" && (activityKind === "idle" || activityKind === "offline")) requested = ""
+  // An answered approval, a finished call or a cancelled timer closes the card the user was looking at.
+  // Deferred: `requested` feeds `input`, which is what just changed the activity, so writing it here
+  // would be a binding loop (and Qt would drop the update, leaving the island open).
+  onActivityKindChanged: if (requested === "expanded" && (activityKind === "idle" || activityKind === "offline"))
+    Qt.callLater(_foldIfDone)
+  function _foldIfDone() {
+    if (requested === "expanded" && (activityKind === "idle" || activityKind === "offline")) requested = ""
+  }
 
   // ------------------------------------------------------------ geometry
   readonly property var targetScreen: {
@@ -138,22 +148,38 @@ Item {
   property bool activeIsA: true
   readonly property var face: activeIsA ? faceA : faceB
   readonly property var outgoing: activeIsA ? faceB : faceA
+  // The width depends only on the mode and the activity; the height also on the face's content. Faces
+  // are laid out at `targetW`, so their height never feeds back into their own width (that cycle
+  // would be a binding loop).
+  readonly property real targetW: Logic.size(mode, act, 0, screenH).w
   readonly property real contentHeight: face.item ? face.item.implicitHeight : 0
   readonly property var target: Logic.size(mode, act, contentHeight, screenH)
+  readonly property real targetH: target.h
 
-  Spring { id: wSpring; target: root.target.w }
-  Spring { id: hSpring; target: root.target.h }
+  Spring { id: wSpring; target: root.targetW }
+  Spring { id: hSpring; target: root.targetH }
   Spring { id: rSpring; target: root.target.r; epsilon: 0.05 }
-  // Morph progress 0 → 1 since the last target change, and a minimum fade for swaps that barely
-  // change the size; the slower of the two drives the cross-fade.
+  // Morph progress 0 → 1 since the last face swap, and a minimum fade for swaps that barely change
+  // the size; the slower of the two drives the cross-fade. A face that only grows or shrinks with its
+  // content (a new transcript line) keeps its progress, so it never fades out mid-use.
   property real _fromH: 32
   property real _fromW: 128
   readonly property real morph: {
-    var dist = Math.abs(hSpring.value - target.h) + Math.abs(wSpring.value - target.w)
-    var span = Math.abs(_fromH - target.h) + Math.abs(_fromW - target.w)
+    var dist = Math.abs(hSpring.value - targetH) + Math.abs(wSpring.value - targetW)
+    var span = Math.abs(_fromH - targetH) + Math.abs(_fromW - targetW)
     return span < 1 ? 1 : Math.max(0, Math.min(1, 1 - dist / span))
   }
-  onTargetChanged: { _fromH = hSpring.value; _fromW = wSpring.value }
+  // Where a morph starts, and the input region's envelope for any size change. Deferred to the end of
+  // the event (the springs only move on the next frame, so the values are still the starting ones):
+  // `morph` reads the target, and writing these while it evaluates would be a binding loop.
+  function _markStart() { _fromH = hSpring.value; _fromW = wSpring.value; _markEnvelope() }
+  property real _envW: 128
+  property real _envH: 32
+  onTargetChanged: Qt.callLater(_markEnvelope)
+  function _markEnvelope() {
+    _envW = Math.max(wSpring.value, targetW) + 0.04 * Math.abs(targetW - wSpring.value)
+    _envH = Math.max(hSpring.value, targetH) + 0.04 * Math.abs(targetH - hSpring.value)
+  }
   property real fade: 1
   NumberAnimation { id: fadeAnim; target: root; property: "fade"; from: 0; to: 1; duration: Tokens.durMedium + Tokens.durFast }
   readonly property real progress: Math.min(morph, fade)
@@ -168,17 +194,20 @@ Item {
     // expanded
     return ({ "approval": approvalFace, "result": resultFace, "notice": noticeFace, "voice": voiceFace,
               "task": taskFace, "agent": agentsFace, "question": agentsFace, "media": mediaFace,
-              "call": callFace })[k] || homeFace
+              "call": callFace, "timer": liveFace, "focus": liveFace, "recording": liveFace,
+              "message": messageFace })[k] || homeFace
   }
   function swapFaces(key, oldItem) {
     var out = face, next = outgoing
-    if (out.item) out.item.item = oldItem          // freeze: no longer follows the new activity
+    out.faceItem = oldItem                         // freeze: no longer follows the new activity
     next.faceMode = key.split(":")[0]
     next.faceKind = act.kind
+    next.faceItem = Qt.binding(function() { return root.act.item })   // follows it until swapped out
     next.sourceComponent = _componentFor(key)
     activeIsA = !activeIsA
     _shownKey = key
     fadeAnim.restart()
+    Qt.callLater(_markStart)
   }
   Component.onCompleted: { _refreshCards(); _sync() }
 
@@ -188,7 +217,7 @@ Item {
   // ------------------------------------------------------------ the surface
   PanelWindow {
     id: win
-    visible: root.enabled && !!root.targetScreen
+    visible: root.active && !!root.targetScreen
     screen: root.targetScreen
     anchors { top: true }
     // Below the bar (and any other exclusive zone at the top), never reserving space itself.
@@ -206,14 +235,16 @@ Item {
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.namespace: "jarvis-island"
     WlrLayershell.keyboardFocus: root.mode === "conversation" ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
-    // Input only on the shape, sized to cover both where it is and where it is going, so the region
-    // isn't rewritten every frame of a morph.
+    // Input only on the shape. During a morph the region is the union of where the shape starts and
+    // where it is going, plus the spring's overshoot (ζ 0.72 overshoots by e^(-πζ/√(1-ζ²)) ≈ 4 % of
+    // the change), fixed when the target changes, so the compositor's input region isn't rewritten on
+    // every frame (the approach of DankMaterialShell's island, MIT).
     mask: Region { item: hitbox }
 
     Item {
       id: hitbox
-      readonly property real w: Math.max(wSpring.value, root.target.w) + 16
-      readonly property real h: Math.max(hSpring.value, root.target.h, 14) + 10
+      readonly property real w: Math.max(root._envW, root.targetW) + 16
+      readonly property real h: Math.max(root._envH, root.targetH, 14) + 10
       x: (win.width - w) / 2
       y: 0
       width: w
@@ -232,6 +263,14 @@ Item {
           if (hovered) { unhover.stop(); root.hovered = true }
           else unhover.restart()
         }
+      }
+      // A click that lands while the faces cross-fade (the pointer arrived and clicked at once: hovering
+      // swaps the mini face for the peek face, and the incoming face takes input only once it is half
+      // visible). The shape answers it the way the mini and peek faces would.
+      TapHandler {
+        enabled: !!root.face && !root.face.enabled
+                 && (root.mode === "mini" || root.mode === "peek" || root.mode === "hidden")
+        onTapped: root.request(root.activityKind === "voice" ? "conversation" : "expanded")
       }
 
       RectangularShadow {
@@ -278,7 +317,7 @@ Item {
 
   // Conversation view: a click anywhere outside folds it (a transparent catcher, only while open).
   PanelWindow {
-    visible: root.enabled && root.mode === "conversation" && !!root.targetScreen
+    visible: root.active && root.mode === "conversation" && !!root.targetScreen
     screen: root.targetScreen
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
@@ -292,27 +331,27 @@ Item {
   component FaceLoader: Loader {
     id: fl
     property bool active_: false
+    // What the face shows, read by FaceBase from its parent (this loader) so it is there when the
+    // face's bindings first run (assigning it after loading would change the face's height while the
+    // island measures it: a binding loop).
+    readonly property var islandRef: root
     property string faceMode: ""
     property string faceKind: ""
+    property var faceItem: null
     function smooth(a, b, x) { var t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t) }
     // Incoming: arrives between 22 % and 64 % of the morph. Outgoing: gone by 34 %.
     opacity: active_ ? smooth(0.22, 0.64, root.progress) : 1 - smooth(0, 0.34, root.progress)
-    visible: opacity > 0.01 && item !== null
+    // The incoming face is laid out from the start (its height sizes the morph that fades it in, so
+    // its visibility must not depend on that fade); the outgoing one stops rendering and animating as
+    // soon as it has faded out.
+    visible: item !== null && (active_ || opacity > 0.01)
     enabled: active_ && opacity >= 0.5
     // Laid out at the target width (not the animating one), so text doesn't reflow mid-morph.
-    width: Math.max(0, root.target.w)
+    width: Math.max(0, root.targetW)
     x: (shape.width - width) / 2
     y: 0
     scale: 0.97 + 0.03 * opacity
     transformOrigin: Item.Top
-    onLoaded: {
-      item.island = root
-      item.s = Qt.binding(function() { return root.s })
-      item.mode = faceMode
-      item.kind = faceKind
-      // Follows the activity until swapped out; swapFaces() then assigns a fixed value (freezing it).
-      item.item = Qt.binding(function() { return root.act.item })
-    }
   }
 
   Component { id: miniFace; MiniFace {} }
@@ -326,5 +365,7 @@ Item {
   Component { id: mediaFace; MediaFace {} }
   Component { id: callFace; CallFace {} }
   Component { id: homeFace; HomeFace {} }
+  Component { id: liveFace; LiveFace {} }
+  Component { id: messageFace; MessageFace {} }
   Component { id: conversationFace; ConversationFace {} }
 }

@@ -1,13 +1,16 @@
 import QtQuick
 import "../ui"
 
-// The resting island: the orb with its eyes, and at most one quiet hint on the right
-// (music playing, a coding agent at work, a result waiting in do-not-disturb).
+// The resting island: the orb with its eyes, and at most one quiet hint on the right (a countdown, a
+// recording's time, focus time left, music, a coding agent at work, a result waiting in do-not-disturb),
+// plus the privacy dots: red while a microphone records, violet while the screen goes to the model.
 FaceBase {
   id: face
   implicitHeight: 32
 
-  readonly property bool hint: kind === "media" || kind === "agent" || kind === "result" || kind === "notice"
+  readonly property bool live: kind === "timer" || kind === "focus" || kind === "recording"
+  readonly property bool hint: live || kind === "media" || kind === "agent" || kind === "result" || kind === "notice"
+                               || kind === "message"
 
   JarvisOrb {
     id: orb
@@ -23,13 +26,11 @@ FaceBase {
     Connections { target: face.s; function onReaction(kind) { orb.react(kind) } }
   }
 
-  // Microphone privacy dot: whenever audio is actually being captured.
-  Rectangle {
-    visible: !!face.s && face.s.micOpen && face.mode !== "hidden"
-    width: 5; height: 5; radius: 2.5
-    color: Tokens.red
-    x: orb.x + orb.width - 4
-    y: orb.y + 2
+  PrivacyDots {
+    s: face.s
+    visible: face.mode !== "hidden"
+    x: orb.x + orb.width - 3
+    y: orb.y + 1
   }
 
   Row {
@@ -52,9 +53,19 @@ FaceBase {
       color: face.item ? face.agentTint(face.item.state) : Tokens.cyan
       anchors.verticalCenter: parent.verticalCenter
     }
+    Text {   // the live value: 4:59, ● 12:04, ◎ 18:22
+      visible: face.live
+      text: face.liveGlyph(face.kind, face.item) + " " + face.clock(face.liveSeconds(face.kind, face.item))
+      color: face.kind === "recording" ? Tokens.red : Tokens.text
+      font.family: Tokens.fontFamily
+      font.pixelSize: Tokens.fontSmall
+      font.features: { "tnum": 1 }
+      anchors.verticalCenter: parent.verticalCenter
+    }
     Text {
-      visible: face.kind === "agent" || face.kind === "result" || face.kind === "notice"
+      visible: face.kind === "agent" || face.kind === "result" || face.kind === "notice" || face.kind === "message"
       text: face.kind === "agent" && face.item ? (face.item.project || face.item.label)
+          : face.kind === "message" && face.item ? face.channelLabel(face.item.channel)
           : face.kind === "result" ? "●" : "✦"
       textFormat: Text.PlainText
       elide: Text.ElideRight

@@ -1,13 +1,19 @@
 -- Jarvis WorkOS keybindings, loaded from ~/.config/hypr/bindings.lua by install.sh.
 -- Plain commands rather than o.bind's { panel = ... } form, which Omarchy 4.0.x does not have.
+-- Every key here is free in Omarchy's own bindings (default/hypr/bindings/*.lua at the pinned commit):
+-- Hyprland runs every bind that matches, so a shared key would trigger both. Omarchy keeps
+-- SUPER+ALT+SPACE (apps), SUPER+ALT+COMMA (last notification), Right-Alt and F9 (its dictation).
 local jw = (os.getenv("HOME") or "") .. "/.local/bin/jarvis-workos"
 
 o.bind("SUPER + ALT + J", "Jarvis panel", "omarchy-shell shell toggle jarvis.companion '{}'")
-o.bind("SUPER + ALT + SPACE", "Jarvis command bar", "omarchy-shell jarvis commandBar")
+o.bind("SUPER + ALT + A", "Jarvis: ask (conversation)", "omarchy-shell jarvis commandBar")
+o.bind("SUPER + ALT + I", "Jarvis Island: open / close", "omarchy-shell jarvis island toggle")
+o.bind("SUPER + ALT + Y", "Jarvis: allow the pending request", "omarchy-shell jarvis approveLatest true")
+o.bind("SUPER + ALT + N", "Jarvis: deny the pending request", "omarchy-shell jarvis approveLatest false")
 o.bind("SUPER + ALT + V", "Jarvis: talk (push-to-talk)", jw .. " listen toggle")
 o.bind("SUPER + ALT + D", "Jarvis: dictation on/off", jw .. " dictate toggle")
 o.bind("SUPER + ALT + PERIOD", "Jarvis: stop talking", jw .. " stop")
-o.bind("SUPER + ALT + COMMA", "Jarvis: cancel tasks", jw .. " cancel")
+o.bind("SUPER + ALT + X", "Jarvis: cancel tasks", jw .. " cancel")
 o.bind("SUPER + ALT + M", "Jarvis: microphone on/off", jw .. " mute")
 
 -- Touchpad: a four-finger swipe up opens the command bar, down starts talking (Hyprland's Lua

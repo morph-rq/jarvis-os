@@ -58,10 +58,10 @@ If Hey Jarvis is running, the installer leaves it alone and starts WorkOS with i
 | Talk | say **"Hey Jarvis"** / **"Эй, Джарвис"**, or Super+Alt+V, or right-click the bar companion |
 | Interrupt | just talk over it; "стоп / замолчи / stop talking" silences it without cancelling tasks |
 | Screen | "что у меня на экране?": one screenshot, shared with the conversation; `jarvis-workos screen on` (or the panel) streams it during Live conversations only |
-| Cancel tasks | "отмена / cancel", Super+Alt+Comma, or the panel's Cancel |
+| Cancel tasks | "отмена / cancel", Super+Alt+X, or the panel's Cancel |
 | Dictate into any window | Super+Alt+D (toggle) or middle-click the companion; the text goes to the window that was focused when you started, and your clipboard is restored |
 | Panel | Super+Alt+J or click the companion: conversation, approvals, Listen / Dictate / Mic / Pause / Cancel / Restart, Settings |
-| Command bar | Super+Alt+Space or a four-finger swipe up: orb, live spectrum, ask anything, quick actions |
+| Ask (conversation) | Super+Alt+A or a four-finger swipe up: the island opens into the conversation view (the command bar when the island is off) |
 | HUD | results appear as cards at the right edge (weather, gauges, documents, images, plans, globe, circuits…); approvals and suggestions too, with one-click actions |
 | Approve risky actions | Allow/Deny in the panel or the workspace, say "да/нет", or `jarvis-workos approve|deny ID` |
 | Living Workspace | Super+Alt+W, ▣ in the panel or on a HUD card, or "открой рабочее пространство": conversation, interactive cards, approvals, tasks, connected apps (127.0.0.1 only, no internet) |
