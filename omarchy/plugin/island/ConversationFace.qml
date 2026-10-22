@@ -16,8 +16,10 @@ FaceBase {
   readonly property int rows: s ? s.messages.count : 0
   // (The island clamps it to the screen; `island` itself is assigned after loading, so reading it
   // here would also loop.)
-  implicitHeight: header.height + Math.max(96, Math.min(7, rows) * 46) + result.height + approvalBox.height
-                  + inputBox.height + chips.height + 64
+  // At least the conversation view's own minimum (ui/island.js size(): 320), so the text box sits at the
+  // bottom even with an empty transcript.
+  implicitHeight: Math.max(320, header.height + Math.max(96, Math.min(7, rows) * 46) + result.height + approvalBox.height
+                                + inputBox.height + chips.height + 64)
 
   function focusInput() { input.forceActiveFocus() }
   Component.onCompleted: Qt.callLater(focusInput)
@@ -270,6 +272,17 @@ FaceBase {
       kind: "quiet"
       text: modelData[0]
       onClicked: face.submit(modelData[1])
+    }
+  }
+  // More chips past the edge: fade the last one out instead of cutting it mid-word.
+  Rectangle {
+    anchors { right: chips.right; top: chips.top; bottom: chips.bottom }
+    width: 40
+    visible: chips.contentX + chips.width < chips.contentWidth - 1
+    gradient: Gradient {
+      orientation: Gradient.Horizontal
+      GradientStop { position: 0; color: Tokens.alpha(Tokens.ink, 0) }
+      GradientStop { position: 1; color: Tokens.ink }
     }
   }
 
