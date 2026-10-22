@@ -33,7 +33,7 @@ Item {
     "diagnosis": textCard, "skill_draft": textCard, "comparison": compareCard, "chart": chartCard,
     "table": tableCard, "metrics": compareCard, "generated": textCard, "files": listCard, "apps": listCard,
     "calendar": listCard, "email": listCard, "quiz": quizCard, "scorecard": scoreCard, "flashcard": flashCard,
-    "progress": progressCard
+    "progress": progressCard, "triage": triageCard
   })
 
   implicitHeight: body.height
@@ -65,7 +65,8 @@ Item {
     id: body
     width: parent.width
     property var d: root.d
-    sourceComponent: root.kinds[root.kind] || genericCard
+    sourceComponent: root.kind === "email" && root.d && root.d.mode === "draft" ? draftCard
+                   : root.kinds[root.kind] || genericCard
   }
 
   Component {
@@ -1042,6 +1043,91 @@ Item {
       width: parent.width; height: 4; radius: 2; color: Util.alpha(root.fg, 0.1)
       Rectangle { height: parent.height; radius: 2; width: parent.width * Math.max(0.02, Math.min(1, topic.value || 0))
                   color: topic.weak ? root.amber : root.green }
+    }
+  }
+
+
+  // ================================================================ mail triage and reply drafts (capabilities/mail.py)
+  // Senders, subjects and summaries are untrusted text, shown as plain text. Buttons are ordinary requests:
+  // a reply is only drafted, and sending it asks for approval like any email.
+
+  Component {
+    id: triageCard
+    Column {
+      id: tri
+      width: parent ? parent.width : 300
+      readonly property var d: parent && parent.d ? parent.d : ({})
+      readonly property var labels: ({ urgent: root.t("triage_urgent", "Urgent"), reply: root.t("triage_reply", "Needs a reply"),
+                                       fyi: root.t("triage_fyi", "FYI"), later: root.t("triage_later", "Can wait") })
+      readonly property var tints: ({ urgent: root.red, reply: root.accent, fyi: Util.alpha(root.fg, 0.55), later: Util.alpha(root.fg, 0.3) })
+      spacing: 10
+      Text { visible: !(d.groups || []).length; text: root.t("no_unread", "No unread mail."); color: Util.alpha(root.fg, 0.6)
+             font.family: Style.fontFamily; font.pixelSize: Style.font.caption }
+      Repeater {
+        model: d.groups || []
+        Column {
+          id: group
+          required property var modelData
+          readonly property bool act: modelData.key === "urgent" || modelData.key === "reply"
+          width: parent.width
+          spacing: 6
+          Row {
+            spacing: 6
+            Rectangle { width: 6; height: 6; radius: 3; anchors.verticalCenter: parent.verticalCenter; color: tri.tints[group.modelData.key] || root.fg }
+            Text { text: (tri.labels[group.modelData.key] || group.modelData.key) + "  ·  " + group.modelData.items.length
+                   color: Util.alpha(root.fg, 0.7); font.family: Style.fontFamily; font.pixelSize: Style.font.caption; font.bold: true }
+          }
+          Repeater {
+            model: group.modelData.items.slice(0, group.act ? 5 : 3)
+            Item {
+              required property var modelData
+              width: group.width
+              height: mailCol.implicitHeight
+              Column {
+                id: mailCol
+                anchors { left: parent.left; right: replyBtn.visible ? replyBtn.left : parent.right; rightMargin: 8 }
+                spacing: 1
+                Text { width: parent.width; text: modelData.from + "  —  " + modelData.subject; textFormat: Text.PlainText
+                       elide: Text.ElideRight; color: root.fg; font.family: Style.fontFamily; font.pixelSize: Style.font.bodySmall }
+                Text { width: parent.width; visible: !!modelData.summary; text: modelData.summary || ""; textFormat: Text.PlainText
+                       elide: Text.ElideRight; color: Util.alpha(root.fg, 0.55); font.family: Style.fontFamily; font.pixelSize: Style.font.caption }
+              }
+              Btn { id: replyBtn; visible: group.act; small: true; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                    text: root.t("draft_reply", "Draft reply"); onClicked: root.s.ask("draft a reply to email " + modelData.id) }
+            }
+          }
+          Text { visible: group.modelData.items.length > (group.act ? 5 : 3); text: "+" + (group.modelData.items.length - (group.act ? 5 : 3))
+                 color: Util.alpha(root.fg, 0.45); font.family: Style.fontFamily; font.pixelSize: Style.font.caption }
+        }
+      }
+    }
+  }
+
+  Component {
+    id: draftCard
+    Column {
+      width: parent ? parent.width : 300
+      readonly property var d: parent && parent.d ? parent.d : ({})
+      readonly property var m: d.draft || ({})
+      spacing: 6
+      Text { width: parent.width; text: root.t("to", "To") + ": " + (m.to || ""); textFormat: Text.PlainText; elide: Text.ElideRight
+             color: Util.alpha(root.fg, 0.7); font.family: Style.fontFamily; font.pixelSize: Style.font.caption }
+      Text { width: parent.width; text: m.subject || ""; textFormat: Text.PlainText; elide: Text.ElideRight; color: root.fg
+             font.family: Style.fontFamily; font.pixelSize: Style.font.bodySmall; font.bold: true }
+      Rectangle {
+        width: parent.width; height: Math.min(bodyText.implicitHeight, 150) + 20; radius: 10
+        color: Util.alpha(root.fg, 0.05); clip: true
+        Text { id: bodyText; anchors { left: parent.left; right: parent.right; top: parent.top; margins: 10 }
+               text: m.body || ""; textFormat: Text.PlainText; wrapMode: Text.Wrap; maximumLineCount: 8; elide: Text.ElideRight
+               color: root.fg; font.family: Style.fontFamily; font.pixelSize: Style.font.caption }
+      }
+      Row {
+        spacing: 8
+        Btn { small: true; strong: true; text: root.t("send_ellipsis", "Send…")
+              onClicked: root.s.ask(d.saved === "gmail" ? "send the draft" : "send this reply to " + (m.to || "")) }
+        Text { anchors.verticalCenter: parent.verticalCenter; text: root.t("send_asks", "Sending asks you first.")
+               color: Util.alpha(root.fg, 0.5); font.family: Style.fontFamily; font.pixelSize: Style.font.caption }
+      }
     }
   }
 

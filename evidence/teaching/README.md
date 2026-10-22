@@ -19,3 +19,14 @@ step below ran without a model. The deck was seeded directly into jarvisd's SQLi
 Not verified here: voice (Gemini Live calling `learn` while the user speaks), and questions or
 cards written by a model from a subject or document. Both need an API key. The unit tests cover
 those paths with a scripted model (`service/tests/test_learn.py`).
+
+## Mail triage and reply drafts
+
+| Shot | What happened |
+|---|---|
+| 11 | The triage card in the island gallery (`omarchy/dev/preview`, scripted daemon). "Draft reply" sends an ordinary request |
+| 12 | A reply draft. "Send…" is a request; sending asks for approval like any email |
+
+These come from the preview harness, not a real mailbox: this container has no IMAP server or Gmail
+account. The daemon side is tested against a fake IMAP server in `service/tests/test_mail_triage.py`:
+sorting from headers, refining with a model, replies addressed to the sender only, and nothing sent.

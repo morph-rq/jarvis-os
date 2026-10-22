@@ -394,6 +394,12 @@ def _capability(t: str, text: str) -> Route | None:
     if re.match(r"^(?:есть (?:ли )?новые письма|проверь почту|новые письма|any new e ?mails?|check (?:my )?(?:mail|e ?mail)|"
                 r"tenho e ?mails novos|verifica o (?:meu )?e ?mail)$", t):
         return Route("email", {"action": "unread"})
+    if re.match(r"^(?:triage|sort|go through|organi[sz]e) (?:my |the )?(?:inbox|e ?mails?|mail)$|^what (?:e ?mails? )?needs? "
+                r"(?:a |my )?(?:reply|answer)$|^what s important in my (?:inbox|e ?mail|mail)$|"
+                r"^(?:разбери|рассортируй) (?:мою |мои )?(?:почту|письма)$|^что (?:важного|срочного) в почте$|"
+                r"^(?:на )?какие письма (?:нужно|надо) ответить$|^(?:organize|organizar|triagem d[oe]) (?:o |meu )?(?:e[ -]?mail|caixa de entrada)$|"
+                r"^(?:quais e ?mails|o que) precisa(?:m)? de resposta$", t):
+        return Route("email", {"action": "triage"})
     if re.match(r"^(?:что (?:у меня )?в календаре(?: на сегодня)?|мой календарь|what s on my calendar(?: today)?|my calendar|"
                 r"o que tenho na agenda|minha agenda)$", t):
         return Route("calendar", {"action": "today"})

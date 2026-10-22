@@ -67,6 +67,7 @@ const STRINGS = {
     again: 'Again', hard: 'Hard', good: 'Good', easy: 'Easy', due_n: '{n} due', reviewed_n: '{n} reviewed',
     review_done: 'Review done: {n} cards, {right} remembered.', answers_n: '{n} answers', streak_n: '{n}-day streak',
     review: 'Review', cards_n: '{n} cards', you_said: 'You said: {s}', stop: 'Stop',
+    triage_urgent: 'Urgent', triage_reply: 'Needs a reply', triage_fyi: 'FYI', triage_later: 'Can wait', draft_reply: 'Draft reply',
   },
   ru: {
     title: 'Рабочее пространство Jarvis', conversation: 'Разговор', canvas: 'Холст', activity: 'Активность',
@@ -123,6 +124,7 @@ const STRINGS = {
     again: 'Снова', hard: 'Трудно', good: 'Хорошо', easy: 'Легко', due_n: 'к повторению: {n}', reviewed_n: 'повторено: {n}',
     review_done: 'Повторение окончено: {n} карт., помню {right}.', answers_n: 'ответов: {n}', streak_n: 'дней подряд: {n}',
     review: 'Повторить', cards_n: 'карточек: {n}', you_said: 'Ваш ответ: {s}', stop: 'Стоп',
+    triage_urgent: 'Срочно', triage_reply: 'Ждут ответа', triage_fyi: 'К сведению', triage_later: 'Подождут', draft_reply: 'Набросать ответ',
   },
   pt: {
     title: 'Espaço de trabalho Jarvis', conversation: 'Conversa', canvas: 'Tela', activity: 'Atividade',
@@ -179,6 +181,7 @@ const STRINGS = {
     again: 'De novo', hard: 'Difícil', good: 'Bom', easy: 'Fácil', due_n: '{n} para revisar', reviewed_n: '{n} revisados',
     review_done: 'Revisão concluída: {n} cartões, {right} lembrados.', answers_n: '{n} respostas', streak_n: '{n} dias seguidos',
     review: 'Revisar', cards_n: '{n} cartões', you_said: 'Você disse: {s}', stop: 'Parar',
+    triage_urgent: 'Urgente', triage_reply: 'Aguardam resposta', triage_fyi: 'Informativos', triage_later: 'Podem esperar', draft_reply: 'Rascunhar resposta',
   },
 };
 
@@ -454,6 +457,7 @@ const RENDERERS = {
   scorecard: renderScorecard,
   flashcard: renderFlashcard,
   progress: renderProgress,
+  triage: renderTriage,
 };
 
 function renderChart(card, body, ctx, d) {
@@ -1037,6 +1041,34 @@ function renderProgress(card, body, ctx, d) {
   if (decks.length) {
     body.append(h('ul', { class: 'deck-list' }, decks.map((dk) =>
       h('li', null, h('span', null, str(dk.name)), h('span', { class: 'muted' }, ` · ${t('cards_n', { n: dk.cards ?? 0 })}${dk.due ? ` · ${t('due_n', { n: dk.due })}` : ''}`)))));
+  }
+}
+
+function renderTriage(card, body, ctx, d) {
+  const { t } = ctx;
+  const groups = arr(d.groups).filter(isObj);
+  if (!groups.length) { body.append(h('p', { class: 'empty' }, t('no_messages'))); return; }
+  const canAsk = declared(card, 'ask');
+  for (const g of groups) {
+    const key = ['urgent', 'reply', 'fyi', 'later'].includes(g.key) ? g.key : 'fyi';
+    const items = arr(g.items).filter(isObj);
+    body.append(h('div', { class: ['triage-head', key] }, h('span', { class: 'triage-dot', 'aria-hidden': 'true' }),
+      `${t(`triage_${key}`)} · ${items.length}`));
+    body.append(h('div', { class: 'mail-list' }, items.map((m) => {
+      let actions = null;
+      if (canAsk && (key === 'urgent' || key === 'reply')) {
+        const status = h('span', { class: 'note' });
+        const b = button(t('draft_reply'), () => runAction(b, status, t, () => ctx.uiAction(card.id, 'ask', {
+          text: `Draft a reply to the email “${str(m.subject)}” from ${str(m.from)} (id ${str(m.id)}).`,
+        })), 'btn ghost small');
+        actions = h('div', { class: 'card-actions' }, b, status);
+      }
+      return h('article', { class: 'mail-item' },
+        h('div', { class: 'mail-top' }, h('span', { class: 'mail-from' }, str(m.from)), h('span', { class: 'mail-date' }, str(m.date))),
+        h('div', { class: 'mail-subject' }, str(m.subject) || t('no_subject')),
+        m.summary ? h('div', { class: 'mail-snippet' }, str(m.summary)) : null,
+        actions);
+    })));
   }
 }
 

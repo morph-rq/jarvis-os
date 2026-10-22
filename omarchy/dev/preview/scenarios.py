@@ -262,6 +262,62 @@ def gallery(p, fake, shots):
     yield 1.0
     _expect(p, "idle mini", "notice acted on")
 
+    # ---------------------------------------------------------------- teaching and mail (cards with their own buttons)
+    quiz = {"id": "learn-quiz", "kind": "quiz", "title": "Biology quiz", "ttl": 900, "data": {
+        "subject": "Biology", "total": 3, "score": 0, "current": 0, "actions": ["tool:learn"], "questions": [
+            {"question": "What is the powerhouse of the cell?", "topic": "Cells",
+             "choices": ["Nucleus", "Mitochondria", "Ribosome", "Golgi"]},
+            {"question": "Which gas do plants take in?", "topic": "Photosynthesis"},
+            {"question": "Cell division into two identical cells?", "topic": "Cells"}]}}
+    fake.push("hud", card=quiz)
+    yield 1.4
+    _expect(p, "result expanded")
+    shot("result-quiz")
+    assert p.click_text("Mitochondria"), "a quiz option"
+    yield 0.6
+    taps = fake.sent("learn")
+    assert taps and {k: taps[-1].get(k) for k in ("action", "question", "choice")} == \
+        {"action": "answer", "question": 1, "choice": 1}, taps   # the option's number, never its text
+    fake.push("hud", card={**quiz, "kind": "scorecard", "ttl": 90, "data": {
+        "subject": "Biology", "score": 2, "total": 3, "verdict": "Solid. One gap.", "weak": ["Photosynthesis"],
+        "topics": [{"label": "Cells", "value": 1.0, "right": 2, "of": 2, "weak": False},
+                   {"label": "Photosynthesis", "value": 0.0, "right": 0, "of": 1, "weak": True}],
+        "questions": [{"question": "Which gas do plants take in?", "given": "Oxygen", "correct": False,
+                       "right_answer": "Carbon dioxide"}]}})
+    yield 1.2
+    shot("result-scorecard")   # the same card, now a scorecard: kind changes in place
+    fake.push("hud", card={"id": "c-triage", "kind": "triage", "title": "Inbox", "ttl": 120, "data": {
+        "total": 4, "by_model": True, "actions": ["ask"], "groups": [
+            {"key": "urgent", "items": [{"id": "103", "from": "Carol", "subject": "Invoice overdue",
+                                         "summary": "Carol says the October invoice is overdue"}]},
+            {"key": "reply", "items": [{"id": "102", "from": "Bob", "subject": "Lunch tomorrow?",
+                                        "summary": "Bob asks if you're free at 1"}]},
+            {"key": "later", "items": [{"id": "101", "from": "News", "subject": "Weekly digest", "summary": ""},
+                                       {"id": "100", "from": "Shop", "subject": "Your order shipped", "summary": ""}]}]}})
+    yield 1.4
+    shot("result-triage")
+    assert p.click_text("Draft reply"), "a triage row's reply button"
+    yield 0.6
+    asks = fake.sent("ask")
+    assert asks and asks[-1]["text"] in ("draft a reply to email 103", "draft a reply to email 102"), asks
+    fake.push("hud", card={"id": "c-draft", "kind": "email", "title": "Re: Invoice overdue", "ttl": 300, "data": {
+        "mode": "draft", "saved": "", "actions": ["ask"],
+        "draft": {"to": "carol@example.com", "subject": "Re: Invoice overdue",
+                  "body": "Hi Carol,\n\nThanks for the reminder; I'll pay it today.\n\nBest,\nRoman"}}})
+    yield 1.4
+    shot("result-reply-draft")
+    assert p.click_text("Send…"), "the draft's send button"
+    yield 0.6
+    asks = fake.sent("ask")
+    assert asks and asks[-1]["text"] == "send this reply to carol@example.com", asks   # a request: approval follows
+    for _ in range(4):   # the draft, the triage and the scorecard: each ✕ dismisses one
+        if not p.click_text("✕"):
+            break
+        yield 0.8
+    p.hover(cx, 700)
+    yield 1.4
+    _expect(p, "idle mini", "teaching and mail cards dismissed")
+
     # ---------------------------------------------------------------- live activities
     now = time.time()
     timer = {"id": 7, "kind": "timer", "text": "tea", "due": now + 270, "created": now - 30, "repeat": "",

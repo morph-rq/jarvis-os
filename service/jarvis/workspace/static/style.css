@@ -789,3 +789,12 @@ dialog.lightbox::backdrop { background: rgb(5 6 10 / .72); backdrop-filter: blur
 @media (prefers-reduced-motion: reduce) {
   .quiz-dot, .quiz-option, .topic-fill { transition: none; }
 }
+
+/* ---------------------------------------------------------------- mail triage */
+.triage-head { display: flex; align-items: center; gap: 6px; margin: var(--space-3) 0 var(--space-2); font-size: 12px; font-weight: 600;
+  letter-spacing: .02em; color: var(--color-text-secondary); }
+.triage-head:first-child { margin-top: 0; }
+.triage-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-text-tertiary); }
+.triage-head.urgent .triage-dot { background: var(--color-border-danger); }
+.triage-head.reply .triage-dot { background: var(--color-accent); }
+.triage-head.later { color: var(--color-text-tertiary); }
