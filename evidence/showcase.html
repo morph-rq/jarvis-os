@@ -1,0 +1,167 @@
+<title>Jarvis WorkOS Showcase</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a dark gallery wall. Each section is one surface (Caelestia, island, HUD, workspace); shots sit in a wrapping grid, click to enlarge. */
+:root {
+  color-scheme: dark;
+  --bg: #07080d;
+  --panel: #10121b;
+  --line: #20243a;
+  --fg: #e7e8f2;
+  --muted: #8d91ad;
+  --glow: #8fb7ff;
+  --violet: #b48cff;
+  --warm: #f0a77f;
+  --display: "Sora", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--display); font-weight: 300;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 64px; line-height: 1.55;
+}
+.wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 72px; }
+header { padding-top: 56px; display: grid; grid-template-columns: minmax(0,1.1fr) minmax(0,1fr); gap: 32px; align-items: center; }
+header .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--glow); }
+h1 { font-weight: 700; font-size: clamp(36px, 6vw, 64px); line-height: 1.02; margin: 12px 0 16px; text-wrap: balance; letter-spacing: -.02em; }
+h1 span { background: linear-gradient(100deg, var(--glow), var(--violet)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+header p { color: var(--muted); max-width: 52ch; margin: 0; font-size: 16px; }
+.orb { position: relative; border-radius: 20px; overflow: hidden; border: 1px solid var(--line); cursor: zoom-in; }
+.orb img { display: block; width: 100%; }
+.orb::after { content: ""; position: absolute; inset: 0; box-shadow: inset 0 0 80px 10px var(--bg); pointer-events: none; }
+code, .cmd { font-family: var(--mono); font-size: 13px; }
+.cmd { display: inline-block; margin-top: 20px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; color: var(--fg); background: var(--panel); overflow-x: auto; max-width: 100%; }
+
+section { display: grid; gap: 24px; }
+.sec-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 24px; align-items: end; border-bottom: 1px solid var(--line); padding-bottom: 16px; }
+h2 { font-weight: 500; font-size: clamp(24px, 3vw, 32px); margin: 0; letter-spacing: -.01em; text-wrap: balance; }
+.sec-head p { margin: 0; color: var(--muted); max-width: 70ch; grid-column: 1 / -1; }
+.tag { font-family: var(--mono); font-size: 12px; color: var(--muted); white-space: nowrap; }
+.tag b { color: var(--warm); font-weight: 500; }
+
+.grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); }
+.grid.wide { grid-template-columns: repeat(auto-fill, minmax(min(100%, 560px), 1fr)); }
+figure { margin: 0; display: grid; gap: 10px; align-content: start; min-width: 0; }
+figure button { all: unset; cursor: zoom-in; display: block; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: var(--panel); transition: border-color .2s, transform .2s; }
+figure button:hover { border-color: var(--glow); transform: translateY(-2px); }
+figure button:focus-visible { outline: 2px solid var(--glow); outline-offset: 3px; }
+figure img { display: block; width: 100%; height: auto; }
+figcaption { font-size: 14px; color: var(--muted); }
+figcaption b { color: var(--fg); font-weight: 500; }
+
+.strip { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); }
+.strip figure button { border-radius: 999px; }
+
+.note { border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; background: var(--panel); color: var(--muted); font-size: 14px; max-width: 80ch; }
+.note b { color: var(--fg); font-weight: 500; }
+
+dialog { border: 0; padding: 0; background: transparent; max-width: 96vw; max-height: 94vh; }
+dialog::backdrop { background: rgba(4,5,9,.9); }
+dialog img { display: block; max-width: 96vw; max-height: 86vh; border-radius: 12px; }
+dialog p { color: var(--fg); text-align: center; margin: 10px 0 0; font-size: 14px; }
+
+@media (max-width: 760px) { header { grid-template-columns: minmax(0,1fr); padding-top: 32px; } .sec-head { grid-template-columns: minmax(0,1fr); } }
+@media (prefers-reduced-motion: reduce) { figure button { transition: none; } figure button:hover { transform: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">Jarvis WorkOS · Omarchy</div>
+      <h1>The desktop that <span>talks back</span></h1>
+      <p>Real screenshots from this project's test runs: Jarvis inside the Caelestia shell, the island at the top of the screen, HUD cards on the Omarchy desktop, and the Living Workspace.</p>
+      <div class="cmd">./install-jarvis.sh --shell caelestia &amp;&amp; jarvis shell caelestia</div>
+    </div>
+    <button class="orb" data-src="img/orb-large.png" data-cap="The Jarvis orb: idle, listening, thinking, speaking and working" aria-label="Enlarge the orb states">
+      <img src="img/orb-large.png" alt="The Jarvis orb in five states: idle, listening, thinking, speaking, working">
+    </button>
+  </header>
+
+  <section>
+    <div class="sec-head">
+      <h2>Caelestia + Jarvis</h2>
+      <span class="tag"><b>--shell caelestia</b></span>
+      <p>Caelestia takes the bar (left), the frame, dashboard, notifications and lock screen. Jarvis hangs from the top border as one of its drawers, and its colours come from your wallpaper.</p>
+    </div>
+    <div class="grid wide">
+      <figure><button data-src="img/cae-dark.png" data-cap="Caelestia, dark scheme: the island's conversation open"><img src="img/cae-dark.png" alt="Caelestia desktop with the Jarvis conversation drawer open" loading="lazy"></button>
+        <figcaption><b>Dark scheme.</b> The conversation drawer grows out of the top border; bubbles and accents follow the wallpaper palette.</figcaption></figure>
+      <figure><button data-src="img/cae-light.png" data-cap="Caelestia, light scheme: the island switches with no restart"><img src="img/cae-light.png" alt="Caelestia desktop in light mode with the Jarvis island" loading="lazy"></button>
+        <figcaption><b>Light scheme.</b> <code>caelestia scheme set -m light</code> and the island follows, no restart.</figcaption></figure>
+      <figure><button data-src="img/cae-dash.png" data-cap="Caelestia's dashboard open: the island steps aside"><img src="img/cae-dash.png" alt="Caelestia dashboard with calendar, clock and media" loading="lazy"></button>
+        <figcaption><b>Dashboard.</b> Caelestia's own dashboard (calendar, performance, media). The island steps aside so there's one drawer at the top.</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>The island</h2>
+      <span class="tag"><b>Super+Alt+I</b></span>
+      <p>The same island runs in Omarchy's shell and in Caelestia. It rests as a thin pill, peeks on activity and opens into a card.</p>
+    </div>
+    <div class="strip">
+      <figure><button data-src="img/i01.png" data-cap="Resting"><img src="img/i01.png" alt="Island resting" loading="lazy"></button><figcaption><b>Resting</b></figcaption></figure>
+      <figure><button data-src="img/i04.png" data-cap="Listening, peek"><img src="img/i04.png" alt="Island listening peek" loading="lazy"></button><figcaption><b>Listening</b> peek</figcaption></figure>
+      <figure><button data-src="img/i15.png" data-cap="A coding agent working, peek"><img src="img/i15.png" alt="Agent working peek" loading="lazy"></button><figcaption><b>Agent working</b> peek</figcaption></figure>
+      <figure><button data-src="img/i20.png" data-cap="Timer, mini"><img src="img/i20.png" alt="Timer mini" loading="lazy"></button><figcaption><b>Timer</b></figcaption></figure>
+    </div>
+    <div class="grid">
+      <figure><button data-src="img/i03.png" data-cap="Home"><img src="img/i03.png" alt="Island home view" loading="lazy"></button><figcaption><b>Home.</b> Quick actions and today at a glance.</figcaption></figure>
+      <figure><button data-src="img/i05.png" data-cap="Listening"><img src="img/i05.png" alt="Island listening" loading="lazy"></button><figcaption><b>Listening.</b> "Hey Jarvis" or Super+Alt+V.</figcaption></figure>
+      <figure><button data-src="img/i07.png" data-cap="Thinking"><img src="img/i07.png" alt="Island thinking" loading="lazy"></button><figcaption><b>Thinking.</b></figcaption></figure>
+      <figure><button data-src="img/i09.png" data-cap="Speaking"><img src="img/i09.png" alt="Island speaking" loading="lazy"></button><figcaption><b>Speaking.</b> Interrupt any time with barge-in.</figcaption></figure>
+      <figure><button data-src="img/i29.png" data-cap="Conversation"><img src="img/i29.png" alt="Island conversation" loading="lazy"></button><figcaption><b>Conversation.</b> Type or just talk.</figcaption></figure>
+      <figure><button data-src="img/i13.png" data-cap="Approval"><img src="img/i13.png" alt="Island approval request" loading="lazy"></button><figcaption><b>Approval.</b> Risky actions wait for Super+Alt+Y / N.</figcaption></figure>
+      <figure><button data-src="img/i16.png" data-cap="Coding agents"><img src="img/i16.png" alt="Island showing Claude Code working" loading="lazy"></button><figcaption><b>Agents.</b> Claude Code and Codex activity (<code>--agent-hooks</code>).</figcaption></figure>
+      <figure><button data-src="img/i14.png" data-cap="Agent permission prompt"><img src="img/i14.png" alt="Agent asking permission on the island" loading="lazy"></button><figcaption><b>Agent permission.</b> Answer a coding agent from the island.</figcaption></figure>
+      <figure><button data-src="img/i18.png" data-cap="Weather result"><img src="img/i18.png" alt="Weather result card" loading="lazy"></button><figcaption><b>Result card.</b> Weather.</figcaption></figure>
+      <figure><button data-src="img/i21.png" data-cap="Timer"><img src="img/i21.png" alt="Timer card" loading="lazy"></button><figcaption><b>Timer.</b></figcaption></figure>
+      <figure><button data-src="img/i26.png" data-cap="Incoming message"><img src="img/i26.png" alt="Incoming message on the island" loading="lazy"></button><figcaption><b>Message.</b> From Telegram, WhatsApp, Slack…</figcaption></figure>
+      <figure><button data-src="img/i27.png" data-cap="Call ringing"><img src="img/i27.png" alt="Incoming call on the island" loading="lazy"></button><figcaption><b>Call.</b> WhatsApp voice calls.</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>On the Omarchy desktop</h2>
+      <span class="tag"><b>ui.hud = true</b></span>
+      <p>With Omarchy's own shell, Jarvis adds floating HUD cards at the screen edge: globes, gauges, documents, the command bar.</p>
+    </div>
+    <div class="grid wide">
+      <figure><button data-src="img/hud-globe.png" data-cap="HUD: the ISS live, and Lisbon on a globe"><img src="img/hud-globe.png" alt="Omarchy desktop with two globe HUD cards" loading="lazy"></button><figcaption><b>Globes.</b> "Where's the ISS?" and "show me Lisbon".</figcaption></figure>
+      <figure><button data-src="img/hud-gauges.png" data-cap="HUD: system gauges and local network radar"><img src="img/hud-gauges.png" alt="Gauges and radar HUD cards" loading="lazy"></button><figcaption><b>System health and network radar.</b></figcaption></figure>
+      <figure><button data-src="img/hud-doc.png" data-cap="HUD: a document and a circuit"><img src="img/hud-doc.png" alt="Document and circuit HUD cards" loading="lazy"></button><figcaption><b>Documents and circuits.</b></figcaption></figure>
+      <figure><button data-src="img/hud-cmd.png" data-cap="Command bar with the orb"><img src="img/hud-cmd.png" alt="Command bar with the orb" loading="lazy"></button><figcaption><b>Command bar.</b> Super+Alt+A.</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Living Workspace and documents</h2>
+      <span class="tag"><b>Super+Alt+W</b> · <b>--genoffice</b></span>
+      <p>Results Jarvis can show and edit: comparisons, files, generated mini-apps, real Office documents and decks.</p>
+    </div>
+    <div class="grid wide">
+      <figure><button data-src="img/ws-compare.jpg" data-cap="Workspace: a budget comparison with an approval waiting"><img src="img/ws-compare.jpg" alt="Workspace with a budget comparison" loading="lazy"></button><figcaption><b>Workspace.</b> Conversation, canvas, approvals and tasks side by side.</figcaption></figure>
+      <figure><button data-src="img/ws-calc.png" data-cap="Workspace: a calculator generated on request"><img src="img/ws-calc.png" alt="Generated calculator in the workspace" loading="lazy"></button><figcaption><b>Generated interface.</b> A tool written on request, run in a sandbox.</figcaption></figure>
+      <figure><button data-src="img/office-report.png" data-cap="GenOffice: a report with a chart"><img src="img/office-report.png" alt="Report with a chart rendered by GenOffice" loading="lazy"></button><figcaption><b>Report.</b> A real document with a chart.</figcaption></figure>
+      <figure><button data-src="img/office-deck.png" data-cap="GenOffice: a deck built from a spec"><img src="img/office-deck.png" alt="Slide deck generated from a spec" loading="lazy"></button><figcaption><b>Deck.</b> Built from a short spec.</figcaption></figure>
+    </div>
+  </section>
+
+  <div class="note"><b>Where these come from.</b> Every image is from the repository's <code>evidence/</code> folder: the headless test desktop, the VM checks and the island preview. On your machine the wallpaper, colours and content will be your own.</div>
+</div>
+
+<dialog id="lb" aria-label="Enlarged screenshot"><img id="lb-img" alt=""><p id="lb-cap"></p></dialog>
+<script>
+const lb = document.getElementById('lb'), li = document.getElementById('lb-img'), lc = document.getElementById('lb-cap');
+document.querySelectorAll('[data-src]').forEach(b => b.addEventListener('click', () => {
+  li.src = b.dataset.src; li.alt = b.dataset.cap; lc.textContent = b.dataset.cap;
+  try { lb.showModal(); } catch (e) { lb.setAttribute('open', ''); }
+}));
+lb.addEventListener('click', () => lb.close());
+</script>
