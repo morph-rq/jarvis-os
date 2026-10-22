@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en" translate="no">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="color-scheme" content="light dark">
+  <meta name="google" content="notranslate">
+  <title>Jarvis Workspace</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <!-- Loaded top-level, sandbox-runtime.js only publishes its drawing helpers (window.JarvisViz). -->
+  <script defer src="/static/sandbox-runtime.js"></script>
+  <script type="module" src="/static/app.js"></script>
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="topbar">
+      <div class="brand"><span id="brand-name">Jarvis</span><small id="version"></small></div>
+      <div class="status" id="status" data-status="idle">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="status-label">Ready</span>
+      </div>
+      <span class="spacer"></span>
+      <span class="conn" id="conn" data-state="connecting"></span>
+      <button type="button" class="icon-btn" id="theme-toggle"></button>
+    </header>
+
+    <main class="layout" id="layout">
+      <section class="pane conversation" id="conversation" aria-labelledby="conversation-title">
+        <header><h2 class="pane-title" id="conversation-title">Conversation</h2></header>
+        <div class="messages" id="messages" role="log" aria-live="off" aria-labelledby="conversation-title" tabindex="0"></div>
+        <div class="working" id="working" hidden>
+          <span class="spinner" aria-hidden="true"></span>
+          <span id="working-label"></span>
+          <span class="run-text" id="working-run"></span>
+        </div>
+        <form class="composer" id="composer" autocomplete="off">
+          <div class="composer-box">
+            <label class="sr-only" for="ask-input" id="ask-label">Ask Jarvis</label>
+            <textarea id="ask-input" rows="1" maxlength="4000" spellcheck="true"></textarea>
+            <button type="submit" class="btn primary send" id="ask-send"></button>
+          </div>
+          <div class="composer-hint"><span id="composer-hint"></span><span id="composer-error" class="error" role="alert"></span></div>
+        </form>
+      </section>
+
+      <section class="pane canvas" id="canvas" aria-labelledby="canvas-title">
+        <header>
+          <h2 class="pane-title" id="canvas-title">Canvas</h2>
+          <span class="spacer"></span>
+          <button type="button" class="btn ghost small" id="canvas-clear"></button>
+        </header>
+        <div class="cards" id="cards"></div>
+      </section>
+
+      <aside class="pane activity" id="activity" aria-labelledby="activity-title">
+        <h2 class="sr-only" id="activity-title">Activity</h2>
+        <section class="approvals" id="approvals" aria-labelledby="approvals-title" hidden>
+          <header><h3 class="pane-title" id="approvals-title">Needs your approval</h3></header>
+          <div class="approval-list" id="approval-list"></div>
+        </section>
+        <section aria-labelledby="tasks-title">
+          <header>
+            <h3 class="pane-title" id="tasks-title">Tasks</h3>
+            <span class="spacer"></span>
+            <button type="button" class="btn ghost small" id="cancel-all" hidden></button>
+          </header>
+          <div class="tasks" id="tasks"></div>
+        </section>
+        <section aria-labelledby="notices-title" id="notices-section" hidden>
+          <header><h3 class="pane-title" id="notices-title">Notices</h3></header>
+          <div class="notices" id="notices"></div>
+        </section>
+        <section aria-labelledby="apps-title">
+          <header>
+            <h3 class="pane-title" id="apps-title">Connected apps</h3>
+            <span class="spacer"></span>
+            <button type="button" class="icon-btn" id="apps-refresh"></button>
+          </header>
+          <div class="apps-panel" id="apps"></div>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <div class="sr-only" id="live" aria-live="polite" aria-atomic="true"></div>
+  <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+
+  <dialog class="lightbox" id="lightbox" aria-labelledby="lightbox-title">
+    <div class="lightbox-bar">
+      <span class="title" id="lightbox-title"></span>
+      <button type="button" class="icon-btn" id="lightbox-prev"></button>
+      <button type="button" class="icon-btn" id="lightbox-next"></button>
+      <button type="button" class="icon-btn" id="lightbox-close"></button>
+    </div>
+    <div class="lightbox-stage"><img id="lightbox-img" alt=""></div>
+  </dialog>
+</body>
+</html>

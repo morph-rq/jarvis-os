@@ -1,0 +1,258 @@
+{
+ "at": "2026-10-21 20:07:35",
+ "host": "try-omarchy",
+ "genoffice": {
+  "configured": [
+   true,
+   ""
+  ],
+  "version": "0.11.919",
+  "start_and_list_s": 0.63,
+  "tool_count": 28,
+  "tools": [
+   "capabilities:read",
+   "convert:create",
+   "create_docx:create",
+   "create_pdf:create",
+   "create_pptx:create",
+   "create_xlsx:create",
+   "deck_build:create",
+   "deck_page:create",
+   "deck_replace:create",
+   "deck_start:create",
+   "docs_apply:write",
+   "docs_check:read",
+   "docs_read:read",
+   "guide:read",
+   "info:read",
+   "merge:create",
+   "open:read",
+   "pdf_read:read",
+   "render:read",
+   "sheet_apply:write",
+   "sheet_check:read",
+   "sheet_read:read",
+   "slides_apply:write",
+   "slides_audit:read",
+   "slides_check:read",
+   "slides_read:read",
+   "slides_render:read",
+   "slides_replace:write"
+  ],
+  "rendered_pngs": 2,
+  "render_dir": "/home/omarchy/.cache/jarvis-workos/previews/go-render-xr6gi2kn",
+  "rendered_pngs_jarvis_deck": 3,
+  "render_dir_jarvis_deck": "/home/omarchy/.cache/jarvis-workos/previews/go-render-jkh140ib",
+  "outside_roots_refused": "PathRefused",
+  "steps": [
+   {
+    "tool": "create_docx",
+    "ok": true,
+    "s": 0.12,
+    "message": "create_docx: genoffice-200735.docx (3775 bytes)",
+    "ref": "/home/omarchy/Documents/JarvisIntegrationTest/genoffice-200735.docx",
+    "summary": "created genoffice-200735.docx",
+    "detail_keys": [
+     "source"
+    ]
+   },
+   {
+    "tool": "docs_read",
+    "ok": true,
+    "s": 0.05,
+    "message": "",
+    "ref": "",
+    "summary": "genoffice-200735.docx: 6 blocks",
+    "detail_keys": [
+     "blocks",
+     "items",
+     "range",
+     "tableStyles",
+     "units"
+    ]
+   },
+   {
+    "tool": "docs_check",
+    "ok": true,
+    "s": 0.03,
+    "message": "",
+    "ref": "",
+    "summary": "genoffice-200735.docx: no issues found (10 checks)",
+    "detail_keys": [
+     "checks",
+     "counts",
+     "issues"
+    ],
+    "issues": []
+   },
+   {
+    "tool": "create_xlsx",
+    "ok": true,
+    "s": 0.05,
+    "message": "create_xlsx: genoffice-200735.xlsx (4195 bytes)",
+    "ref": "/home/omarchy/Documents/JarvisIntegrationTest/genoffice-200735.xlsx",
+    "summary": "created genoffice-200735.xlsx (1 sheets)",
+    "detail_keys": [
+     "cached_values",
+     "cells",
+     "formulas",
+     "sheets"
+    ]
+   },
+   {
+    "tool": "sheet_apply",
+    "ok": false,
+    "s": 0.02,
+    "message": "AttributeError: 'NoneType' object has no attribute 'ctx'",
+    "ref": ""
+   },
+   {
+    "tool": "sheet_read",
+    "ok": true,
+    "s": 0.41,
+    "message": "",
+    "ref": "",
+    "summary": "genoffice-200735.xlsx · from-3db71783!A1:B4: 4 non-empty rows",
+    "detail_keys": [
+     "features",
+     "formulas",
+     "range",
+     "rows",
+     "rowsShown",
+     "rowsTotal",
+     "sheet",
+     "truncated",
+     "units"
+    ]
+   },
+   {
+    "tool": "sheet_check",
+    "ok": true,
+    "s": 0.0,
+    "message": "",
+    "ref": "",
+    "summary": "genoffice-200735.xlsx: no issues found (8 checks)",
+    "detail_keys": [
+     "checks",
+     "counts",
+     "issues",
+     "notes"
+    ],
+    "issues": []
+   },
+   {
+    "tool": "create_pptx",
+    "ok": true,
+    "s": 0.06,
+    "message": "create_pptx: genoffice-200735.pptx (7473 bytes)",
+    "ref": "/home/omarchy/Documents/JarvisIntegrationTest/genoffice-200735.pptx",
+    "summary": "created genoffice-200735.pptx (2 slides)",
+    "detail_keys": [
+     "imageFailures",
+     "issues",
+     "next",
+     "via"
+    ],
+    "issues": []
+   },
+   {
+    "tool": "slides_audit",
+    "ok": true,
+    "s": 0.02,
+    "message": "",
+    "ref": "",
+    "summary": "genoffice-200735.pptx: 2 slide(s), no layout issues",
+    "detail_keys": [
+     "counts",
+     "ids",
+     "issues",
+     "metrics",
+     "slides"
+    ],
+    "issues": []
+   },
+   {
+    "tool": "render",
+    "ok": true,
+    "s": 1.22,
+    "message": "render: 2 page image(s)",
+    "ref": "/home/omarchy/.cache/jarvis-workos/previews/go-render-xr6gi2kn",
+    "summary": "rendered 2 page(s) of genoffice-200735.pptx to /home/omarchy/.cache/jarvis-workos/previews/go-render-xr6gi2kn",
+    "detail_keys": [
+     "files",
+     "formats",
+     "via"
+    ]
+   },
+   {
+    "tool": "slides_audit",
+    "ok": true,
+    "s": 0.08,
+    "message": "",
+    "ref": "",
+    "summary": "jarvis-report-200735.pptx: 3 slide(s), no layout issues",
+    "detail_keys": [
+     "counts",
+     "ids",
+     "issues",
+     "metrics",
+     "slides"
+    ],
+    "issues": []
+   },
+   {
+    "tool": "render",
+    "ok": true,
+    "s": 1.13,
+    "message": "render: 3 page image(s)",
+    "ref": "/home/omarchy/.cache/jarvis-workos/previews/go-render-jkh140ib",
+    "summary": "rendered 3 page(s) of jarvis-report-200735.pptx to /home/omarchy/.cache/jarvis-workos/previews/go-render-jkh140ib",
+    "detail_keys": [
+     "files",
+     "formats",
+     "via"
+    ]
+   },
+   {
+    "tool": "convert",
+    "ok": true,
+    "s": 2.93,
+    "message": "convert: genoffice-200735.pdf (15585 bytes)",
+    "ref": "/home/omarchy/Documents/JarvisIntegrationTest/genoffice-200735.pdf",
+    "summary": "converted genoffice-200735.docx → genoffice-200735.pdf",
+    "detail_keys": [
+     "summary",
+     "via"
+    ]
+   },
+   {
+    "tool": "pdf_read",
+    "ok": true,
+    "s": 0.0,
+    "message": "",
+    "ref": "",
+    "summary": "genoffice-200735.pdf: 1 pages, read 1-1",
+    "detail_keys": [
+     "creator",
+     "encrypted",
+     "pages",
+     "pages_read",
+     "producer",
+     "range",
+     "title"
+    ]
+   }
+  ],
+  "files": {
+   "genoffice-200735.pdf": 15585,
+   "genoffice-200735.docx": 3775,
+   "genoffice-200735.xlsx": 4196,
+   "genoffice-200735.pptx": 7473
+  },
+  "stderr_tail": [
+   "starting GenOffice for pdf export",
+   "starting GenOffice for pdf export",
+   "starting GenOffice for pdf export"
+  ]
+ }
+}
