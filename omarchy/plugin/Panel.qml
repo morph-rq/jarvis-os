@@ -46,14 +46,21 @@ Item {
 
   function open(payloadJson) {
     // Payload {"view": "settings"} opens straight to Settings (e.g. from a keybinding or the CLI);
-    // {"view": "apps"} opens Settings at Connected apps.
-    var view = ""
-    try { view = JSON.parse(payloadJson || "{}").view || "" } catch (e) { view = "" }
-    root.showSettings = view === "settings" || view === "apps"
+    // {"view": "apps"} opens Settings at Connected apps; {"view": "messaging", "channel": "telegram"} at that
+    // chat app's setup.
+    var view = "", payload = {}
+    try { payload = JSON.parse(payloadJson || "{}"); view = payload.view || "" } catch (e) { view = "" }
+    if (view === "messaging" && typeof payload.channel === "string") messagingSection.open = payload.channel
+    root.showSettings = view === "settings" || view === "apps" || view === "messaging"
     root.isOpen = true
     if (view === "apps") {
       if (s) s.refreshApps()
       Qt.callLater(function() { settingsView.contentY = Math.max(0, appsHeading.y - 8) })
+    }
+    if (view === "messaging") {
+      if (s) s.refreshGateway()
+      // Twice: the expanded channel card only has its height after the first layout pass.
+      Qt.callLater(function() { Qt.callLater(function() { settingsView.contentY = Math.max(0, messagingSection.y - 8) }) })
     }
     Qt.callLater(function() { input.forceActiveFocus() })
   }
@@ -178,6 +185,13 @@ Item {
         Chip { text: "⏹ " + t("cancel"); onClicked: if (s) { s.stopSpeaking(); s.cancel(null) } }
         Chip { text: "↻ " + t("restart"); onClicked: if (s) s.restartService() }
         // Status pills: shown only while true. The screen pill is a privacy signal, like the mic dot.
+        Chip {
+          visible: !!(s && s.inCall)
+          text: "📞 " + (s && s.call ? (s.call.name || "") : "") + "  ·  " + t("hang_up", "Hang up")
+          active: true
+          activeColor: root.red
+          onClicked: if (s) s.hangup()
+        }
         Chip {
           visible: !!(s && s.screenSharing)
           text: "◉ " + t("screen_on")
@@ -322,10 +336,20 @@ Item {
           SettingRow {
             label: t("companion_style")
             Repeater {
-              model: [["pebble", "Pebble"], ["orb", "Orb"]]
+              model: [["jarvis", "Jarvis"], ["pebble", "Pebble"], ["orb", "Orb"]]
               Chip { required property var modelData; text: modelData[1]; active: s && s.settings["ui.companion_style"] === modelData[0]
                      onClicked: s.setSetting("ui.companion_style", modelData[0]) }
             }
+          }
+          SettingRow {
+            label: t("island")
+            Chip { text: t("island"); active: !!(s && s.settings["ui.island"]); onClicked: s.setSetting("ui.island", !s.settings["ui.island"]) }
+            Chip { text: t("island_autohide"); active: !!(s && s.settings["ui.island_autohide"])
+                   onClicked: s.setSetting("ui.island_autohide", !s.settings["ui.island_autohide"]) }
+            Chip { text: t("island_quiet"); active: !!(s && s.settings["ui.island_quiet"])
+                   onClicked: s.setSetting("ui.island_quiet", !s.settings["ui.island_quiet"]) }
+            Chip { text: t("reduced_motion"); active: !!(s && s.settings["ui.reduced_motion"])
+                   onClicked: s.setSetting("ui.reduced_motion", !s.settings["ui.reduced_motion"]) }
           }
           SettingRow {
             label: t("hud") + "  ·  " + t("proactive") + "  ·  " + t("clipboard_watch")
@@ -406,6 +430,14 @@ Item {
                                         parent.connected && modelData.accounts.length === 1 ? modelData.accounts[0].label : "")
               }
             }
+          }
+          // Messaging: Telegram, Discord, Slack, Signal, WhatsApp as ways to reach this same Jarvis.
+          Messaging {
+            id: messagingSection
+            width: parent.width
+            service: root.service   // not `s`: inside Messaging that name is its own property
+            fg: root.fg
+            accent: root.accent
           }
           Text {
             width: parent.width

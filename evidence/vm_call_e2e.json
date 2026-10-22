@@ -1,0 +1,138 @@
+{
+  "started": "2026-10-22 06:52:35",
+  "steps": {
+    "connect": {
+      "ok": true,
+      "message": "WhatsApp connected as Jarvis +351 21 000 0000. Now pair your phone."
+    },
+    "calls_status": {
+      "enabled": true,
+      "problem": "",
+      "limit_tier": "TIER_2K"
+    },
+    "paired": true,
+    "permission_recorded": {
+      "granted": true,
+      "until": 1793245961.0,
+      "permanent": false
+    },
+    "signaling": {
+      "webhook_status": 200,
+      "actions": [
+        "pre_accept",
+        "accept"
+      ],
+      "answer_ms": 332,
+      "answer_has_opus": true,
+      "answer_fingerprints": [
+        "sha-256"
+      ]
+    },
+    "volume_after_call": 0.35,
+    "active_during_call": [
+      {
+        "id": "c1a161bd5cac",
+        "call_id": "wacid.VM1",
+        "direction": "inbound",
+        "name": "Ana",
+        "channel": "whatsapp",
+        "state": "connected",
+        "started": 1792641162.4120886,
+        "connected_at": 1792641162.6425989,
+        "model": "gemini-3.8-live",
+        "reason": "",
+        "duration_s": 43
+      }
+    ],
+    "audit": [
+      {
+        "event": "call_permission_granted"
+      },
+      {
+        "event": "call_started",
+        "direction": "inbound"
+      },
+      {
+        "event": "call_ended",
+        "reason": "they hung up",
+        "seconds": 43,
+        "turns": 5
+      },
+      {
+        "event": "call_permission_granted"
+      },
+      {
+        "event": "call_started",
+        "direction": "inbound"
+      },
+      {
+        "event": "call_ended",
+        "reason": "they hung up",
+        "seconds": 43,
+        "turns": 5
+      },
+      {
+        "event": "call_permission_granted"
+      },
+      {
+        "event": "call_started",
+        "direction": "inbound"
+      },
+      {
+        "event": "call_ended",
+        "reason": "they hung up",
+        "seconds": 43,
+        "turns": 5
+      },
+      {
+        "event": "call_permission_granted"
+      },
+      {
+        "event": "call_started",
+        "direction": "inbound"
+      },
+      {
+        "event": "call_ended",
+        "reason": "hung up by Jarvis",
+        "seconds": 6,
+        "turns": 1
+      },
+      {
+        "event": "call_permission_granted"
+      },
+      {
+        "event": "call_placed"
+      },
+      {
+        "event": "call_started",
+        "direction": "outbound"
+      },
+      {
+        "event": "call_ended",
+        "reason": "they hung up",
+        "seconds": 45,
+        "turns": 5
+      },
+      {
+        "event": "call_permission_granted"
+      },
+      {
+        "event": "call_started",
+        "direction": "inbound"
+      },
+      {
+        "event": "call_ended",
+        "reason": "they hung up",
+        "seconds": 43,
+        "turns": 5
+      }
+    ],
+    "caller_heard": {
+      "seconds": 43.8,
+      "voiced_fraction": 0.085,
+      "wav": "vm_call_e2e_jarvis.wav",
+      "transcript": "Hello Anna, it's great to hear from you. How can I help you today?  The volume is now set at 35%  4"
+    }
+  },
+  "volume_before": 0.4
+}

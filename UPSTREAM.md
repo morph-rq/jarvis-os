@@ -87,6 +87,20 @@ python-docx 1.2.0, openpyxl 3.1.5, python-pptx 1.0.2, pypdf 6.21.1, fpdf2 2.8.9 
 | [AG-UI protocol](https://github.com/ag-ui-protocol/ag-ui) 1.0 | MIT | The workspace event stream speaks AG-UI events (no package; ~150 lines) | `service/jarvis/workspace/agui.py`, `static/agui.js` |
 | [three.js](https://github.com/mrdoob/three.js) r180 (`three@0.180.0`) | MIT | 3D in generated interfaces, served from 127.0.0.1 only | `static/vendor/three/` (sha512 recorded in `NOTICE.md`) |
 
+## Messaging gateway (docs/MESSAGING.md)
+
+Inspected for design; **no code copied**. `service/jarvis/gateway/` is an independent Python implementation on httpx and websockets (both already dependencies). Checkouts under `upstream/` (gitignored).
+
+| Project | Commit | License | What Jarvis took (ideas only) |
+|---|---|---|---|
+| [openclaw/openclaw](https://github.com/openclaw/openclaw) | `4d86333f6a82117ede1c530fa0b2a3b70341bcab` (2026-10-21) | MIT, © 2026 OpenClaw Foundation | DM policy (pairing/allowlist/disabled), pairing code alphabet, 1 h TTL, ≤3 pending, host-only approval, mention-gated groups, per-person sessions, 4000-char chunks, one poller per bot (409), token redaction |
+| [hermes-agent-org/hermes](https://github.com/hermes-agent-org/hermes) (copy of NousResearch/hermes-agent) | `036cbdfa0a3158454a0a2a7a7388cf70353326b4` (2026-04-15) | MIT, © 2025 Nous Research | asyncio adapter shape, signal-cli JSON-RPC + SSE, schedules delivered to the originating chat, slash commands, pairing failure lockout; its approval-button check gap was closed, not copied |
+| [grammyjs/grammY](https://github.com/grammyjs/grammY) | `e8b3b1bec0ecb0cd76af7f3996354027ba94c303` (2026-10-16) | MIT | Bot API patterns: deleteWebhook before polling, allowed_updates once, 429 `retry_after`, fatal 401/409, per-chat/global throttling, answerCallbackQuery |
+
+**WhatsApp voice calls** (docs/CALLING.md): Meta's official WhatsApp Business Calling API (Graph API v25.0, webhook field `calls`). Media through Pipecat 1.13.0's own `SmallWebRTCConnection`/`SmallWebRTCTransport` (used as a library; its `transports/whatsapp` client was read for the SDP rules, sha-256 fingerprint filtering and the pre_accept/accept sequence, and is not used: signaling shares Jarvis's existing WhatsApp webhook). Outbound calls (`action: connect`, an offering connection) are Jarvis's own; Pipecat has no outbound support (issue #2811, PR #4451 open). aiortc 1.15.0 (BSD-3-Clause) via the hash-locked `omarchy/locks/calls.lock` (`scripts/make-calls-lock.py`), installed with PyAV 18.1.0 from the speech lock although aiortc declares `av<18` (two-way Opus verified in the VM). Considered and not used: LiveKit Agents' WhatsApp connector (LiveKit Cloud only, a second agent framework), Meta SIP (needs a public SIP-over-TLS server), OpenClaw's `whatsapp_call` via MeowCaller/whatsmeow and WhatsApp Web automation with Stagehand (unofficial, against WhatsApp's terms).
+
+External programs and APIs (not bundled): **signal-cli** (GPL-3.0) is run as a separate process when the user installs it, never linked or redistributed. **WhatsApp** uses Meta's official Cloud API, not Baileys/WhatsApp Web (which both projects use; unofficial, ban risk). Telegram Bot API, Discord Gateway v10 / REST, and Slack Socket Mode / Web API are the platforms' official interfaces.
+
 ## Try Omarchy for Windows (test VM only)
 
 | | |

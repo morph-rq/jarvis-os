@@ -4,10 +4,12 @@ import Quickshell.Io
 import Quickshell.Wayland
 import qs.Commons
 import qs.Commons as Commons
+import "ui"
 
 // Jarvis service: the one connection to jarvisd and the state every Jarvis surface shares
-// (bar companion, conversation panel, HUD, command bar, optional floating companion). jarvisd pushes
-// every change over the socket, so nothing here polls; the only timer reconnects while jarvisd is down.
+// (Jarvis Island, bar companion, conversation panel, HUD, command bar, optional floating companion).
+// jarvisd pushes every change over the socket (the typed contract is service/jarvis/protocol.py,
+// docs/PROTOCOL.md), so nothing here polls; the only timer reconnects while jarvisd is down.
 Item {
   id: root
 
@@ -45,6 +47,29 @@ Item {
   property bool commandBarOpen: false
   // Connected apps: {providers: [{provider, label, ready, missing}], apps: [{app, label, available, why, accounts}]}
   property var apps: ({ providers: [], apps: [], pending: [] })
+  // Messaging gateway: {enabled, dm_policy, channels: [{channel, label, state, detail, account, setup…}],
+  // identities: [{id, channel, name, role}], requests: [{channel, user_id, name, hint}]}
+  property var gateway: ({ channels: [], identities: [], requests: [] })
+  property var pairing: ({})          // the latest pairing code/links/QR made on this desktop
+  property var signalLink: ({})       // sgnl:// link (and QR) while linking Signal
+  property var gatewayNote: ({})      // {channel, ok, message} of the last connect/test
+  property var _gatewayPending: ({})  // request id -> action
+  property var call: ({})             // the WhatsApp call in progress: {call_id, state, direction, name, connected_at…}
+  readonly property bool inCall: !!(root.call && (root.call.state === "connected" || root.call.state === "ringing"
+                                                  || root.call.state === "connecting"))
+  // Coding agents on this desktop (Claude Code, Codex): [{id, label, project, state, activity, summary…}]
+  property var agents: []
+  property bool vad: false            // Pipecat's VAD: the user is talking right now
+  property int protocolVersion: 1
+  // Live captions: the newest line of each side, partial until final.
+  property string captionUser: ""
+  property string captionAssistant: ""
+  property string captionRole: ""     // who spoke last
+  property bool captionFinal: true
+  property real captionAt: 0
+  property var _taskStates: ({})      // task id -> last state, to notice real success / failure
+  // One-shot reactions to real events, for the orb: success, error, barge, wake.
+  signal reaction(string kind)
   property bool panelOpen: false      // set by the panel, so the HUD steps aside
   property int panelWidth: 460
 
@@ -54,6 +79,16 @@ Item {
   readonly property bool dictating: voice.mode === "dictation"
   readonly property bool conversing: voice.mode === "conversation"
   readonly property bool hudEnabled: root.settings["ui.hud"] !== false
+  readonly property bool islandEnabled: root.settings["ui.island"] !== false
+  readonly property bool islandFeaturesCard: islandEnabled && islandView.activityKind === "result"
+                                            && islandView.mode === "expanded"
+  // Calmer motion when asked for, or when the shell's own animations are off.
+  readonly property bool reducedMotion: root.settings["ui.reduced_motion"] === true
+    || (typeof Style.duration === "function" && Style.duration(100) === 0)
+  onReducedMotionChanged: Tokens.reducedMotion = reducedMotion
+  readonly property string fontFamily: Style.fontFamily
+  onFontFamilyChanged: Tokens.fontFamily = fontFamily
+  Component.onCompleted: { Tokens.reducedMotion = reducedMotion; Tokens.fontFamily = fontFamily }
 
   function t(key, fallback) { return (root.ui && root.ui[key]) ? root.ui[key] : (fallback || key) }
 
@@ -83,6 +118,13 @@ Item {
   function dictate(action) { return send({ op: "dictate", action: action || "toggle" }) }
   // approval_id, not id: send() owns `id` (the request id replies are matched on).
   function approve(approvalId, allow) { return send({ op: "approve", approval_id: approvalId, allow: allow }) }
+  // Tell jarvisd an approval is on screen. Coding agents wait for this (≤2 s) before asking here;
+  // without it they ask in their own terminal, so an approval is never stuck where nobody sees it.
+  function _ackApproval(a) {
+    if (a && (root.islandEnabled || root.hudEnabled || root.panelOpen))
+      send({ op: "approval_seen", approval_id: a.id })
+  }
+  function refreshAgents() { return send({ op: "agents" }) }
   function cancel(taskId) { return send({ op: "cancel", task_id: taskId || null }) }
   function setSetting(key, value) { return send({ op: "config", action: "set", key: key, value: value }) }
   function openWorkspace(view) { return send({ op: "workspace", view: view || "" }) }
@@ -93,6 +135,16 @@ Item {
     return send(req)
   }
   function refreshApps() { return send({ op: "apps", action: "status" }) }
+  function gatewayAction(req) {
+    req.op = "gateway"
+    if (!send(req)) return false
+    root._gatewayPending[req.id] = { action: req.action, channel: req.channel || "" }
+    if (req.action === "connect" || req.action === "test")
+      root.gatewayNote = { channel: req.channel, ok: true, message: "…" }
+    return true
+  }
+  function refreshGateway() { return gatewayAction({ action: "status" }) }
+  function hangup() { return gatewayAction({ action: "hangup" }) }
   function restartService() { Quickshell.execDetached(["systemctl", "--user", "restart", "jarvisd.service"]) }
   function togglePanel() {
     if (root.shell && root.manifest && typeof root.shell.toggle === "function")
@@ -102,7 +154,11 @@ Item {
     if (root.shell && root.manifest && typeof root.shell.summon === "function")
       root.shell.summon(root.manifest.id, "{}")
   }
-  function toggleCommandBar() { root.commandBarOpen = !root.commandBarOpen }
+  function toggleCommandBar() {
+    // With the island on, its conversation view is the command bar (one place to ask, no duplicate UI).
+    if (root.islandEnabled) islandView.request(islandView.requested === "conversation" ? "" : "conversation")
+    else root.commandBarOpen = !root.commandBarOpen
+  }
 
   // ---------------------------------------------------------------- HUD actions
   function dismissCard(cardId) {
@@ -140,6 +196,12 @@ Item {
 
   function _transcript(role, text, isFinal) {
     if (role === "user" && isFinal) root.lastHeard = text
+    if (role === "user" && root.captionRole !== "user") root.captionAssistant = ""
+    if (role === "user") root.captionUser = text
+    else root.captionAssistant = text
+    root.captionRole = role
+    root.captionFinal = isFinal
+    root.captionAt = Date.now()
     // Replace the trailing partial of the same role, otherwise start a new row.
     for (var i = messageModel.count - 1; i >= Math.max(0, messageModel.count - 3); i--) {
       var row = messageModel.get(i)
@@ -157,6 +219,15 @@ Item {
   }
 
   function _task(task) {
+    // A real outcome (running -> succeeded / failed) makes the orb react once.
+    var before = root._taskStates[task.id]
+    if (before && before !== task.state) {
+      if (task.state === "succeeded" && (before === "running" || before === "awaiting_approval")) root.reaction("success")
+      else if (task.state === "failed") root.reaction("error")
+    }
+    var states = root._taskStates
+    states[task.id] = task.state
+    root._taskStates = states
     var steps = task.steps.filter(function(s) { return s.kind !== "reply" })
       .map(function(s) { return (s.ok === false ? "✕ " : "· ") + s.text + (s.ms !== undefined ? "  " + s.ms + " ms" : "") })
       .join("\n")
@@ -215,10 +286,28 @@ Item {
       root.ui = msg.ui || {}
       root.settings = msg.settings || {}
       root.approvals = msg.approvals || []
+      root.agents = msg.agents || []
+      root.protocolVersion = msg.protocol || 1
+      for (var ai = 0; ai < root.approvals.length; ai++) _ackApproval(root.approvals[ai])
       refreshApps()
+      refreshGateway()
       if (messageModel.count === 0)
         for (var i = 0; i < msg.history.length; i++)
           _append(_row(msg.history[i].role === "user" ? "user" : "assistant", msg.history[i].text, true))
+      return
+    }
+    if (msg.reply !== undefined && root._gatewayPending[msg.reply] !== undefined) {
+      var req = root._gatewayPending[msg.reply]
+      delete root._gatewayPending[msg.reply]
+      if (req.action === "status" && msg.channels) root.gateway = msg
+      else if (req.action === "pair" && msg.ok) root.pairing = msg
+      else if (req.action === "link") root.signalLink = msg.ok ? msg : ({})
+      if (req.action === "connect" || req.action === "test" || (!msg.ok && msg.message))
+        root.gatewayNote = { channel: req.channel, ok: !!msg.ok, message: msg.message || "" }
+      return
+    }
+    if (msg.reply !== undefined && msg.sessions !== undefined) {
+      root.agents = msg.sessions
       return
     }
     if (msg.reply !== undefined && msg.providers !== undefined && msg.apps !== undefined) {
@@ -228,6 +317,8 @@ Item {
     switch (msg.event) {
     case "status": root.status = msg.status; break
     case "integrations": if (msg.status) root.apps = msg.status; break
+    case "gateway": if (msg.status) root.gateway = msg.status; break
+    case "call": root.call = msg.call || ({}); break
     case "level":
       root.level = msg.value
       root.levelSource = msg.source || "mic"
@@ -248,12 +339,17 @@ Item {
       break
     case "approval":
       root.approvals = root.approvals.concat([msg.approval])
-      // The HUD shows approvals wherever the user is; without it, the panel opens.
-      if (!root.hudEnabled) summonPanel()
+      _ackApproval(msg.approval)
+      // The island (or the HUD) shows approvals wherever the user is; without either, the panel opens.
+      if (!root.hudEnabled && !root.islandEnabled) summonPanel()
       break
     case "approval_resolved":
       root.approvals = root.approvals.filter(function(a) { return a.id !== msg.id })
       break
+    case "agents": root.agents = msg.sessions || []; break
+    case "vad": root.vad = !!msg.speaking; break
+    case "barge": root.reaction("barge"); break
+    case "wake": root.reaction("wake"); break
     case "pipeline":
       if (msg.state === "closed") { root.pipeline = ({}); root.activeTools = []; root.screenSharing = false }
       else if (msg.state !== "error") root.pipeline = msg
@@ -276,6 +372,7 @@ Item {
     case "focus": root.focusUntil = msg.active ? (msg.until || 0) : 0; break
     case "control": root.controlUntil = msg.until || 0; break
     }
+    if (msg.event === "voice" && root.voice.mode !== "conversation") root.vad = false
     if (msg.event === "status" && root.status !== "speaking" && root.status !== "listening" && root.status !== "dictating") {
       root.level = 0
       root.bands = []
@@ -288,7 +385,7 @@ Item {
     connected: true
     onConnectedChanged: {
       if (connected) root.send({ op: "subscribe" })
-      else root.status = "offline"
+      else { root.status = "offline"; root.vad = false }
     }
     parser: SplitParser { onRead: data => root._handle(data) }
   }
@@ -318,7 +415,17 @@ Item {
     function ask(text: string): void { root.ask(text) }
     function status(): string { return root.status }
     function hudCards(): string { return String(cardModel.count) }
+    function callState(): string { return JSON.stringify(root.call || {}) }
+    function hangup(): void { root.hangup() }
     function workspace(): void { root.openWorkspace("") }
+    // The island: "toggle" (open / close), "conversation", "peek", "expanded" or "close".
+    function island(mode: string): string {
+      if (!root.islandEnabled) return "disabled"
+      if (mode === "toggle") islandView.request(islandView.requested ? "" : "expanded")
+      else islandView.request(mode === "conversation" || mode === "peek" || mode === "expanded" ? mode : "")
+      return islandView.mode
+    }
+    function islandState(): string { return islandView.activityKind + " " + islandView.mode }
     // Same path as the panel's Allow / Deny buttons, for keyboard shortcuts and tests.
     function approveLatest(allow: string): string {
       if (root.approvals.length === 0) return "none"
@@ -326,6 +433,13 @@ Item {
       root.approve(a.id, allow === "true")
       return a.id
     }
+  }
+
+  // The Jarvis Island (ui.island): the top-centre pill that grows into whatever is happening.
+  Island {
+    id: islandView
+    service: root
+    enabled: root.islandEnabled
   }
 
   // Floating HUD (ui.hud): cards, notices, approvals and status pills at the screen edge.
@@ -358,7 +472,8 @@ Item {
     Loader {
       id: floating
       anchors.centerIn: parent
-      sourceComponent: root.settings["ui.companion_style"] === "orb" ? orbComponent : pebbleComponent
+      sourceComponent: root.settings["ui.companion_style"] === "orb" ? orbComponent
+        : root.settings["ui.companion_style"] === "pebble" ? pebbleComponent : jarvisComponent
     }
     Component {
       id: pebbleComponent
@@ -368,6 +483,24 @@ Item {
         micOpen: root.micOpen
         onClicked: root.togglePanel()
         onRightClicked: root.listen()
+      }
+    }
+    Component {
+      id: jarvisComponent
+      JarvisOrb {
+        id: floatingOrb
+        size: 112
+        status: root.connected ? root.status : "offline"
+        level: root.level
+        bands: root.bands
+        vad: root.vad
+        Connections { target: root; function onReaction(kind) { floatingOrb.react(kind) } }
+        MouseArea {
+          anchors.fill: parent
+          acceptedButtons: Qt.LeftButton | Qt.RightButton
+          cursorShape: Qt.PointingHandCursor
+          onClicked: function(e) { if (e.button === Qt.RightButton) root.listen(); else root.toggleCommandBar() }
+        }
       }
     }
     Component {

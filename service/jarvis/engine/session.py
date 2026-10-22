@@ -17,11 +17,19 @@ import logging
 import time
 
 from pipecat.frames.frames import (
-    BotStartedSpeakingFrame, BotStoppedSpeakingFrame, ErrorFrame, InterimTranscriptionFrame, MetricsFrame,
-    TranscriptionFrame, TTSTextFrame,
+    BotStartedSpeakingFrame,
+    BotStoppedSpeakingFrame,
+    ErrorFrame,
+    InterimTranscriptionFrame,
+    MetricsFrame,
+    TranscriptionFrame,
+    TTSTextFrame,
+    UserStartedSpeakingFrame,
+    UserStoppedSpeakingFrame,
+    VADUserStartedSpeakingFrame,
+    VADUserStoppedSpeakingFrame,
 )
 from pipecat.observers.base_observer import BaseObserver, FramePushed
-
 
 log = logging.getLogger("jarvis.engine")
 
@@ -46,6 +54,10 @@ class FrameEvents(BaseObserver):
                 self.s.set_bot_speaking(True)
             elif isinstance(f, BotStoppedSpeakingFrame):
                 self.s.set_bot_speaking(False)
+            elif isinstance(f, (UserStartedSpeakingFrame, VADUserStartedSpeakingFrame)):
+                self.s.set_user_speaking(True)
+            elif isinstance(f, (UserStoppedSpeakingFrame, VADUserStoppedSpeakingFrame)):
+                self.s.set_user_speaking(False)
             elif isinstance(f, MetricsFrame):
                 self.s.on_metrics(f.data)
             elif isinstance(f, ErrorFrame):
@@ -74,6 +86,7 @@ class EngineSession:
         self.ending = asyncio.Event()
         self.last_activity = time.monotonic()
         self.bot_speaking = False
+        self.user_speaking = False
         self.thinking = 0
         self.transport = None
         self.bridge = None
@@ -119,7 +132,11 @@ class EngineSession:
                          runtime="pipecat", **extra)
 
     async def _run(self, pipeline, observers: list | None = None) -> None:
-        from pipecat.pipeline.worker import PipelineParams, PipelineWorker, ProcessorUnusablePolicy
+        from pipecat.pipeline.worker import (
+            PipelineParams,
+            PipelineWorker,
+            ProcessorUnusablePolicy,
+        )
         from pipecat.workers.runner import WorkerRunner
         metrics = bool(self.cfg["voice"].get("metrics", True))
         self.worker = PipelineWorker(
@@ -257,6 +274,15 @@ class EngineSession:
             self.user_turn_done()
         if self._assistant_text and self.publishes_assistant:
             self.assistant_turn_done("", interrupted=True)
+
+    def set_user_speaking(self, speaking: bool) -> None:
+        """Pipecat's VAD (or the service's turn detection) says the user started / stopped talking.
+        Published once per change: the island's orb and captions react to it, not to a timer."""
+        if speaking == self.user_speaking:
+            return
+        self.user_speaking = speaking
+        self.activity()
+        self.bus.publish("vad", engine=self.engine, speaking=speaking, session=self.id)
 
     def set_bot_speaking(self, speaking: bool) -> None:
         if speaking == self.bot_speaking:

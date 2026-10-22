@@ -126,8 +126,16 @@ DEFAULTS: dict = {
         "floating_companion": False,
         # Floating HUD cards (weather, results, plans, notices) at the screen edge.
         "hud": True,
-        # Bar/floating companion look: "pebble" (eyes) or "orb" (rings and glow).
-        "companion_style": "pebble",
+        # Bar/floating companion look: "jarvis" (the GPU orb with eyes), "pebble" (eyes) or "orb" (rings and glow).
+        "companion_style": "jarvis",
+        # The Jarvis Island: a pill at the top centre that grows into captions, approvals, results,
+        # agent activity and the conversation view.
+        "island": True,
+        "island_autohide": False,      # idle: shrink to a thin strip (hover it to bring the pill back)
+        "island_screen": "focused",    # focused | primary
+        "island_quiet": False,         # do not disturb: only approvals, calls and questions open it
+        # Shorter, calmer animations everywhere (also on when Hyprland animations are off).
+        "reduced_motion": False,
     },
     # ---- capabilities (jarvis/capabilities) ----
     "web": {
@@ -197,6 +205,35 @@ DEFAULTS: dict = {
         "connect_timeout_s": 600,
         "download_dir": "~/Downloads/Jarvis",
     },
+    # ---- messaging gateway (jarvis/gateway): chat with Jarvis from Telegram, Discord, Slack, Signal, WhatsApp ----
+    "gateway": {
+        "enabled": True,
+        # Who may talk to Jarvis: "pairing" (unknown senders get a code the owner approves on the desktop),
+        # "allowlist" (only paired people; strangers are ignored), "disabled" (no chat channel answers).
+        "dm_policy": "pairing",
+        # Group chats: answer only when mentioned, and only paired people. Off: groups are ignored.
+        "groups": False,
+        "rate_per_minute": 12,         # per person
+        "max_file_mb": 20,
+        # Reminders, finished background jobs and notices also reach the owner's chats.
+        "forward_notices": True,
+        # Approvals asked on the desktop are also sent to the owner's chats (approve from the phone).
+        "forward_approvals": False,
+        "voice_replies": False,        # answer voice notes with a voice note too (needs piper + ffmpeg)
+        "channels": ["telegram", "discord", "slack", "signal", "whatsapp"],
+        "telegram_api": "https://api.telegram.org",
+        "signal_cli": "signal-cli",
+        "signal_account": "",          # +number of the linked or registered Signal account
+        "signal_port": 47614,
+        "whatsapp_phone_id": "",       # WhatsApp Cloud API phone number id (Meta app dashboard)
+        "whatsapp_port": 47615,        # local webhook; expose it with a tunnel (cloudflared, tailscale funnel)
+        "whatsapp_api": "https://graph.facebook.com/v25.0",
+        # WhatsApp voice calls (official Business Calling API; needs omarchy/locks/calls.lock). Off until
+        # turned on from the panel ("Enable calls"), which also switches calling on for the number at Meta.
+        "calls": False,
+        "call_max_minutes": 15,        # a call ends after this (bounds the per-minute cost of outgoing calls)
+        "call_stun": ["stun:stun.l.google.com:19302"],
+    },
     "workspace": {
         # The Living Workspace: a window served by jarvisd on 127.0.0.1 only when opened.
         "enabled": True,
@@ -247,7 +284,12 @@ SCHEMA: dict[str, tuple] = {
     "ui.language": (str, ("auto", "ru", "en", "pt")),
     "ui.floating_companion": (bool, None),
     "ui.hud": (bool, None),
-    "ui.companion_style": (str, ("pebble", "orb")),
+    "ui.companion_style": (str, ("jarvis", "pebble", "orb")),
+    "ui.island": (bool, None),
+    "ui.island_autohide": (bool, None),
+    "ui.island_screen": (str, ("focused", "primary")),
+    "ui.island_quiet": (bool, None),
+    "ui.reduced_motion": (bool, None),
     "web.city": (str, None),
     "documents.dir": (str, None),
     "images.dir": (str, None), "images.model": (str, None),
@@ -265,13 +307,28 @@ SCHEMA: dict[str, tuple] = {
     "integrations.download_dir": (str, None),
     "workspace.enabled": (bool, None), "workspace.offline": (bool, None), "workspace.generated_ui": (bool, None),
     "workspace.browser": (str, None),
+    "gateway.enabled": (bool, None),
+    "gateway.dm_policy": (str, ("pairing", "allowlist", "disabled")),
+    "gateway.groups": (bool, None),
+    "gateway.rate_per_minute": (int, (1, 120)),
+    "gateway.max_file_mb": (int, (1, 50)),
+    "gateway.forward_notices": (bool, None),
+    "gateway.forward_approvals": (bool, None),
+    "gateway.voice_replies": (bool, None),
+    "gateway.signal_account": (str, None),
+    "gateway.whatsapp_phone_id": (str, None),
+    "gateway.calls": (bool, None),
+    "gateway.call_max_minutes": (int, (1, 120)),
 }
 
 
 # Every secret Jarvis may read (env, keyring `secret-tool store --label=… service jarvis-workos key NAME`, secrets.env).
 SECRET_NAMES = ("GEMINI_API_KEY", "ANTHROPIC_API_KEY", "HOME_ASSISTANT_TOKEN", "MAIL_PASSWORD", "TELEGRAM_BOT_TOKEN",
                 "SPOTIFY_CLIENT_ID", "SPOTIFY_CLIENT_SECRET", "CALENDAR_ICS_URLS", "COMPOSIO_API_KEY",
-                "GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_SECRET")
+                "GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_SECRET",
+                # Messaging gateway (jarvis/gateway): bot credentials, never in config.toml.
+                "DISCORD_BOT_TOKEN", "SLACK_BOT_TOKEN", "SLACK_APP_TOKEN", "WHATSAPP_ACCESS_TOKEN",
+                "WHATSAPP_APP_SECRET", "WHATSAPP_VERIFY_TOKEN")
 
 
 def _deep_merge(base: dict, override: dict) -> dict:
@@ -461,6 +518,18 @@ class Config:
         if self._file_secrets is None:
             self._file_secrets = _read_secrets_file(self.secrets_path)
         return self._file_secrets.get(name)
+
+    def save_secret(self, name: str, value: str) -> str:
+        """store_secret, and make the new value visible to this process at once."""
+        where = store_secret(name, value, self.secrets_path)
+        if self._file_secrets is not None:
+            self._file_secrets[name] = value.strip()
+        return where
+
+    def drop_secret(self, name: str) -> None:
+        clear_secret(name, self.secrets_path)
+        if self._file_secrets is not None:
+            self._file_secrets.pop(name, None)
 
     def redacted(self) -> dict:
         out = copy.deepcopy(self.values)

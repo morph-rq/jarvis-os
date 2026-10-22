@@ -10,9 +10,14 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Awaitable, Callable
 
+from jarvis import protocol
 
 # The task a coroutine is running inside: "cancel every task" must not cancel the task asking for it.
 CURRENT_TASK: contextvars.ContextVar[str] = contextvars.ContextVar("jarvis_current_task", default="")
+# The chat-app request (gateway.policy.RemoteCall) a coroutine works for, or None for the desktop.
+# Tasks started inside one inherit it (a delegated background job stays remote), and
+# `Jarvis.run_tool` enforces the remote policy whenever it is set.
+REMOTE: contextvars.ContextVar = contextvars.ContextVar("jarvis_remote", default=None)
 
 
 class Bus:
@@ -30,6 +35,7 @@ class Bus:
         self._subscribers.discard(queue)
 
     def publish(self, event: str, **data: Any) -> None:
+        protocol.check(event, data)   # the typed contract (jarvis.protocol); strict in tests
         message = {"event": event, "ts": time.time(), **data}
         for queue in list(self._subscribers):
             if queue.full():
@@ -62,11 +68,16 @@ class Approval:
     future: asyncio.Future = field(repr=False)
     created: float = field(default_factory=time.time)
     origin: str = ""        # "voice" when a voice/Live call asked for it
-    resolved_by: str = ""   # "voice" (the user's own words) or "ui" (panel, CLI, keybinding)
+    resolved_by: str = ""   # "voice" (the user's own words), "ui" (panel, CLI, keybinding) or a chat channel
+    requester: str = ""     # "telegram:123" when a chat-app request asked for it
+    desk_only: bool = False # only the desktop (panel, CLI, voice) may answer, never a chat button
+    kind: str = "jarvis"    # "jarvis" (a Jarvis task's tool) or "agent" (a coding agent's permission request)
+    seen: asyncio.Event = field(default_factory=asyncio.Event, repr=False)  # a desktop surface is showing it
 
     def public(self) -> dict:
         return {"id": self.id, "task_id": self.task_id, "tool": self.tool, "risk": self.risk,
-                "summary": self.summary, "args": self.args, "created": self.created, "origin": self.origin}
+                "summary": self.summary, "args": self.args, "created": self.created, "origin": self.origin,
+                "requester": self.requester, "desk_only": self.desk_only, "kind": self.kind}
 
 
 @dataclass
@@ -82,6 +93,7 @@ class Task:
     result: str | None = None
     error: str | None = None
     handle: asyncio.Task | None = field(default=None, repr=False)
+    remote: Any = field(default=None, repr=False)   # the RemoteCall it was started for, if any
 
     def public(self) -> dict:
         return {"id": self.id, "title": self.title, "text": self.text, "source": self.source,
@@ -124,7 +136,8 @@ class TaskManager:
         self.bus.publish("task", task=task.public())
 
     def start(self, title: str, source: str, work: Callable[[Task], Awaitable[str | None]], text: str = "") -> Task:
-        task = Task(id=f"t{self._epoch}-{next(self._ids)}", title=title[:120], source=source, text=text or title)
+        task = Task(id=f"t{self._epoch}-{next(self._ids)}", title=title[:120], source=source, text=text or title,
+                    remote=REMOTE.get())
         self.tasks[task.id] = task
         self._trim()
 
@@ -163,10 +176,12 @@ class TaskManager:
         return cancelled
 
     async def request_approval(self, task: Task, tool: str, risk: str, summary: str, args: dict,
-                               origin: str = "") -> str:
-        """Wait for the user's decision; returns how it was approved ("voice" / "ui"), raises if not."""
+                               origin: str = "", desk_only: bool = False) -> str:
+        """Wait for the user's decision; returns how it was approved ("voice" / "ui" / a channel), raises if not."""
+        remote = REMOTE.get()
         approval = Approval(id=f"a{self._epoch}-{next(self._ids)}", task_id=task.id, tool=tool, risk=risk,
-                            summary=summary, args=args, origin=origin,
+                            summary=summary, args=args, origin=origin or (remote.channel if remote else ""),
+                            requester=remote.key if remote else "", desk_only=desk_only,
                             future=asyncio.get_running_loop().create_future())
         self.approvals[approval.id] = approval
         previous = task.state
@@ -189,10 +204,65 @@ class TaskManager:
         self._set_state(task, previous)
         return approval.resolved_by or "ui"
 
+    # ------------------------------------------------------------ approvals for others (coding agents)
+    def open_external(self, tool: str, risk: str, summary: str, args: dict, kind: str = "agent",
+                      origin: str = "") -> Approval:
+        """An approval that belongs to no Jarvis task (a coding agent asks). Desk only, always."""
+        approval = Approval(id=f"a{self._epoch}-{next(self._ids)}", task_id="", tool=tool, risk=risk,
+                            summary=summary, args=args, origin=origin, desk_only=True, kind=kind,
+                            future=asyncio.get_running_loop().create_future())
+        self.approvals[approval.id] = approval
+        self.bus.publish("approval", approval=approval.public())
+        return approval
+
+    async def wait_external(self, approval: Approval, ack_s: float, timeout_s: float) -> tuple[bool | None, str]:
+        """(True/False, "user") when the user decided; (None, why) when nobody saw it, nobody answered,
+        or it was withdrawn. Silence never decides for the user."""
+        allowed: bool | None = None
+        reason = "user"
+        try:
+            # Shown within ack_s (or answered/withdrawn already), else nobody can see it.
+            shown = asyncio.ensure_future(approval.seen.wait())
+            try:
+                await asyncio.wait({shown, approval.future}, timeout=ack_s, return_when=asyncio.FIRST_COMPLETED)
+            finally:
+                shown.cancel()
+            if not approval.seen.is_set() and not approval.future.done():
+                reason = "not shown"
+            if reason == "user":
+                try:
+                    allowed = await asyncio.wait_for(asyncio.shield(approval.future), timeout_s)
+                    if allowed is None:
+                        reason = approval.resolved_by or "withdrawn"
+                except asyncio.TimeoutError:
+                    reason = "timeout"
+        except asyncio.CancelledError:
+            reason = "cancelled"
+            raise
+        finally:
+            self.approvals.pop(approval.id, None)
+            self.bus.publish("approval_resolved", id=approval.id, allowed=bool(allowed),
+                             reason=reason if allowed is None else "user")
+        return allowed, reason
+
+    def seen(self, approval_id: str) -> bool:
+        approval = self.approvals.get(approval_id)
+        if approval:
+            approval.seen.set()
+        return approval is not None
+
+    def withdraw(self, approval_id: str, why: str = "withdrawn") -> None:
+        approval = self.approvals.get(approval_id)
+        if approval and not approval.future.done():
+            approval.resolved_by = why
+            approval.future.set_result(None)
+
     def resolve(self, approval_id: str, allowed: bool, by: str = "ui") -> bool:
         approval = self.approvals.get(approval_id)
         if not approval:
             return False
+        if approval.desk_only and by not in ("ui", "voice"):
+            return False   # a chat app can never answer a desk-only approval
         approval.resolved_by = by
         self._resolve(approval, allowed)
         return True

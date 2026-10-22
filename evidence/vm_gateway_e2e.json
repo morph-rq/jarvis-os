@@ -1,0 +1,55 @@
+{
+  "started": "2026-10-22 05:46:36",
+  "steps": {
+    "connect": {
+      "ok": true,
+      "account": "@jarvis_test_bot",
+      "message": "Telegram connected as @jarvis_test_bot. Now pair your phone."
+    },
+    "polling": {
+      "deleteWebhook": true,
+      "setMyCommands": true
+    },
+    "pair_link": {
+      "link_shape": "https://t.me/jarvis_test_bot?start=<token>",
+      "qr": true
+    },
+    "paired": {
+      "ok": true,
+      "reply": "Paired ✓ You're the owner. Ask me anything, send voice notes, photos or files. /"
+    },
+    "remote_tool_volume": {
+      "reply": "Volume: 0.30",
+      "wpctl_volume_after": 0.3
+    },
+    "remote_tool_windows": {
+      "reply_first_lines": "Open:\n1. chrome-127.0.0.1__login-Default — Рабочее пространство Jarvis [1]"
+    },
+    "approval_and_file": {
+      "approval_prompt": "🔐 Разрешить действие?\nscreenshot(region='full')",
+      "file_sent": {
+        "method": "sendPhoto",
+        "name": "screenshot-2026-10-22_05-46-44.png",
+        "bytes": 445402
+      },
+      "approval_edited": true
+    },
+    "stranger": {
+      "messages_to_stranger": 1,
+      "got_code": true,
+      "pending_requests": 1
+    },
+    "audit_events": [
+      "approval_allowed",
+      "connected",
+      "delivered",
+      "pair_code_created",
+      "paired",
+      "pairing_denied",
+      "pairing_requested",
+      "request",
+      "sent_file"
+    ]
+  },
+  "token_removed": true
+}

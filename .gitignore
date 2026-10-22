@@ -7,6 +7,10 @@ __pycache__/
 # Secrets never live in the repo; see service/jarvis/config.py.
 secrets.env
 *.secret
+.env
+.env.*
+!.env.example
+!.env.sample
 evidence/tmp/
 
 # Downloaded VM launcher (verified hash in UPSTREAM.md)

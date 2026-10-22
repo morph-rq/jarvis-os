@@ -128,6 +128,16 @@ class JarvisGeminiLive(GeminiLiveLLMService):
         if self._jarvis_reconnecting:
             self._tool_call_id_to_name.update(names)
 
+    async def prompt_now(self, text: str) -> bool:
+        """Have the model answer a note right away (a phone call's opening line): client content that
+        completes the turn, as Pipecat does for a conversation kicked off without aggregators."""
+        if self._disconnecting or not self._session or not self._ready_for_realtime_input:
+            return False
+        await self._session.send_client_content(turns=[{"role": "user", "parts": [{"text": text}]}], turn_complete=True)
+        if self._is_gemini_3:   # Gemini 3.x runs inference only after some realtime input
+            await self._session.send_realtime_input(text=" ")
+        return True
+
     async def send_image_content(self, jpeg: bytes, note: str) -> bool:
         """One still image as conversation content (not a realtime video frame), without asking for
         a reply: the pending tool result triggers the answer, with the image in context.

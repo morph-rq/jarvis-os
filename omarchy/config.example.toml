@@ -21,7 +21,12 @@ threshold = 0.5                # lower = more sensitive
 [ui]
 language = "auto"              # auto | ru | en | pt
 hud = true                     # floating cards, notices and approvals at the screen edge
-companion_style = "pebble"     # pebble (eyes) | orb (rings and glow)
+companion_style = "jarvis"     # jarvis (GPU orb with eyes) | pebble (eyes) | orb (rings and glow)
+island = true                  # the Jarvis Island at the top centre (Super+Alt+I)
+island_autohide = false        # idle: shrink to a thin strip until hovered
+island_screen = "focused"      # focused | primary
+island_quiet = false           # do not disturb: only approvals, calls and agent questions open it
+reduced_motion = false         # calmer, shorter animations
 
 # ---- capabilities (docs/CAPABILITIES.md) ----
 
@@ -48,6 +53,24 @@ code_skills = true             # Python skills run only in a bubblewrap sandbox,
 
 # [messaging]
 # telegram_chats = { "Мама" = 123456789 }     # bot token: ... key TELEGRAM_BOT_TOKEN; Jarvis may message only these chats
+
+# ---- messaging gateway: chat with Jarvis from your phone (docs/MESSAGING.md) ----
+# Set up from the panel (Settings → Messaging) or: jarvis-workos gateway connect telegram, then gateway pair.
+# Bot tokens go to the keyring, never here.
+
+[gateway]
+enabled = true
+dm_policy = "pairing"          # pairing: strangers get a code you approve on this computer | allowlist: strangers ignored | disabled
+groups = false                 # group chats: only paired people, only when they mention the bot
+rate_per_minute = 12           # per person
+max_file_mb = 20
+forward_notices = true         # reminders, finished background jobs and notices also go to your chats
+forward_approvals = false      # also send approvals asked on the desktop to your phone
+voice_replies = false          # answer voice notes with a voice note (needs piper + ffmpeg)
+# signal_account = "+15550001111"   # set by "Link device"; signal-cli must be installed
+# whatsapp_phone_id = "1234567890"  # WhatsApp Cloud API; webhook on 127.0.0.1:47615, exposed with a tunnel
+# calls = true                      # WhatsApp voice calls (docs/CALLING.md); turned on by "Enable calls" in the panel
+# call_max_minutes = 15             # each call ends after this
 
 # ---- connected apps and the Living Workspace (docs/INTEGRATIONS.md) ----
 

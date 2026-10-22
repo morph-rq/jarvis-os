@@ -4,10 +4,13 @@ from pathlib import Path
 
 import pytest
 
-from jarvis import config as configmod
+from jarvis import config as configmod, protocol
 from jarvis.memory import Memory
 from jarvis.platforms.base import AppEntry, Platform, Window
 from jarvis.tools import Context, Session
+
+# Every event any test publishes must match the typed contract in jarvis.protocol.
+protocol.STRICT = True
 
 
 class FakePlatform(Platform):

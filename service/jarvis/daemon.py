@@ -13,13 +13,14 @@ import time
 from collections import deque
 from pathlib import Path
 
-from jarvis import __version__, config as configmod, i18n, router
+from jarvis import __version__, config as configmod, i18n, protocol, router
+from jarvis.agents import AgentMonitor
 from jarvis.brain import Brain
 from jarvis.capabilities import Hub
 from jarvis.memory import Memory
 from jarvis.platforms import detect
-from jarvis.tasks import Bus, Task, TaskManager
-from jarvis.tools import CALL_RISK, REGISTRY, SAFE, Context, Session, ToolArgError, safe_run, validate
+from jarvis.tasks import REMOTE, Bus, Task, TaskManager
+from jarvis.tools import CALL_RISK, DANGER, REGISTRY, SAFE, Context, Session, ToolArgError, safe_run, validate
 
 log = logging.getLogger("jarvis")
 
@@ -68,12 +69,16 @@ class Jarvis:
                            vision=self.brain.describe_image if (self.brain.gemini_key or self.brain.claude_key) else None,
                            tasks=self.tasks, resume=lambda: self.continue_task(self.lang(), "voice"))
         self.hub = Hub(self)
+        self.agents = AgentMonitor(self.bus, self.tasks)
         self.ctx.hub, self.ctx.brain = self.hub, self.brain
         from jarvis.integrations import Integrations
         from jarvis.workspace import Workspace
         self.integrations = Integrations(self)
         self.workspace = Workspace(self)
         self.ctx.integrations, self.ctx.workspace = self.integrations, self.workspace
+        from jarvis.gateway import Gateway
+        # Chat apps (Telegram, Discord, Slack, Signal, WhatsApp) as transports into this same brain.
+        self.gateway = Gateway(self)
         self.voice = None
         # Results that finished after the conversation that asked for them had ended; the next Live
         # session is told about them, the panel shows them at once.
@@ -126,7 +131,8 @@ class Jarvis:
 
     def snapshot(self) -> dict:
         lang = self.lang()
-        return {"version": __version__, "platform": self.platform.name, "status": self.bus.status,
+        return {"version": __version__, "protocol": protocol.VERSION, "platform": self.platform.name,
+                "status": self.bus.status, "agents": self.agents.public(),
                 "provider": self.brain.provider, "lang": lang, "ui": i18n.UI[lang],
                 "voice": self.voice.public() if self.voice else {"mode": "unavailable"},
                 "settings": {k: self.config.get(k) for k in configmod.SCHEMA},
@@ -143,6 +149,13 @@ class Jarvis:
         tool = REGISTRY.get(name)
         if not tool:
             return {"ok": False, "message": f"Unknown tool {name}"}
+        remote = REMOTE.get()   # set when a chat app (jarvis.gateway) asked, also inside jobs it delegated
+        if remote is not None:
+            problem = remote.check(name, args if isinstance(args, dict) else {})
+            if problem:
+                self.tasks.step(task, "error", f"{name}: {problem}", tool=name, ok=False)
+                return {"ok": False, "refused": True, "message": problem}
+            preapproved = False
         try:
             args = validate(tool, args)
         except ToolArgError as exc:
@@ -159,6 +172,10 @@ class Jarvis:
                 self.tasks.step(task, "error", f"{name}: {problem}", tool=name, ok=False)
                 return {"ok": False, "refused": True, "message": problem}
         risk = tool.risk_for(args)
+        if remote is not None:
+            if remote.check(name, args):   # again, on the validated arguments
+                return {"ok": False, "refused": True, "message": remote.check(name, args)}
+            risk = remote.risk(name, args, risk)
         if preapproved and (name, str(args.get("action", ""))) not in self.UI_PREAPPROVED:
             preapproved = False
         key = ""
@@ -167,14 +184,17 @@ class Jarvis:
             key = hashlib.sha256(f"{task.id}|{name}|{json.dumps(args, sort_keys=True)}".encode()).hexdigest()
             if key in self._executed:
                 return {**self._executed[key], "note": "already done in this task; not repeated"}
-        if risk not in self.config["approval"]["auto"] and not preapproved:
-            if self.voice and task.source == "voice":
+        # From a chat app nothing above "safe" runs unasked, whatever approval.auto says.
+        auto = ("safe",) if remote is not None else self.config["approval"]["auto"]
+        if risk not in auto and not preapproved:
+            if self.voice and task.source == "voice" and remote is None:   # a phone call is never voiced at the desk
                 # Spoken prompt where Jarvis itself speaks (local engine); Gemini Live is told through
                 # the call's interim result instead, so the two voices never overlap.
                 asyncio.create_task(self.voice.announce(i18n.say("approval", self.lang(), summary=tool.summary(args)), self.lang(), kind="approval"))
             if on_approval is not None:
                 await on_approval(tool.summary(args))
-            approved_by = await self.tasks.request_approval(task, name, risk, tool.summary(args), args, origin=origin)
+            approved_by = await self.tasks.request_approval(task, name, risk, tool.summary(args), args, origin=origin,
+                                                            desk_only=remote is not None and risk == DANGER)
         else:
             approved_by = ""
         self.tasks.step(task, "tool", tool.summary(args), tool=name)
@@ -188,6 +208,8 @@ class Jarvis:
                           card_id=card.get("id"), provenance=card.get("provenance"), task_id=task.id)
         if approved_by:
             result = {**result, "approved_by": approved_by}
+        if remote is not None and isinstance(result, dict) and result.get("ok", True):
+            remote.collect(result)   # files a tool made go back to the chat with the reply
         ms = int((time.perf_counter() - started) * 1000)
         self.tasks.step(task, "result", str(result.get("message", ""))[:300], tool=name, ok=result.get("ok", True), ms=ms)
         if name not in ("show", "generate_ui"):
@@ -354,7 +376,7 @@ class Jarvis:
         text = f"{name}: {str(result.get('message', ''))[:300]}"
         self.notes.append(f"{'done' if result.get('ok', True) else 'failed'} - {text}")
         self.bus.publish("reply", text=f"\u23f1 {text}", task_id=None, late=True, call_id=call_id)
-        if self.voice:
+        if self.voice and REMOTE.get() is None:   # results of a phone call reach the caller's chat, not the desk speaker
             asyncio.create_task(self.voice.announce(str(result.get("message", ""))[:300], self.lang(), idle_ok=False, kind="late"))
 
     async def voice_heard(self, text: str) -> None:
@@ -422,6 +444,19 @@ class Jarvis:
         if op == "approve":
             # `approval_id`, never `id`: `id` is the request id the reply is matched on.
             return {"ok": self.tasks.resolve(str(req.get("approval_id")), bool(req.get("allow", True)))}
+        if op == "approval_seen":
+            # A desktop surface is showing this approval (coding agents wait for this before asking).
+            return {"ok": self.tasks.seen(str(req.get("approval_id")))}
+        if op == "agent_hook":
+            # From jarvis-agent-hook (a coding agent's hook) over this owner-only socket.
+            event = req.get("event") if isinstance(req.get("event"), dict) else {}
+            agent = str(req.get("agent") or "claude")
+            if event.get("hook_event_name") == "PermissionRequest":
+                return {"ok": True, **await self.agents.permission(agent, event)}
+            session = self.agents.handle(agent, event)
+            return {"ok": True, "session": session["id"]}
+        if op == "agents":
+            return {"ok": True, "sessions": self.agents.public()}
         if op == "tasks":
             return {"ok": True, "tasks": self.memory.recent_tasks(int(req.get("limit", 20)))}
         if op == "memory":
@@ -436,6 +471,9 @@ class Jarvis:
             return await self.run_ui_tool("apps", args)
         if op == "workspace":
             return await self.workspace.open(str(req.get("view", "")))
+        if op == "gateway":
+            # Pairing, credentials and revocation: only over this owner-only socket, never from a chat.
+            return await self.gateway.op(req)
         if op == "tools":
             return {"ok": True, "tools": [{"name": t.name, "risk": t.risk if isinstance(t.risk, str) else "dynamic",
                                            "description": t.description} for t in REGISTRY.values()]}
@@ -624,11 +662,13 @@ async def serve(cfg: configmod.Config) -> None:
 
     await jarvis.start_voice()
     await jarvis.hub.start()
+    await jarvis.gateway.start()
     jarvis.bus.publish("status", status="idle")
     async with server:
         serving = asyncio.create_task(server.serve_forever())
         await stop.wait()
         log.info("shutting down")
+        await jarvis.gateway.stop()
         await jarvis.hub.stop()
         await jarvis.workspace.stop()
         await jarvis.integrations.close()

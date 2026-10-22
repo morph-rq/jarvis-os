@@ -15,8 +15,10 @@ import shutil
 import subprocess
 import sys
 import time
+from pathlib import Path
 
-from jarvis import __version__, config as configmod
+from jarvis import __version__
+from jarvis import config as configmod
 
 
 async def _connect():
@@ -157,6 +159,86 @@ def secret(action: str, name: str | None) -> int:
     return 0
 
 
+GATEWAY_FIELDS = {
+    "telegram": [("TELEGRAM_BOT_TOKEN", "Bot token from @BotFather")],
+    "discord": [("DISCORD_BOT_TOKEN", "Bot token (Developer Portal → Bot → Reset Token)")],
+    "slack": [("SLACK_BOT_TOKEN", "Bot token (xoxb-…)"), ("SLACK_APP_TOKEN", "App-level token (xapp-…)")],
+    "whatsapp": [("gateway.whatsapp_phone_id", "Phone number id"), ("WHATSAPP_ACCESS_TOKEN", "Access token"),
+                 ("WHATSAPP_APP_SECRET", "App secret")],
+}
+
+
+async def gateway_cli(args) -> int:
+    """Pairing and credentials from the terminal. Tokens are read from a hidden prompt (or stdin),
+    sent over the owner-only socket and checked by jarvisd before they are stored."""
+    target = args.target or ""
+    if args.action == "connect":
+        fields = GATEWAY_FIELDS.get(target)
+        if not fields:
+            print("connect telegram | discord | slack | whatsapp  (Signal: jarvis-workos gateway link-signal)", file=sys.stderr)
+            return 1
+        import getpass
+        secrets, settings = {}, {}
+        for key, label in fields:
+            value = (getpass.getpass(f"{label}: ") if key.isupper() else input(f"{label}: ")) if sys.stdin.isatty()                 else sys.stdin.readline()
+            (secrets if key.isupper() else settings)[key] = value.strip()
+        result = await request("gateway", action="connect", channel=target, secrets=secrets, settings=settings)
+    elif args.action == "pair":
+        result = await request("gateway", action="pair", channel=target, role="member" if args.guest else "owner")
+    elif args.action in ("approve", "deny"):
+        result = await request("gateway", action=args.action, code=target, role="owner" if args.owner else "member")
+    elif args.action == "revoke":
+        result = await request("gateway", action="revoke", identity_id=int(target or 0))
+    elif args.action == "link-signal":
+        result = await request("gateway", action="link", channel="signal")
+        if result.get("ok"):
+            print("Scan this in Signal → Settings → Linked devices → Link new device:")
+            if shutil.which("qrencode"):
+                subprocess.call(["qrencode", "-t", "ansiutf8", result["uri"]])
+            print(result["uri"])
+            return 0
+    elif args.action in ("people", "status"):
+        result = await request("gateway", action="status")
+        if args.action == "people":
+            result = {"ok": True, "people": result.get("identities"), "requests": result.get("requests")}
+        else:
+            result["channels"] = [{k: c.get(k) for k in ("channel", "state", "account", "detail")} for c in result.get("channels", [])]
+    else:
+        result = await request("gateway", action=args.action, channel=target)
+    print(json.dumps({k: v for k, v in result.items() if k != "reply"}, ensure_ascii=False, indent=2))
+    return 0 if result.get("ok", True) else 1
+
+
+def agents_cli(args) -> int:
+    from jarvis import agent_hooks
+    if args.action == "hooks" and args.verb in ("install", "remove"):
+        if args.verb == "install":
+            binary = shutil.which("jarvis-agent-hook") or str(Path.home() / ".local" / "bin" / "jarvis-agent-hook")
+            path, backup = agent_hooks.install(args.agent, binary)
+            print(f"Jarvis hooks added to {path}" + (f" (backup: {backup})" if backup else ""))
+            if args.agent == "codex":
+                print("Codex asks you to trust new hooks once: run /hooks inside Codex.")
+        else:
+            path, backup = agent_hooks.uninstall(args.agent)
+            print(f"Jarvis hooks removed from {path} (backup: {backup})" if backup else f"No Jarvis hooks in {path}")
+        return 0
+    if args.action == "hooks":
+        for agent, info in agent_hooks.status().items():
+            state = ", ".join(info["events"]) if info["events"] else ("unreadable" if not info["readable"] else "not installed")
+            print(f"{agent:7} {info['path']}: {state}")
+        return 0
+    try:
+        sessions = asyncio.run(request("agents")).get("sessions", [])
+    except (ConnectionError, FileNotFoundError, ConnectionRefusedError):
+        print("jarvisd is not running")
+        return 1
+    if not sessions:
+        print("No coding agent sessions (install the hooks: jarvis-workos agents hooks install)")
+    for s in sessions:
+        print(f"{s['label']:12} {s['project'] or '-':20} {s['state']:10} {s['activity'] or s['summary'] or s['prompt']}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="jarvis-workos", description="Jarvis WorkOS companion")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -214,6 +296,20 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("action", nargs="?", default="status", choices=["status", "connect", "disconnect", "prefer"])
     p.add_argument("app", nargs="?")
     p.add_argument("account", nargs="?")
+    p = sub.add_parser("gateway", help="chat apps (Telegram, Discord, Slack, Signal, WhatsApp): status | connect CHANNEL | "
+                                       "pair [CHANNEL] [--guest] | approve CODE [--owner] | deny CODE | revoke ID | "
+                                       "disconnect CHANNEL | test CHANNEL | link-signal | people | audit | schedules")
+    p.add_argument("action", nargs="?", default="status",
+                   choices=["status", "connect", "pair", "approve", "deny", "revoke", "disconnect", "reconnect", "test",
+                            "link-signal", "people", "audit", "schedules"])
+    p.add_argument("target", nargs="?")
+    p.add_argument("--guest", action="store_true", help="pair: a guest (chat and lookups only) instead of the owner")
+    p.add_argument("--owner", action="store_true", help="approve: give the person owner rights")
+    p = sub.add_parser("agents", help="coding agents (Claude Code, Codex) on this desktop: status | hooks install|remove "
+                                      "[claude|codex] — lets Jarvis show their work and ask you about their permission requests")
+    p.add_argument("action", nargs="?", default="status", choices=["status", "hooks"])
+    p.add_argument("verb", nargs="?", choices=["install", "remove", "status"])
+    p.add_argument("agent", nargs="?", default="claude", choices=["claude", "codex"])
     p = sub.add_parser("secret", help="store a key without it touching shell history: secret set NAME (prompts)")
     p.add_argument("action", choices=["set", "clear", "status"])
     p.add_argument("name", nargs="?", choices=list(configmod.SECRET_NAMES))
@@ -246,6 +342,10 @@ def main(argv: list[str] | None = None) -> int:
             return subprocess.call(["omarchy-shell", "shell", args.action, "jarvis.companion", *extra])
         if args.cmd == "secret":
             return secret(args.action, args.name)
+        if args.cmd == "agents":
+            return agents_cli(args)
+        if args.cmd == "gateway":
+            return asyncio.run(gateway_cli(args))
         if args.cmd == "config" and args.action == "path":
             print(configmod.load().path)
             return 0

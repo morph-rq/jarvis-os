@@ -16,6 +16,7 @@
 #   ./install.sh --no-local      skip the local speech stack (no wake word, no offline fallback)
 #   ./install.sh --no-pipecat    skip the Pipecat voice engine (voice.runtime = legacy)
 #   ./install.sh --no-documents  skip the Office/PDF libraries (create_document / read_document / pdf_tools)
+#   ./install.sh --no-calls      skip WebRTC media for WhatsApp voice calls (aiortc; messaging still works)
 #   ./install.sh --no-google     skip the Google Workspace connector (workspace-mcp in its own venv)
 #   ./install.sh --genoffice     also install GenOffice (AppImage, sha256-verified, extracted; ~190 MB download)
 #   ./install.sh --echo-cancel   add a PipeWire echo-cancelled microphone for speaker barge-in
@@ -35,6 +36,7 @@ link=0
 local_speech=1
 pipecat=1
 documents=1
+calls=1
 google=1
 genoffice=0
 echo_cancel=0
@@ -45,6 +47,7 @@ while (( $# > 0 )); do
     --no-local) local_speech=0 ;;
     --no-pipecat) pipecat=0 ;;
     --no-documents) documents=0 ;;
+    --no-calls) calls=0 ;;
     --no-google) google=0 ;;
     --genoffice) genoffice=1 ;;
     --echo-cancel) echo_cancel=1 ;;
@@ -125,6 +128,16 @@ if (( pipecat )); then
     "${pip[@]}" install --no-index --find-links "$wheels" --require-hashes --no-deps --no-build-isolation       -r "$repo/omarchy/locks/pipecat.lock"
   else
     "${pip[@]}" install --require-hashes --no-deps -r "$repo/omarchy/locks/pipecat.lock"
+  fi
+  if (( calls )); then
+    # WebRTC media for WhatsApp voice calls (aiortc, BSD-3-Clause); PyAV stays at the speech lock's
+    # version (override verified, see the lock header).
+    step "WhatsApp call media (hash-locked aiortc)"
+    if [[ -n $wheels ]]; then
+      "${pip[@]}" install --no-index --find-links "$wheels" --require-hashes --no-deps -r "$repo/omarchy/locks/calls.lock"
+    else
+      "${pip[@]}" install --require-hashes --no-deps -r "$repo/omarchy/locks/calls.lock"
+    fi
   fi
 fi
 if (( documents )); then

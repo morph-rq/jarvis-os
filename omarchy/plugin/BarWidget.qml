@@ -2,9 +2,10 @@ import QtQuick
 import Quickshell
 import qs.Ui
 import qs.Commons
+import "ui"
 
-// Jarvis in the top bar: the animated companion at bar size (the pebble with eyes, or the orb
-// with ui.companion_style = "orb"). Left click opens the conversation panel, right click is
+// Jarvis in the top bar: the animated companion at bar size (the Jarvis orb by default; the pebble
+// with eyes or the Canvas orb with ui.companion_style = "pebble" / "orb"). Left click opens the conversation panel, right click is
 // push-to-talk, middle click toggles dictation (the same mapping as Hey Jarvis's widget). State
 // comes from this plugin's own service.
 BarWidget {
@@ -14,14 +15,37 @@ BarWidget {
   readonly property var service: bar && bar.shell && typeof bar.shell.serviceFor === "function"
     ? bar.shell.serviceFor("jarvis.companion") : null
   readonly property string status: service ? service.status : "offline"
-  readonly property bool orb: !!service && service.settings["ui.companion_style"] === "orb"
+  readonly property string style: service && service.settings["ui.companion_style"] ? service.settings["ui.companion_style"] : "jarvis"
+  readonly property bool orb: style === "orb"
 
   implicitWidth: barSize * 1.25
   implicitHeight: barSize
 
+  JarvisOrb {
+    id: jarvisOrb
+    anchors.centerIn: parent
+    visible: root.style === "jarvis"
+    size: Math.round(root.barSize * 0.95)
+    status: root.service && root.service.connected ? root.status : "offline"
+    level: root.service ? root.service.level : 0
+    bands: root.service ? root.service.bands : []
+    vad: !!root.service && root.service.vad
+    Connections { target: root.service; function onReaction(kind) { jarvisOrb.react(kind) } }
+    MouseArea {
+      anchors.fill: parent
+      acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+      cursorShape: Qt.PointingHandCursor
+      onClicked: function(e) {
+        if (!root.service) return
+        if (e.button === Qt.RightButton) root.service.listen()
+        else if (e.button === Qt.MiddleButton) root.service.dictate("toggle")
+        else root.service.togglePanel()
+      }
+    }
+  }
   Companion {
     anchors.centerIn: parent
-    visible: !root.orb
+    visible: root.style === "pebble"
     size: Math.round(root.barSize * 0.62)
     status: root.status
     level: root.service ? root.service.level : 0

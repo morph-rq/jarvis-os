@@ -5,8 +5,11 @@ An executive AI companion built as native extensions to [Omarchy](https://github
 - Upstream pins and what Jarvis touches: [UPSTREAM.md](UPSTREAM.md)
 - Pipecat and Hey Jarvis integration: architecture, feature matrix, tool report, security review and hardware checklist in [docs/INTEGRATION.md](docs/INTEGRATION.md)
 - Capabilities (reminders, web, documents, skills, planning, self-repair, proactive help, system control, maps, circuits, smart home, mail, meetings…) and the HUD, with their verification status: [docs/CAPABILITIES.md](docs/CAPABILITIES.md)
+- Messaging gateway: chat with this same Jarvis from Telegram, Discord, Slack, Signal and WhatsApp (voice notes, photos, files, schedules, approvals with buttons; pairing and a strict remote policy; jarvisd stays the only brain): [docs/MESSAGING.md](docs/MESSAGING.md)
+- WhatsApp voice calls through the official Business Calling API: call Jarvis from WhatsApp and talk (Gemini Live through Pipecat, the same tools and approvals), or let Jarvis call you with reminders: [docs/CALLING.md](docs/CALLING.md)
 - Connected apps (Google Workspace through its MCP server, Composio for Slack/Notion/GitHub/CRMs…), real Office files (Jarvis's engine + GenOffice) and the Living Workspace (interactive results, sandboxed generated interfaces, AG-UI): [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md)
 - Screenshots, test reports and benchmarks: [evidence/](evidence/)
+- Cloud development and bringing changes back locally: [CLAUDE.md](CLAUDE.md)
 
 ```
  Omarchy shell (Quickshell)                    jarvisd (Python, systemd user service)
@@ -107,7 +110,9 @@ Anything else goes to Gemini with the same tools, for example:
 ```powershell
 uv venv .venv; uv pip install -e "service[dev,windows,local,pipecat]"
 .venv\Scripts\python -m jarvis daemon
-.venv\Scripts\python -m pytest service\tests          # 344 tests
+Push-Location service
+..\.venv\Scripts\python -m pytest tests
+Pop-Location
 .venv\Scripts\python service\tests\pipecat_e2e.py      # real Gemini Live via Pipecat: tools, approval, screen, barge-in
 .venv\Scripts\python service\tests\pipecat_resilience_e2e.py   # dropped connection, memory across sessions, screen sharing
 .venv\Scripts\python service\tests\live_e2e.py         # same idea on the legacy runtime
