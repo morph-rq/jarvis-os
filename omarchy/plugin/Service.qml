@@ -581,6 +581,7 @@ Item {
     Loader {
       id: floating
       anchors.centerIn: parent
+      active: companionWindow.visible   // nothing animates (or exists) while the companion is off
       scale: mover.dragging ? 0.9 : 1
       opacity: mover.dragging ? 0.75 : 1
       Behavior on scale { NumberAnimation { duration: Tokens.durFast } }

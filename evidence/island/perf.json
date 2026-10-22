@@ -1,0 +1,32 @@
+{
+  "renderer": "Mesa llvmpipe (software) under Xvfb, no vsync: CPU includes rasterising",
+  "window": "1920x1080",
+  "states": {
+    "idle mini (orb resting)": {
+      "fps": 18.7,
+      "cpu_percent_of_one_core": 64.7,
+      "island": "idle mini"
+    },
+    "hidden (auto-hide)": {
+      "fps": 0.0,
+      "cpu_percent_of_one_core": 0.0,
+      "island": "idle hidden"
+    },
+    "listening peek (levels at 15 Hz)": {
+      "fps": 82.7,
+      "cpu_percent_of_one_core": 276.7,
+      "island": "voice peek"
+    },
+    "listening expanded (92 px orb)": {
+      "fps": 62.5,
+      "cpu_percent_of_one_core": 224.6,
+      "island": "voice expanded"
+    },
+    "conversation open, nothing happening": {
+      "fps": 35.3,
+      "cpu_percent_of_one_core": 141.8,
+      "island": "idle conversation"
+    }
+  },
+  "orb_tick_us": 33.2
+}

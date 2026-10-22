@@ -34,7 +34,7 @@ sys.path.insert(0, str(ROOT / "service"))
 from PySide6.QtCore import QObject, QPoint, QPointF, QRect, Qt, QTimer, QUrl, qInstallMessageHandler  # noqa: E402
 from PySide6.QtGui import QGuiApplication, QImage  # noqa: E402
 from PySide6.QtNetwork import QLocalServer, QLocalSocket  # noqa: E402
-from PySide6.QtQml import QQmlApplicationEngine  # noqa: E402
+from PySide6.QtQml import QQmlApplicationEngine, QQmlEngine, QQmlExpression  # noqa: E402
 from PySide6.QtQuick import QQuickItem, QQuickWindow  # noqa: E402
 from PySide6.QtTest import QTest  # noqa: E402
 
@@ -197,6 +197,12 @@ class Preview:
     def service(self) -> QObject:
         return self.window.property("service")
 
+    def eval(self, expression: str):
+        """Evaluate a QML expression in Service.qml's scope (e.g. "cards.count", "timers.length")."""
+        svc = self.service
+        value, _undefined = QQmlExpression(QQmlEngine.contextForObject(svc), svc, expression).evaluate()
+        return value
+
     def ipc(self, method: str, *args: str):
         return qs.call_ipc(self.engine, "jarvis", method, *args)
 
@@ -325,7 +331,10 @@ def main(argv=None) -> int:
     if args.scenario and scenario is None:
         raise SystemExit(f"unknown scenario {args.scenario!r}; known: {', '.join(scenarios.SCENARIOS)}")
     fake = None
-    if args.fake or (scenario is not None and not getattr(scenario, "real", False)):
+    if scenario is not None and getattr(scenario, "real", False):
+        # A real jarvisd started by the scenario. Short path: a unix socket path must fit in 108 bytes.
+        os.environ["XDG_RUNTIME_DIR"] = tempfile.mkdtemp(prefix="jw-", dir="/tmp")
+    elif args.fake or scenario is not None:
         path = runtime_with_socket(None)
         QGuiApplication.instance() or QGuiApplication(sys.argv)
         fake = FakeDaemon(path)

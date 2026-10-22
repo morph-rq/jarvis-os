@@ -416,4 +416,7 @@ def companion(p, fake, shots):
     _expect(p, "idle conversation", "click on the companion")
 
 
-SCENARIOS = {"smoke": smoke, "gallery": gallery, "companion": companion}
+from e2e import jarvisd  # noqa: E402  (the same UI against the real daemon)
+from perf import perf  # noqa: E402
+
+SCENARIOS = {"smoke": smoke, "gallery": gallery, "companion": companion, "jarvisd": jarvisd, "perf": perf}

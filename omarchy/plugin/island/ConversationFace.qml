@@ -5,8 +5,8 @@ import "../ui/commands.js" as Commands
 import ".."
 
 // The conversation view (Super+Alt+A, or ⌨ on any card): the transcript with tasks inline, the
-// live captions of whoever is talking, the newest rich result, and one line to type into, with the
-// quick requests while it is empty. Voice and text are the same conversation. Esc or a click outside
+// live captions of whoever is talking, the newest rich result, a pending approval (so a request typed
+// here is answered here), and one line to type into, with the quick requests while it is empty. Voice and text are the same conversation. Esc or a click outside
 // folds it back; the Living Workspace and the panel are one click away for anything bigger.
 FaceBase {
   id: face
@@ -16,8 +16,8 @@ FaceBase {
   readonly property int rows: s ? s.messages.count : 0
   // (The island clamps it to the screen; `island` itself is assigned after loading, so reading it
   // here would also loop.)
-  implicitHeight: header.height + Math.max(96, Math.min(7, rows) * 46) + result.height + inputBox.height
-                  + chips.height + 64
+  implicitHeight: header.height + Math.max(96, Math.min(7, rows) * 46) + result.height + approvalBox.height
+                  + inputBox.height + chips.height + 64
 
   function focusInput() { input.forceActiveFocus() }
   Component.onCompleted: Qt.callLater(focusInput)
@@ -165,7 +165,7 @@ FaceBase {
   // The newest fresh result, inline (rich, not a chat bubble).
   Item {
     id: result
-    anchors { left: parent.left; right: parent.right; bottom: inputBox.top; margins: 14; bottomMargin: 8 }
+    anchors { left: parent.left; right: parent.right; bottom: approvalBox.top; margins: 14; bottomMargin: 8 }
     readonly property var c: face.island ? face.island.newestCard : null
     readonly property bool fresh: !!c && (c.pinned || c.ttl <= 0 || face.island.now - c.born < c.ttl * 1000)
     height: fresh ? Math.min(body.implicitHeight, 220) : 0
@@ -181,6 +181,30 @@ FaceBase {
       cardWidth: width
       fg: Tokens.text
       accent: Tokens.blue
+    }
+  }
+
+  // The oldest pending approval, answered right here (the island's own approval card, inline).
+  Item {
+    id: approvalBox
+    readonly property var pending: face.s && face.s.approvals.length > 0 ? face.s.approvals[0] : null
+    anchors { left: parent.left; right: parent.right; bottom: inputBox.top; leftMargin: 14; rightMargin: 14; bottomMargin: 8 }
+    height: pending ? approvalCard.implicitHeight : 0
+    visible: height > 0
+    Rectangle {
+      anchors.fill: parent
+      radius: Tokens.radiusLarge
+      color: Tokens.surface
+      border.width: 1
+      border.color: Tokens.alpha(Tokens.amber, 0.45)
+    }
+    ApprovalCard {
+      id: approvalCard
+      anchors { left: parent.left; right: parent.right; top: parent.top }
+      margin: 12
+      approval: approvalBox.pending
+      s: face.s
+      island: face.island
     }
   }
 

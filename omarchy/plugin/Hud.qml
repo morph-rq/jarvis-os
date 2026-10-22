@@ -434,7 +434,9 @@ Item {
   component Spinner: Canvas {
     property color color: root.accent
     width: 18; height: 18
-    RotationAnimation on rotation { running: true; loops: Animation.Infinite; from: 0; to: 360; duration: 900 }
+    // Only while it is on screen: an infinite animation keeps Qt's animation timer (and the whole
+    // shell) waking at the display's rate even when nothing is shown.
+    RotationAnimation on rotation { running: visible && root.active && root.busy; loops: Animation.Infinite; from: 0; to: 360; duration: 900 }
     onPaint: {
       var ctx = getContext("2d"); ctx.reset()
       ctx.lineWidth = 2; ctx.lineCap = "round"; ctx.strokeStyle = color

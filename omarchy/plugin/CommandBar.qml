@@ -71,6 +71,9 @@ Item {
 
     Rectangle {
       id: card
+      // Explicit: items in a hidden layer-shell window still count as visible, and the orb and the
+      // spectrum below animate only while visible.
+      visible: root.open
       width: parent.width
       implicitHeight: content.implicitHeight + 28
       radius: 22

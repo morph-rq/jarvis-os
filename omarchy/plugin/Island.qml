@@ -100,7 +100,12 @@ Item {
   readonly property string activityKind: act.kind
   readonly property string mode: root.active ? Logic.mode(input, act) : "hidden"
   readonly property string faceKey: _keyFor(mode, act)
-  function _keyFor(m, a) { return (m === "hidden" || m === "mini" ? "mini" : m) + ":" + a.kind }
+  // One face per mode and activity, except the conversation view: it stays the same view whatever
+  // happens during it (tasks, results, approvals show inside it), so typing and scrolling survive.
+  function _keyFor(m, a) {
+    if (m === "conversation") return "conversation:"
+    return (m === "hidden" || m === "mini" ? "mini" : m) + ":" + a.kind
+  }
   // Swap faces when the key changes; the outgoing face keeps the data it was showing.
   property string _shownKey: ""
   property var _shownItem: null
@@ -200,7 +205,10 @@ Item {
   function swapFaces(key, oldItem) {
     var out = face, next = outgoing
     out.faceItem = oldItem                         // freeze: no longer follows the new activity
-    next.faceMode = key.split(":")[0]
+    out.faceMode = out.faceMode                    // …nor the mode
+    // The active face follows the live mode: mini and hidden share a face, and in hidden mode the
+    // orb must stop (it is a 5 px strip then).
+    next.faceMode = Qt.binding(function() { return root.mode })
     next.faceKind = act.kind
     next.faceItem = Qt.binding(function() { return root.act.item })   // follows it until swapped out
     next.sourceComponent = _componentFor(key)
