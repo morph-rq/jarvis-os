@@ -131,6 +131,7 @@ def jarvisd(p, fake, shots):
         report["jarvisd"] = {"version": snap.get("version"), "platform": snap.get("platform"),
                              "voice": snap.get("voice", {}).get("mode"), "provider": snap.get("provider")}
         step("connects to jarvisd and shows the idle pill", connect_s=round(t, 2))
+        yield 1.5                      # the orb eases back out of its offline pose
         shot("idle", (760, 96))
 
         # ------------------------------------------------ a typed request, its real task and result card
@@ -220,6 +221,7 @@ def jarvisd(p, fake, shots):
         d.hook({**base, "hook_event_name": "PreToolUse", "tool_name": "Edit",
                 "tool_input": {"file_path": "/home/me/projects/shop/src/checkout.ts"}})
         yield from wait_for(lambda: p.island_state() == "agent peek", 6)
+        yield 1.0                      # let the morph and the cross-fade finish
         shot("agent-peek", (760, 110))
         result: dict = {}
         perm = {**base, "hook_event_name": "PermissionRequest", "tool_name": "Bash",
@@ -250,6 +252,7 @@ def jarvisd(p, fake, shots):
         d.start()
         yield from wait_for(lambda: p.island_state() == "idle mini", 30)
         step("jarvisd restarted: the island reconnected by itself", reconnect_s=round(time.time() - t0, 1))
+        yield 3.0                      # the orb grows back out of its offline pose
         shot("reconnected", (760, 96))
 
         bad = [w for w in p.warnings if "Binding loop" in w or "TypeError" in w or "ReferenceError" in w]

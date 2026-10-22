@@ -1,17 +1,17 @@
 {
-  "started": "2026-10-22 06:05:51",
+  "started": "2026-10-22 06:15:23",
   "steps": [
     {
       "step": "connects to jarvisd and shows the idle pill",
       "ok": true,
       "island": "idle mini",
-      "connect_s": 2.29
+      "connect_s": 2.3
     },
     {
       "step": "typed request -> real task -> result card",
       "ok": true,
       "island": "result expanded",
-      "card_after_s": 0.48,
+      "card_after_s": 0.49,
       "task": "check my computer",
       "task_state": "succeeded"
     },
@@ -72,7 +72,7 @@
     "provider": "none"
   },
   "ok": true,
-  "finished": "2026-10-22 06:06:28",
+  "finished": "2026-10-22 06:16:05",
   "jarvisd_log_tail": [
     "Traceback (most recent call last):",
     "  File \"/home/user/jarvis/service/jarvis/daemon.py\", line 98, in start_voice",
@@ -84,7 +84,7 @@
     "  File \"/home/user/jarvis/service/jarvis/audio.py\", line 289, in _spawn",
     "    raise RuntimeError(\"pw-play not found (PipeWire)\")",
     "RuntimeError: pw-play not found (PipeWire)",
-    "2026-10-22 06:06:27.043 | INFO     | pipecat:<module>:54 - ᓚᘏᗢ Pipecat 1.13.0 (Python 3.13.16 (main, Oct  1 2026, 15:40:24) [GCC 13.3.0]) ᓚᘏᗢ",
-    "2026-10-22 06:06:27,846 jarvis INFO shutting down"
+    "2026-10-22 06:16:01.927 | INFO     | pipecat:<module>:54 - ᓚᘏᗢ Pipecat 1.13.0 (Python 3.13.16 (main, Oct  1 2026, 15:40:24) [GCC 13.3.0]) ᓚᘏᗢ",
+    "2026-10-22 06:16:05,054 jarvis INFO shutting down"
   ]
 }
