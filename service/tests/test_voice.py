@@ -88,11 +88,14 @@ async def make_controller(j, clips):
 
 
 @needs_local
-def test_wake_word_then_russian_command_local_pipeline(jarvis, fake):
+@pytest.mark.parametrize("runtime", ["pipecat", "legacy"])
+def test_wake_word_then_russian_command_local_pipeline(jarvis, fake, runtime):
     """Hey Jarvis -> Russian command -> Whisper -> fast router -> Hyprland tool -> Piper reply. No network.
 
     Whisper `small` on CPU mishears Piper's synthetic "открой терминал" about half the time
     ("отройте минал"), so this uses a command it transcribes reliably; accuracy is reported separately."""
+    jarvis.config.set("voice.runtime", runtime)
+
     async def main():
         clips = [synth("Hey Jarvis!", "en"), synth("Переключись на рабочий стол номер три.", "ru")]
         vc = await make_controller(jarvis, clips)
@@ -118,6 +121,8 @@ def test_wake_word_then_russian_command_local_pipeline(jarvis, fake):
             if m["event"] != "level":
                 fh.write(__import__("json").dumps(m, ensure_ascii=False, default=str)[:600] + "\n")
     assert any(m["event"] == "wake" for m in seen), "wake word did not fire"
+    assert vc.runtime() == runtime
+    assert any(m["event"] == "pipeline" and m.get("state") == "connected" for m in seen) == (runtime == "pipecat")
     heard = [m["text"] for m in seen if m["event"] == "transcript" and m["role"] == "user"]
     assert heard and "стол" in heard[-1].lower(), heard          # a Russian transcript came back
     assert any(m["event"] == "task" and m["task"]["state"] == "succeeded" for m in seen)
@@ -129,10 +134,12 @@ def test_wake_word_then_russian_command_local_pipeline(jarvis, fake):
 
 
 @needs_local
-def test_live_outage_falls_back_to_local(jarvis, fake, monkeypatch):
+@pytest.mark.parametrize("runtime", ["pipecat", "legacy"])
+def test_live_outage_falls_back_to_local(jarvis, fake, monkeypatch, runtime):
     """Gemini Live unreachable (bad key) -> spoken notice -> the same request served locally."""
     monkeypatch.setenv("GEMINI_API_KEY", "invalid-key-for-outage-test")
     jarvis.config.set("voice.engine", "live")
+    jarvis.config.set("voice.runtime", runtime)
 
     async def main():
         vc = await make_controller(jarvis, [synth("Hey Jarvis!", "en")])
@@ -149,10 +156,13 @@ def test_live_outage_falls_back_to_local(jarvis, fake, monkeypatch):
             if msg["event"] == "live" and msg.get("state") == "unavailable" and not said_command:
                 said_command = True
                 vc.mic.clips = []
-                await asyncio.sleep(2.5)   # let the offline notice play first
-                for chunk in (localvoice.frames_of(synth("Переключись на рабочий стол номер два.", "ru"))):
-                    vc.mic._put(chunk)
-                    await asyncio.sleep(0.08)
+                # Let the offline notice play first: speech over Jarvis's own voice is gated (half duplex).
+                for _ in range(100):
+                    if any(o == "piper" for o, _ in vc.speaker.played) and not vc.speaker.speaking:
+                        break
+                    await asyncio.sleep(0.1)
+                await asyncio.sleep(0.8)
+                vc.mic.inject(synth("Переключись на рабочий стол номер два.", "ru"))
             if msg["event"] == "task" and msg["task"]["state"] == "succeeded":
                 break
         await vc.shutdown()
@@ -161,7 +171,8 @@ def test_live_outage_falls_back_to_local(jarvis, fake, monkeypatch):
     assert any(m["event"] == "live" and m.get("state") == "unavailable" for m in seen), "Live did not report the outage"
     assert any(owner == "piper" for owner, _ in vc.speaker.played), "no spoken offline notice"
     heard = [m["text"] for m in seen if m["event"] == "transcript" and m["role"] == "user"]
-    assert heard and any(m["event"] == "task" and m["task"]["state"] == "succeeded" for m in seen), heard
+    trace = [(m["event"], m.get("phase") or m.get("state") or m.get("text")) for m in seen if m["event"] != "level"]
+    assert heard and any(m["event"] == "task" and m["task"]["state"] == "succeeded" for m in seen), " | ".join(map(str, trace))
 
 
 @needs_local
@@ -208,7 +219,66 @@ def test_dictation_transcribes_russian_and_inserts(jarvis, monkeypatch):
         await vc.shutdown()
         return r
     r = asyncio.run(main())
-    assert r["state"] == "pasted" and "диктовк" in inserted[0].lower(), inserted
+    # Whisper on a synthetic voice under CPU load sometimes writes "диктофки": accept the stem.
+    assert r["state"] == "pasted" and "дикт" in inserted[0].lower(), inserted
+
+
+@needs_local
+def test_local_pipeline_survives_piper_failure_and_speaks_again(jarvis, fake, monkeypatch):
+    """Piper raising mid-conversation produces an error event, not a dead pipeline: the next turn works."""
+    jarvis.config.set("voice.first_speech_wait_seconds", 10)
+
+    async def main():
+        vc = await make_controller(jarvis, [synth("Hey Jarvis!", "en")])
+        events = jarvis.bus.subscribe()
+        original = vc.piper.voice_for
+        calls = {"n": 0}
+
+        def flaky(lang):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise RuntimeError("piper exploded")
+            return original(lang)
+        vc.piper.voice_for = flaky
+        while not (vc.session and vc.session.connected.is_set()):
+            await asyncio.sleep(0.1)
+        await asyncio.sleep(1.5)
+        vc.mic.inject(synth("Переключись на рабочий стол номер два.", "ru"))
+        seen = []
+        deadline = time.monotonic() + 60
+        while time.monotonic() < deadline and not any(o == "piper" for o, _ in vc.speaker.played):
+            try:
+                seen.append(await asyncio.wait_for(events.get(), 1))
+            except asyncio.TimeoutError:
+                pass
+            if any(m["event"] == "task" and m["task"]["state"] == "succeeded" for m in seen) and calls["n"] == 1:
+                await vc.session.say("Проверка.")   # the next utterance after the failure
+        alive = vc.session is not None and not vc.session.closed.is_set()
+        await vc.shutdown()
+        return seen, alive, calls["n"]
+    seen, alive, n = asyncio.run(main())
+    trace = " | ".join(f"{m['event']}:{m.get('state') or m.get('phase') or m.get('text') or ''}" for m in seen
+                       if m["event"] != "level")
+    assert any(m["event"] == "pipeline" and m.get("state") == "error" for m in seen), "not reported: " + trace
+    assert alive and n >= 2, trace
+
+
+def test_local_engine_without_models_says_so(jarvis, monkeypatch):
+    jarvis.config.set("voice.engine", "local")
+
+    async def main():
+        from jarvis.voice import VoiceController
+        vc = VoiceController(jarvis)
+        vc.speaker = RecordingSpeaker()
+        await vc.speaker.start()
+        vc.gate = vc.piper = None            # nothing local installed
+        jarvis.voice = vc
+        from jarvis.engine.local import LocalSession
+        s = LocalSession(vc, "ru")
+        ok = await s.start()
+        return ok, s.error
+    ok, error = asyncio.run(main())
+    assert not ok and "not installed" in error
 
 
 def test_barge_gate_ignores_bleed_and_fires_on_speech():

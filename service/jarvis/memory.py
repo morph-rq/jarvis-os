@@ -32,7 +32,33 @@ class Memory:
             self.fts = True
         except sqlite3.OperationalError:
             self.fts = False
+        # Columns added for the Pipecat runtime: where a turn came from, whether the answer was cut off,
+        # and a per-session key so a repeated or late event can never store the same turn twice.
+        columns = {row[1] for row in self.db.execute("PRAGMA table_info(history)")}
+        for name, kind in (("source", "TEXT"), ("interrupted", "INTEGER NOT NULL DEFAULT 0"), ("turn_key", "TEXT")):
+            if name not in columns:
+                self.db.execute(f"ALTER TABLE history ADD COLUMN {name} {kind}")
+        self.db.execute("CREATE UNIQUE INDEX IF NOT EXISTS history_turn_key ON history(turn_key) WHERE turn_key IS NOT NULL")
         self.db.commit()
+
+    # Capability modules (reminders, skills, notes…) keep their own tables in the same database.
+    def schema(self, sql: str) -> None:
+        with self._lock:
+            self.db.executescript(sql)
+            self.db.commit()
+
+    def execute(self, sql: str, params: tuple = ()) -> int:
+        """One write; returns lastrowid (inserts) or rowcount."""
+        with self._lock:
+            cur = self.db.execute(sql, params)
+            self.db.commit()
+            return cur.lastrowid if sql.lstrip().upper().startswith("INSERT") else cur.rowcount
+
+    def query(self, sql: str, params: tuple = ()) -> list[dict]:
+        with self._lock:
+            cur = self.db.execute(sql, params)
+            names = [d[0] for d in cur.description or ()]
+            return [dict(zip(names, row)) for row in cur.fetchall()]
 
     def remember(self, text: str) -> int:
         text = text.strip()
@@ -70,15 +96,21 @@ class Memory:
                 rows = self.db.execute("SELECT id, text FROM facts ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
             return [{"id": r[0], "text": r[1]} for r in rows]
 
-    def add_turn(self, role: str, text: str) -> None:
+    def add_turn(self, role: str, text: str, source: str = "", interrupted: bool = False, key: str | None = None) -> bool:
+        """Store one finalized turn. With `key`, a second write of the same turn is ignored."""
         if not text.strip():
-            return
+            return False
         with self._lock:
-            self.db.execute("INSERT INTO history(role, text, created) VALUES (?, ?, ?)", (role, text, time.time()))
+            cur = self.db.execute(
+                "INSERT OR IGNORE INTO history(role, text, created, source, interrupted, turn_key) VALUES (?, ?, ?, ?, ?, ?)",
+                (role, text, time.time(), source or None, int(interrupted), key))
+            if cur.rowcount == 0:
+                return False
             self.db.execute(
                 "DELETE FROM history WHERE id <= (SELECT id FROM history ORDER BY id DESC LIMIT 1 OFFSET ?)",
                 (self.max_history_rows,))
             self.db.commit()
+            return True
 
     # ---------------------------------------------------------------- tasks
     def save_task(self, task: dict) -> None:
@@ -111,5 +143,17 @@ class Memory:
     def recent_turns(self, limit: int) -> list[dict]:
         with self._lock:
             rows = self.db.execute(
-                "SELECT role, text, created FROM history ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
-        return [{"role": r[0], "text": r[1], "created": r[2]} for r in reversed(rows)]
+                "SELECT role, text, created, interrupted FROM history ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+        return [{"role": r[0], "text": r[1], "created": r[2], "interrupted": bool(r[3])} for r in reversed(rows)]
+
+    def context_messages(self, limit: int) -> list[dict]:
+        """Recent turns as chat messages for seeding a realtime session.
+
+        An interrupted answer is kept but marked, so the model knows the user did not hear all of it."""
+        out = []
+        for turn in self.recent_turns(limit) if limit else []:
+            text = turn["text"] + (" [interrupted: the user did not hear the rest]" if turn["interrupted"] else "")
+            out.append({"role": "assistant" if turn["role"] == "assistant" else "user", "content": text})
+        while out and out[0]["role"] != "user":
+            out.pop(0)
+        return out

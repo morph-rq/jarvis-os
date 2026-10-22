@@ -28,17 +28,30 @@ DEFAULTS: dict = {
         # "gemini" or "claude" for requests the fast router does not handle.
         "provider": "gemini",
         "gemini_model": "gemini-3.5-flash",
+        # Tried in order when the model above is out of quota (429) or overloaded (503); free-tier
+        # quotas are per model, so one exhausted model rarely blocks the next.
+        "gemini_fallbacks": ["gemini-3.5-flash-lite", "gemini-2.5-flash"],
         "claude_model": "claude-haiku-5-5",
         "vision_model": "gemini-3.5-flash",
-        "max_steps": 6,
+        "max_steps": 12,          # model turns per request (each may call several tools)
         "timeout_s": 45,
     },
     "voice": {
         # "live": Gemini Live is the conversation; "local": whisper -> router/brain -> Piper.
         # Live falls back to local automatically when it cannot connect.
         "engine": "live",
+        # "pipecat": both engines run as Pipecat pipelines (jarvis/engine). "legacy": the previous
+        # direct google-genai session and hand-rolled local loop, kept as a tested rollback path.
+        "runtime": "pipecat",
+        "connect_timeout_s": 12.0,
+        # Finalized turns from memory seeded into each Live session, so a new or resumed conversation
+        # (or one that fell back to local and back) keeps its thread.
+        "context_turns": 12,
+        "metrics": True,
         # Tried in order until one connects; free-tier keys do not get every Live model.
         "models": ["gemini-3.8-live", "gemini-3.1-flash-live-preview", "gemini-2.5-flash-native-audio-latest"],
+        # BCP-47 hints for Gemini Live's transcription of the user (empty list: auto-detect anything).
+        "transcription_languages": ["ru-RU", "en-US", "pt-BR"],
         "voice": "Charon",
         # "gated": while Jarvis speaks only clear speech above the speaker bleed reaches Gemini
         # (Hey Jarvis's barge-in gate); "open": everything (needs echo cancellation or headphones);
@@ -68,6 +81,24 @@ DEFAULTS: dict = {
         "piper_voice_en": "en_US-lessac-medium",
         "piper_voice_pt": "pt_BR-faber-medium",
         "piper_length_scale": 1.05,
+        # Pipecat runtime: "smart" = Silero VAD + Smart Turn v3 decides when an utterance is over
+        # (pauses mid-sentence are not cut off); "silence" = a fixed pause (voice.end_silence_seconds).
+        "turn_detection": "smart",
+    },
+    "vision": {
+        # In a Gemini Live conversation, screen questions put the screenshot into Live's own visual
+        # input (one shared context) instead of a separate vision call.
+        "live_frames": True,
+        # "describe": the screenshot joins the Live conversation as content AND the vision model reads it
+        # (reliable on small text; the default). "context": the Live model alone reads the content;
+        # "realtime": as a realtime video frame (ambient, lower detail).
+        "live_delivery": "describe",
+        # Continuous screen context: a frame every interval_s, only while a Live conversation is
+        # running, never when idle. Off unless the user turns it on (panel, CLI or config).
+        "continuous": False,
+        "interval_s": 3.0,
+        "max_side": 1280,
+        "live_resolution": "medium",
     },
     "dictation": {
         # "paste" (clipboard + Ctrl+V, clipboard restored), "type" (wtype), "clipboard" (copy only).
@@ -93,6 +124,88 @@ DEFAULTS: dict = {
         # "auto" follows the system locale; Russian, English and Portuguese are complete.
         "language": "auto",
         "floating_companion": False,
+        # Floating HUD cards (weather, results, plans, notices) at the screen edge.
+        "hud": True,
+        # Bar/floating companion look: "pebble" (eyes) or "orb" (rings and glow).
+        "companion_style": "pebble",
+    },
+    # ---- capabilities (jarvis/capabilities) ----
+    "web": {
+        "city": "",              # home city for weather and the briefing; or say "remember I live in …"
+    },
+    "documents": {
+        "dir": "~/Documents/Jarvis",   # new documents, meeting notes and exports go here, never overwriting
+    },
+    "images": {
+        "dir": "~/Pictures/Jarvis",
+        "model": "gemini-2.5-flash-image",
+        "max_per_hour": 20,
+    },
+    "home": {
+        "url": "",               # Home Assistant base URL, e.g. http://homeassistant.local:8123 (token: HOME_ASSISTANT_TOKEN)
+    },
+    "mail": {
+        # IMAP/SMTP with an app password (MAIL_PASSWORD in the keyring); works with Gmail, Fastmail, Proton Bridge…
+        "address": "",
+        "imap_host": "",
+        "imap_port": 993,
+        "smtp_host": "",
+        "smtp_port": 465,
+    },
+    "messaging": {
+        # Telegram Bot API (TELEGRAM_BOT_TOKEN): Jarvis may message only these chats, by name -> chat id.
+        "telegram_chats": {},
+    },
+    "proactive": {
+        "enabled": True,
+        "max_per_hour": 4,
+        "quiet_hours": "23:00-08:00",
+        "battery": True,
+        "disk": True,
+        "memory": True,
+        "units": True,
+        "network": True,
+        "breaks": False,          # suggest a break after long uninterrupted work (opt-in)
+        "clipboard": False,       # notice copied errors/tracebacks; classified locally, never uploaded (opt-in)
+    },
+    "skills": {
+        # Python skills run only inside a bubblewrap sandbox, after the user approves their code.
+        "code_skills": True,
+    },
+    "agent": {
+        "max_steps": 8,
+        "max_replans": 2,
+    },
+    "focus": {
+        "distractions": ["discord", "telegram", "steam", "spotify", "slack"],
+    },
+    # ---- connected apps (jarvis/integrations) ----
+    "integrations": {
+        # Google Workspace through workspace-mcp (installed in its own venv). Needs the user's own OAuth
+        # client (GOOGLE_OAUTH_CLIENT_ID / _SECRET). permissions: service:level, the only scopes requested.
+        "google": {"enabled": True, "command": "", "callback_port": 47613, "idle_s": 600,
+                   "permissions": ["gmail:send", "calendar:full", "drive:readonly", "docs:full", "sheets:full",
+                                   "slides:full", "contacts:readonly", "tasks:manage"]},
+        # Composio (COMPOSIO_API_KEY): other apps. toolkits: allow-list (empty = any); blocked: never.
+        "composio": {"enabled": True, "toolkits": [], "blocked": [], "base_url": "https://backend.composio.dev"},
+        # GenOffice's MCP server for Office files, when installed; Jarvis's own engine otherwise.
+        "genoffice": {"enabled": True, "command": "", "idle_s": 600},
+        # Google apps through Composio only when the Google Workspace connector is unavailable (off by default).
+        "google_fallback_composio": False,
+        # Saving a private draft (nothing sent) runs without asking.
+        "auto_drafts": True,
+        "connect_timeout_s": 600,
+        "download_dir": "~/Downloads/Jarvis",
+    },
+    "workspace": {
+        # The Living Workspace: a window served by jarvisd on 127.0.0.1 only when opened.
+        "enabled": True,
+        # Browser used for the workspace window ("" = chromium / google-chrome / brave, in that order).
+        "browser": "",
+        # The workspace window gets no internet at all (a dedicated profile with a dead proxy).
+        "offline": True,
+        # Let Jarvis write small interactive UIs (calculators, explainers); they run sandboxed.
+        "generated_ui": True,
     },
 }
 
@@ -101,6 +214,10 @@ SCHEMA: dict[str, tuple] = {
     "brain.provider": (str, ("gemini", "claude")),
     "brain.gemini_model": (str, None), "brain.claude_model": (str, None), "brain.vision_model": (str, None),
     "voice.engine": (str, ("live", "local")),
+    "voice.runtime": (str, ("pipecat", "legacy")),
+    "voice.connect_timeout_s": (float, (3, 60)),
+    "voice.context_turns": (int, (0, 60)),
+    "voice.metrics": (bool, None),
     "voice.voice": (str, None),
     "voice.barge_in": (str, ("gated", "open", "off")),
     "voice.input_source": (str, None), "voice.output_target": (str, None),
@@ -116,13 +233,45 @@ SCHEMA: dict[str, tuple] = {
     "local.vad_threshold": (float, (0.1, 0.95)),
     "local.piper_voice_ru": (str, None), "local.piper_voice_en": (str, None),
     "local.piper_length_scale": (float, (0.6, 2.0)),
+    "local.turn_detection": (str, ("smart", "silence")),
+    "vision.live_frames": (bool, None),
+    "vision.live_delivery": (str, ("describe", "context", "realtime")),
+    "vision.continuous": (bool, None),
+    "vision.interval_s": (float, (1, 60)),
+    "vision.max_side": (int, (320, 3840)),
+    "vision.live_resolution": (str, ("low", "medium", "high")),
     "dictation.output": (str, ("paste", "type", "clipboard")),
     "dictation.language": (str, ("auto", "ru", "en", "pt")),
     "approval.timeout_s": (int, (10, 600)),
     "files.projects_dir": (str, None),
     "ui.language": (str, ("auto", "ru", "en", "pt")),
     "ui.floating_companion": (bool, None),
+    "ui.hud": (bool, None),
+    "ui.companion_style": (str, ("pebble", "orb")),
+    "web.city": (str, None),
+    "documents.dir": (str, None),
+    "images.dir": (str, None), "images.model": (str, None),
+    "images.max_per_hour": (int, (0, 200)),
+    "home.url": (str, None),
+    "mail.address": (str, None), "mail.imap_host": (str, None), "mail.smtp_host": (str, None),
+    "mail.imap_port": (int, (1, 65535)), "mail.smtp_port": (int, (1, 65535)),
+    "proactive.enabled": (bool, None), "proactive.max_per_hour": (int, (0, 30)), "proactive.quiet_hours": (str, None),
+    "proactive.battery": (bool, None), "proactive.disk": (bool, None), "proactive.memory": (bool, None),
+    "proactive.units": (bool, None), "proactive.network": (bool, None), "proactive.breaks": (bool, None),
+    "proactive.clipboard": (bool, None),
+    "skills.code_skills": (bool, None),
+    "agent.max_steps": (int, (2, 20)), "agent.max_replans": (int, (0, 5)),
+    "integrations.auto_drafts": (bool, None), "integrations.google_fallback_composio": (bool, None),
+    "integrations.download_dir": (str, None),
+    "workspace.enabled": (bool, None), "workspace.offline": (bool, None), "workspace.generated_ui": (bool, None),
+    "workspace.browser": (str, None),
 }
+
+
+# Every secret Jarvis may read (env, keyring `secret-tool store --label=… service jarvis-workos key NAME`, secrets.env).
+SECRET_NAMES = ("GEMINI_API_KEY", "ANTHROPIC_API_KEY", "HOME_ASSISTANT_TOKEN", "MAIL_PASSWORD", "TELEGRAM_BOT_TOKEN",
+                "SPOTIFY_CLIENT_ID", "SPOTIFY_CLIENT_SECRET", "CALENDAR_ICS_URLS", "COMPOSIO_API_KEY",
+                "GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_SECRET")
 
 
 def _deep_merge(base: dict, override: dict) -> dict:
@@ -190,6 +339,43 @@ def _keyring_lookup(name: str) -> str | None:
     return out.stdout.strip() or None
 
 
+def store_secret(name: str, value: str, path: Path | None = None) -> str:
+    """Save a secret in the desktop keyring (value passed on stdin, never on a command line), or in
+    secrets.env (owner-only) when there is no keyring. Returns where it went."""
+    if name not in SECRET_NAMES:
+        raise ConfigError(f"unknown secret {name!r}")
+    value = value.strip()
+    if not value or "\n" in value:
+        raise ConfigError("empty or multi-line value")
+    if not IS_WINDOWS and shutil.which("secret-tool"):
+        proc = subprocess.run(["secret-tool", "store", f"--label=Jarvis WorkOS {name}", "service", APP, "key", name],
+                              input=value, text=True, capture_output=True, timeout=15)
+        if proc.returncode == 0:
+            return "desktop keyring"
+    path = path or config_dir() / "secrets.env"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lines = [line for line in (path.read_text(encoding="utf-8").splitlines() if path.exists() else [])
+             if not line.startswith(f"{name}=")]
+    lines.append(f"{name}={value}")
+    tmp = path.with_suffix(".tmp")
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        fh.write("\n".join(lines) + "\n")
+    os.replace(tmp, path)
+    return str(path)
+
+
+def clear_secret(name: str, path: Path | None = None) -> None:
+    if name not in SECRET_NAMES:
+        raise ConfigError(f"unknown secret {name!r}")
+    if not IS_WINDOWS and shutil.which("secret-tool"):
+        subprocess.run(["secret-tool", "clear", "service", APP, "key", name], capture_output=True, timeout=15)
+    path = path or config_dir() / "secrets.env"
+    if path.exists():
+        keep = [line for line in path.read_text(encoding="utf-8").splitlines() if not line.startswith(f"{name}=")]
+        path.write_text("\n".join(keep) + ("\n" if keep else ""), encoding="utf-8")
+
+
 def coerce(key: str, raw) -> object:
     """Validate one dotted setting; raises ConfigError with a readable reason."""
     if key not in SCHEMA:
@@ -219,6 +405,8 @@ def _toml_value(value) -> str:
         return repr(value)
     if isinstance(value, list):
         return "[" + ", ".join(_toml_value(v) for v in value) + "]"
+    if isinstance(value, dict):   # inline table, e.g. messaging.telegram_chats = { "Мама" = 111 }
+        return "{ " + ", ".join(f"{_toml_value(str(k))} = {_toml_value(v)}" for k, v in value.items()) + " }"
     return '"' + str(value).replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
@@ -277,7 +465,7 @@ class Config:
     def redacted(self) -> dict:
         out = copy.deepcopy(self.values)
         out["secrets"] = {name: ("set" if self.secret(name) else "missing")
-                          for name in ("GEMINI_API_KEY", "ANTHROPIC_API_KEY")}
+                          for name in SECRET_NAMES}
         return out
 
 
@@ -287,8 +475,35 @@ def load(path: Path | None = None) -> Config:
     if path.exists():
         with path.open("rb") as fh:
             overrides = tomllib.load(fh)
-    cfg = Config(values=_deep_merge(DEFAULTS, overrides), path=path, overrides=overrides)
-    # Older files wrote barge_in as a boolean.
-    if isinstance(cfg.values["voice"].get("barge_in"), bool):
-        cfg.values["voice"]["barge_in"] = "gated" if cfg.values["voice"]["barge_in"] else "off"
-    return cfg
+    migrate(overrides)
+    return Config(values=_deep_merge(DEFAULTS, overrides), path=path, overrides=overrides)
+
+
+def migrate(overrides: dict) -> dict:
+    """Bring older or hand-written files to the current schema, in place (only what the user set)."""
+    voice = overrides.get("voice")
+    if isinstance(voice, dict):
+        # Older files wrote barge_in as a boolean.
+        if isinstance(voice.get("barge_in"), bool):
+            voice["barge_in"] = "gated" if voice["barge_in"] else "off"
+        # `engine = "pipecat"` / a [voice.pipecat] table (the Pipecat integration brief's sketch) mean
+        # Gemini Live through Pipecat; local stays the automatic fallback either way.
+        if voice.get("engine") == "pipecat":
+            voice["engine"], voice["runtime"] = "live", "pipecat"
+        table = voice.pop("pipecat", None)
+        if isinstance(table, dict) and "enabled" in table:
+            voice.setdefault("runtime", "pipecat" if table["enabled"] else "legacy")
+        if "fallback_engine" in voice or "mode" in voice:
+            voice.pop("fallback_engine", None)
+            voice.pop("mode", None)
+        if "wake_word_enabled" in voice:
+            overrides.setdefault("wake", {}).setdefault("enabled", bool(voice.pop("wake_word_enabled")))
+    # Drop anything the schema no longer knows, so a stale key can't break `config set` saves.
+    for section in list(overrides):
+        if section not in DEFAULTS or not isinstance(overrides[section], dict):
+            overrides.pop(section)
+            continue
+        for key in list(overrides[section]):
+            if key not in DEFAULTS[section]:
+                overrides[section].pop(key)
+    return overrides

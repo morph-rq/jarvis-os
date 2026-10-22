@@ -3,8 +3,16 @@
 
 [voice]
 engine = "live"                # "live" (Gemini Live) or "local" (Whisper + Piper, offline)
+runtime = "pipecat"            # pipecat (both engines as Pipecat pipelines) | legacy (previous implementation)
 voice = "Charon"
 barge_in = "gated"             # gated | open (with --echo-cancel or headphones) | off
+
+[local]
+turn_detection = "smart"       # smart (Silero VAD + Smart Turn v3) | silence (fixed pause)
+
+[vision]
+live_delivery = "describe"     # screen questions in Live: describe | context | realtime
+continuous = false             # stream the screen into Live conversations (privacy: off by default)
 
 [wake]
 enabled = true
@@ -12,3 +20,49 @@ threshold = 0.5                # lower = more sensitive
 
 [ui]
 language = "auto"              # auto | ru | en | pt
+hud = true                     # floating cards, notices and approvals at the screen edge
+companion_style = "pebble"     # pebble (eyes) | orb (rings and glow)
+
+# ---- capabilities (docs/CAPABILITIES.md) ----
+
+[web]
+city = ""                      # home city for weather and the briefing (or say "remember I live in ...")
+
+[proactive]
+enabled = true
+max_per_hour = 4
+quiet_hours = "23:00-08:00"    # only urgent notices, silent
+breaks = false                 # suggest a break after 90 min of uninterrupted work
+clipboard = false              # notice copied errors (classified locally, never uploaded)
+
+[skills]
+code_skills = true             # Python skills run only in a bubblewrap sandbox, after you approve their code
+
+# [home]
+# url = "http://homeassistant.local:8123"     # token: secret-tool store --label="Jarvis HA" service jarvis-workos key HOME_ASSISTANT_TOKEN
+
+# [mail]
+# address = "you@example.com"                 # app password: ... key MAIL_PASSWORD
+# imap_host = "imap.gmail.com"
+# smtp_host = "smtp.gmail.com"
+
+# [messaging]
+# telegram_chats = { "Мама" = 123456789 }     # bot token: ... key TELEGRAM_BOT_TOKEN; Jarvis may message only these chats
+
+# ---- connected apps and the Living Workspace (docs/INTEGRATIONS.md) ----
+
+[integrations]
+auto_drafts = true             # saving a private email draft runs without asking (sending always asks)
+google_fallback_composio = false   # Google apps through Composio only if the Google connector is unavailable
+download_dir = "~/Downloads/Jarvis"   # attachments and Drive downloads land here
+# Google Workspace (workspace-mcp, installed by install.sh). Needs your own OAuth "Desktop app" client:
+#   jarvis-workos secret set GOOGLE_OAUTH_CLIENT_ID   and   GOOGLE_OAUTH_CLIENT_SECRET
+# permissions = the only scopes requested (service:level; gmail: readonly < organize < drafts < send < full).
+# google = { permissions = ["gmail:send", "calendar:full", "drive:readonly", "docs:full", "sheets:full", "slides:full", "contacts:readonly", "tasks:manage"] }
+# Composio (Slack, Notion, Trello, GitHub, CRMs…): jarvis-workos secret set COMPOSIO_API_KEY
+# composio = { toolkits = [], blocked = ["discord"] }   # toolkits: allow-list (empty = any)
+
+[workspace]
+enabled = true                 # Super+Alt+W or "открой рабочее пространство"
+offline = true                 # the workspace window gets no internet at all
+generated_ui = true            # interactive views written by the model, run in a sandbox

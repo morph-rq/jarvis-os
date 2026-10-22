@@ -1,7 +1,9 @@
 #!/bin/bash
 
 # Remove everything install.sh added, and only that. Hey Jarvis and its files are never touched.
-# Memory, settings, voices and keys stay unless --purge is given.
+# Memory, settings, voices, keys and connected-app sign-ins stay unless --purge is given (which also
+# deletes the Google sign-in tokens in ~/.local/share/jarvis-workos/google; revoke app access in the
+# Google/Composio account pages too).
 
 set -euo pipefail
 
@@ -33,13 +35,16 @@ fi
 if [[ -L $HOME/.local/bin/jarvis-workos ]]; then
   rm -f "$HOME/.local/bin/jarvis-workos"
 fi
-rm -rf "$data/venv"
+rm -rf "$data/venv" "$data/venvs" "$data/genoffice" "$data/workspace-profile"
+rm -f "$HOME/.local/share/applications/jarvis-genoffice.desktop"
 
 if [[ ${1:-} == "--purge" ]]; then
   rm -rf "$data" "$cfg/jarvis-workos"
   if command -v secret-tool >/dev/null 2>&1; then
-    secret-tool clear service jarvis-workos key GEMINI_API_KEY 2>/dev/null || true
-    secret-tool clear service jarvis-workos key ANTHROPIC_API_KEY 2>/dev/null || true
+    for key in GEMINI_API_KEY ANTHROPIC_API_KEY HOME_ASSISTANT_TOKEN MAIL_PASSWORD TELEGRAM_BOT_TOKEN SPOTIFY_CLIENT_ID \
+               SPOTIFY_CLIENT_SECRET CALENDAR_ICS_URLS COMPOSIO_API_KEY GOOGLE_OAUTH_CLIENT_ID GOOGLE_OAUTH_CLIENT_SECRET; do
+      secret-tool clear service jarvis-workos key "$key" 2>/dev/null || true
+    done
   fi
 fi
 echo "Jarvis WorkOS removed."

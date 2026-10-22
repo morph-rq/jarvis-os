@@ -102,9 +102,21 @@ def doctor() -> int:
         print("secrets: ERROR", exc)
     from jarvis import localvoice
     print("local voice:", json.dumps(localvoice.available()))
+    from jarvis import engine
+    problem = engine.available()
+    print(f"voice runtime: {cfg['voice']['runtime']} (Pipecat {engine.PIPECAT_VERSION} "
+          f"{'ready' if not problem else 'UNAVAILABLE: ' + problem + ' -> legacy runtime is used'})")
+    google = configmod.data_dir() / "venvs" / "google-workspace" / "bin" / "workspace-mcp"
+    genoffice = configmod.data_dir() / "genoffice" / "current" / "resources" / "cli" / "genoffice"
+    print("connected apps:", json.dumps({
+        "google_workspace_connector": "installed" if google.exists() else "not installed",
+        "google_oauth_client": "set" if cfg.secret("GOOGLE_OAUTH_CLIENT_ID") else "missing",
+        "composio_api_key": "set" if cfg.secret("COMPOSIO_API_KEY") else "missing",
+        "genoffice": (genoffice.parent.parent.parent / "VERSION").read_text().strip() if genoffice.exists() else "not installed"}))
     if sys.platform != "win32":
         for cmd in ("hyprctl", "pw-record", "pw-play", "wl-copy", "wl-paste", "wtype", "grim", "plocate", "fd", "wpctl",
-                    "brightnessctl", "playerctl", "omarchy-shell", "uwsm-app", "secret-tool"):
+                    "brightnessctl", "playerctl", "omarchy-shell", "uwsm-app", "secret-tool", "chromium", "pdftoppm",
+                    "soffice"):
             print(f"  {'ok ' if shutil.which(cmd) else '-- '} {cmd}")
         hj = subprocess.run(["systemctl", "--user", "is-active", "voice-launcher.service"],
                             capture_output=True, text=True).stdout.strip()
@@ -115,6 +127,33 @@ def doctor() -> int:
         print("daemon:", json.dumps(asyncio.run(request("health")), ensure_ascii=False))
     except Exception as exc:
         print("daemon: not running", f"({exc})")
+    return 0
+
+
+def secret(action: str, name: str | None) -> int:
+    """Keys go from a hidden prompt (or stdin) to the keyring: never argv, history or the chat."""
+    cfg = configmod.load()
+    if action == "status":
+        print(json.dumps(cfg.redacted()["secrets"], indent=2))
+        return 0
+    if not name:
+        print("which secret? one of: " + ", ".join(configmod.SECRET_NAMES), file=sys.stderr)
+        return 1
+    if action == "clear":
+        configmod.clear_secret(name, cfg.secrets_path)
+        print(f"{name} removed")
+        return 0
+    if sys.stdin.isatty():
+        import getpass
+        value = getpass.getpass(f"{name}: ")
+    else:
+        value = sys.stdin.readline()
+    try:
+        where = configmod.store_secret(name, value, cfg.secrets_path)
+    except configmod.ConfigError as exc:
+        print(exc, file=sys.stderr)
+        return 1
+    print(f"{name} saved in the {where}" if where == "desktop keyring" else f"{name} saved in {where} (mode 600)")
     return 0
 
 
@@ -165,8 +204,19 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("restart", help="restart the service")
     sub.add_parser("on", help="start the service")
     sub.add_parser("off", help="stop the service")
+    p = sub.add_parser("screen", help="screen context during Live conversations: on|off|status")
+    p.add_argument("action", nargs="?", default="status", choices=["on", "off", "status"])
     p = sub.add_parser("panel", help="toggle the Omarchy conversation panel")
     p.add_argument("action", nargs="?", default="toggle", choices=["toggle", "summon", "hide"])
+    p = sub.add_parser("workspace", help="open the Living Workspace window")
+    p.add_argument("view", nargs="?", default="", choices=["", "apps", "tasks"])
+    p = sub.add_parser("apps", help="connected apps: status | connect APP | disconnect APP [ACCOUNT] | prefer APP ACCOUNT")
+    p.add_argument("action", nargs="?", default="status", choices=["status", "connect", "disconnect", "prefer"])
+    p.add_argument("app", nargs="?")
+    p.add_argument("account", nargs="?")
+    p = sub.add_parser("secret", help="store a key without it touching shell history: secret set NAME (prompts)")
+    p.add_argument("action", choices=["set", "clear", "status"])
+    p.add_argument("name", nargs="?", choices=list(configmod.SECRET_NAMES))
     args = parser.parse_args(argv)
     for stream in (sys.stdout, sys.stderr):
         # Windows consoles default to a legacy code page; Jarvis speaks Russian and uses symbols.
@@ -194,6 +244,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.cmd == "panel":
             extra = [] if args.action == "hide" else ["{}"]
             return subprocess.call(["omarchy-shell", "shell", args.action, "jarvis.companion", *extra])
+        if args.cmd == "secret":
+            return secret(args.action, args.name)
         if args.cmd == "config" and args.action == "path":
             print(configmod.load().path)
             return 0
@@ -215,6 +267,11 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0 if result.get("ok") else 1
 
+        if args.cmd == "screen":
+            if args.action == "status":
+                print(json.dumps({"continuous": configmod.load()["vision"]["continuous"]}))
+                return 0
+            return main(["config", "set", "vision.continuous", "true" if args.action == "on" else "false"])
         if args.cmd == "wake":
             fields = ({"threshold": args.value} if args.action == "threshold"
                       else {"enabled": {"on": True, "off": False, "toggle": "toggle"}[args.action]})
@@ -230,6 +287,9 @@ def main(argv: list[str] | None = None) -> int:
                 "deny": {"approval_id": getattr(args, "id", None), "allow": False},
                 "cancel": {"task_id": getattr(args, "task_id", None)},
                 "memory": {"action": getattr(args, "action", None), "fact_id": getattr(args, "fact_id", None)},
+                "workspace": {"view": getattr(args, "view", "")},
+                "apps": {k: v for k, v in (("action", getattr(args, "action", None)), ("app", getattr(args, "app", None)),
+                                           ("account", getattr(args, "account", None))) if v},
             }.get(args.cmd, {})
         op = {"stop": "stop_speaking", "status": "state", "deny": "approve"}.get(args.cmd, args.cmd)
         result = asyncio.run(request(op, **fields))

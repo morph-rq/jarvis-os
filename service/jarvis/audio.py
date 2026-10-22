@@ -46,6 +46,27 @@ def meter(chunk: bytes) -> float:
     return min(1.0, rms(chunk) * 6)
 
 
+def spectrum(chunk: bytes, rate: int, bands: int = 12) -> list[float] | None:
+    """Real FFT band energies for the HUD's bars: log-spaced 90 Hz – 7.5 kHz, 0..1 (−60…0 dBFS)."""
+    try:
+        import numpy as np
+    except ImportError:
+        return None
+    x = np.frombuffer(chunk, dtype=np.int16).astype(np.float32) / 32768.0
+    if len(x) < 256:
+        return None
+    mag = np.abs(np.fft.rfft(x * np.hanning(len(x)))) / (len(x) / 4)
+    freqs = np.fft.rfftfreq(len(x), 1.0 / rate)
+    edges = np.geomspace(90, min(7500, rate / 2 - 1), bands + 1)
+    out = []
+    for lo, hi in zip(edges[:-1], edges[1:]):
+        sel = mag[(freqs >= lo) & (freqs < hi)]
+        energy = float(np.sqrt(np.mean(sel ** 2))) if sel.size else 0.0
+        db = 20 * np.log10(energy + 1e-9)
+        out.append(round(float(min(1.0, max(0.0, (db + 60) / 60))), 2))
+    return out
+
+
 def resample(pcm: bytes, src: int, dst: int) -> bytes:
     if src == dst:
         return pcm
@@ -155,14 +176,18 @@ class FileMic(Mic):
         self.is_open = True
         self._reader = asyncio.create_task(self._feed())
 
+    def inject(self, pcm: bytes) -> None:
+        """Say something now, in place of the silence (not interleaved with it)."""
+        self.script += [pcm[i:i + FRAME_BYTES].ljust(FRAME_BYTES, b"\x00") for i in range(0, len(pcm), FRAME_BYTES)]
+
     async def _feed(self) -> None:
         silence = b"\x00" * FRAME_BYTES
-        script = []
+        self.script: list[bytes] = []
         for clip in self.clips:
-            script += [silence] * int(self.gap_s / 0.08)
-            script += [clip[i:i + FRAME_BYTES].ljust(FRAME_BYTES, b"\x00") for i in range(0, len(clip), FRAME_BYTES)]
+            self.script += [silence] * int(self.gap_s / 0.08)
+            self.inject(clip)
         while True:
-            frame = script.pop(0) if script else silence
+            frame = self.script.pop(0) if self.script else silence
             self._put(frame)
             await asyncio.sleep(0.08 if self.realtime else 0)
 
@@ -170,7 +195,7 @@ class FileMic(Mic):
 class Speaker:
     """Single playback path for every voice. `clear()` drops queued and buffered audio at once."""
 
-    def __init__(self, target: str = "", on_level: Callable[[float], None] | None = None) -> None:
+    def __init__(self, target: str = "", on_level: Callable[..., None] | None = None) -> None:
         self.target = target
         self.on_level = on_level
         self.queue: asyncio.Queue[bytes] = asyncio.Queue()
@@ -219,7 +244,7 @@ class Speaker:
             data = await self.queue.get()
             self.speaking = True
             if self.on_level:
-                self.on_level(meter(data))
+                self.on_level(meter(data), data)
             if self._stream is not None:
                 self._buffer.extend(data)
             else:
@@ -267,6 +292,18 @@ class Speaker:
         self.owner = ""
         if self.on_level:
             self.on_level(0.0)
+
+    def backlog_s(self) -> float:
+        """Seconds of audio accepted but not yet heard (queued plus what the player is ahead by)."""
+        queued = sum(len(chunk) for chunk in self.queue._queue) / 2 / SPEAKER_RATE  # noqa: SLF001
+        return queued + max(0.0, self._played_until - time.monotonic())
+
+    async def wait_backlog(self, max_s: float, timeout: float = 10) -> None:
+        """Back-pressure for a streaming producer: keep at most `max_s` queued here, so an
+        interruption only ever has that much left to drop."""
+        deadline = time.monotonic() + timeout
+        while self.backlog_s() > max_s and time.monotonic() < deadline:
+            await asyncio.sleep(0.02)
 
     async def wait_idle(self, timeout: float = 60) -> None:
         deadline = time.monotonic() + timeout

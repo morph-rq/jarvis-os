@@ -3,11 +3,16 @@
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import itertools
 import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Awaitable, Callable
+
+
+# The task a coroutine is running inside: "cancel every task" must not cancel the task asking for it.
+CURRENT_TASK: contextvars.ContextVar[str] = contextvars.ContextVar("jarvis_current_task", default="")
 
 
 class Bus:
@@ -55,10 +60,13 @@ class Approval:
     summary: str
     args: dict
     future: asyncio.Future = field(repr=False)
+    created: float = field(default_factory=time.time)
+    origin: str = ""        # "voice" when a voice/Live call asked for it
+    resolved_by: str = ""   # "voice" (the user's own words) or "ui" (panel, CLI, keybinding)
 
     def public(self) -> dict:
-        return {"id": self.id, "task_id": self.task_id, "tool": self.tool,
-                "risk": self.risk, "summary": self.summary, "args": self.args}
+        return {"id": self.id, "task_id": self.task_id, "tool": self.tool, "risk": self.risk,
+                "summary": self.summary, "args": self.args, "created": self.created, "origin": self.origin}
 
 
 @dataclass
@@ -78,7 +86,7 @@ class Task:
     def public(self) -> dict:
         return {"id": self.id, "title": self.title, "text": self.text, "source": self.source,
                 "state": self.state.value, "created": self.created, "updated": self.updated,
-                "steps": self.steps[-20:], "result": self.result, "error": self.error,
+                "steps": self.steps[-20:], "step_count": len(self.steps), "result": self.result, "error": self.error,
                 "elapsed_ms": int((self.updated - self.created) * 1000)}
 
 
@@ -121,6 +129,7 @@ class TaskManager:
         self._trim()
 
         async def runner() -> None:
+            CURRENT_TASK.set(task.id)
             self._set_state(task, TaskState.RUNNING)
             try:
                 task.result = await work(task)
@@ -144,7 +153,8 @@ class TaskManager:
     def cancel(self, task_id: str | None = None) -> list[str]:
         """Cancel one task, or every unfinished task when no id is given."""
         targets = [self.tasks[task_id]] if task_id in self.tasks else (
-            [t for t in self.tasks.values() if not t.state.finished] if task_id is None else [])
+            [t for t in self.tasks.values() if not t.state.finished and t.id != CURRENT_TASK.get()]
+            if task_id is None else [])
         cancelled = []
         for task in targets:
             if task.handle and not task.handle.done():
@@ -152,29 +162,38 @@ class TaskManager:
                 cancelled.append(task.id)
         return cancelled
 
-    async def request_approval(self, task: Task, tool: str, risk: str, summary: str, args: dict) -> None:
+    async def request_approval(self, task: Task, tool: str, risk: str, summary: str, args: dict,
+                               origin: str = "") -> str:
+        """Wait for the user's decision; returns how it was approved ("voice" / "ui"), raises if not."""
         approval = Approval(id=f"a{self._epoch}-{next(self._ids)}", task_id=task.id, tool=tool, risk=risk,
-                            summary=summary, args=args,
+                            summary=summary, args=args, origin=origin,
                             future=asyncio.get_running_loop().create_future())
         self.approvals[approval.id] = approval
         previous = task.state
         self._set_state(task, TaskState.AWAITING_APPROVAL)
         self.bus.publish("approval", approval=approval.public())
+        reason = "user"
         try:
             allowed = await asyncio.wait_for(asyncio.shield(approval.future), self.approval_timeout_s)
         except asyncio.TimeoutError:
-            allowed = False
+            allowed, reason = False, "timeout"   # silence never approves
+        except asyncio.CancelledError:
+            allowed, reason = False, "cancelled"
+            raise
         finally:
             self.approvals.pop(approval.id, None)
-        self.bus.publish("approval_resolved", id=approval.id, allowed=allowed)
+            self.bus.publish("approval_resolved", id=approval.id, allowed=allowed, reason=reason)
+            self.step(task, "approval", f"{'allowed' if allowed else 'denied'} ({reason}): {summary}", ok=allowed)
         if not allowed:
-            raise ApprovalDenied(f"Not approved: {summary}")
+            raise ApprovalDenied(f"Not approved ({reason}): {summary}")
         self._set_state(task, previous)
+        return approval.resolved_by or "ui"
 
-    def resolve(self, approval_id: str, allowed: bool) -> bool:
+    def resolve(self, approval_id: str, allowed: bool, by: str = "ui") -> bool:
         approval = self.approvals.get(approval_id)
         if not approval:
             return False
+        approval.resolved_by = by
         self._resolve(approval, allowed)
         return True
 

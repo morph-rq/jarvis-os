@@ -14,12 +14,18 @@
 #   ./install.sh                 install / upgrade
 #   ./install.sh --link          symlink the plugin to this checkout (development; edits hot-reload)
 #   ./install.sh --no-local      skip the local speech stack (no wake word, no offline fallback)
+#   ./install.sh --no-pipecat    skip the Pipecat voice engine (voice.runtime = legacy)
+#   ./install.sh --no-documents  skip the Office/PDF libraries (create_document / read_document / pdf_tools)
+#   ./install.sh --no-google     skip the Google Workspace connector (workspace-mcp in its own venv)
+#   ./install.sh --genoffice     also install GenOffice (AppImage, sha256-verified, extracted; ~190 MB download)
 #   ./install.sh --echo-cancel   add a PipeWire echo-cancelled microphone for speaker barge-in
 #   ./install.sh --wheels DIR    install Python packages from pre-downloaded wheels (slow or no network;
-#                                hashes are still enforced for the locked speech stack)
+#                                hashes are still enforced for the locked speech stack and Pipecat)
 #
-# Keys are read from GEMINI_API_KEY / ANTHROPIC_API_KEY in the environment if set and stored in the
-# desktop keyring (secret-tool), falling back to ~/.config/jarvis-workos/secrets.env (mode 600).
+# Keys are read from GEMINI_API_KEY / ANTHROPIC_API_KEY (and, for connected apps, COMPOSIO_API_KEY,
+# GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET) in the environment if set and stored in the desktop
+# keyring (secret-tool), falling back to ~/.config/jarvis-workos/secrets.env (mode 600). Later:
+# `jarvis-workos secret set NAME` prompts for one without echo.
 
 set -euo pipefail
 umask 077
@@ -27,12 +33,20 @@ umask 077
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 link=0
 local_speech=1
+pipecat=1
+documents=1
+google=1
+genoffice=0
 echo_cancel=0
 wheels=""
 while (( $# > 0 )); do
   case "$1" in
     --link) link=1 ;;
     --no-local) local_speech=0 ;;
+    --no-pipecat) pipecat=0 ;;
+    --no-documents) documents=0 ;;
+    --no-google) google=0 ;;
+    --genoffice) genoffice=1 ;;
     --echo-cancel) echo_cancel=1 ;;
     --wheels) wheels="$(cd "$2" && pwd)"; shift ;;
     *) echo "unknown option: $1" >&2; exit 1 ;;
@@ -102,6 +116,89 @@ if (( local_speech )); then
     "${pip[@]}" install --require-hashes --no-deps -r "$repo/omarchy/locks/local-speech.lock"
   fi
 fi
+if (( pipecat )); then
+  # Pipecat (BSD-2-Clause) runs the conversation pipelines inside jarvisd. Same rules as the speech
+  # stack: exact versions, sha256 hashes, no dependency resolution at install time. Its two
+  # overrides of the speech lock (protobuf 6.x, websockets 16.x) are explained in the lock header.
+  step "Pipecat voice engine (hash-locked, Pipecat $(grep -oE '^pipecat-ai==[^ ]+' "$repo/omarchy/locks/pipecat.lock" | cut -d= -f3))"
+  if [[ -n $wheels ]]; then
+    "${pip[@]}" install --no-index --find-links "$wheels" --require-hashes --no-deps --no-build-isolation       -r "$repo/omarchy/locks/pipecat.lock"
+  else
+    "${pip[@]}" install --require-hashes --no-deps -r "$repo/omarchy/locks/pipecat.lock"
+  fi
+fi
+if (( documents )); then
+  # Office/PDF libraries for the document tools; same rules (exact versions, hashes, no resolution).
+  # They need Pillow, which the Pipecat lock pins; without Pipecat, that one entry is taken from it.
+  step "Document tools (hash-locked: python-docx, openpyxl, python-pptx, pypdf, fpdf2)"
+  doc_reqs=("-r" "$repo/omarchy/locks/documents.lock")
+  if (( ! pipecat )); then
+    sed -n '/^pillow==/,/^[^ ]/{/^pillow==/p;/^ /p}' "$repo/omarchy/locks/pipecat.lock" > "$data/.pillow.lock"
+    doc_reqs+=("-r" "$data/.pillow.lock")
+  fi
+  if [[ -n $wheels ]]; then
+    "${pip[@]}" install --no-index --find-links "$wheels" --require-hashes --no-deps "${doc_reqs[@]}"
+  else
+    "${pip[@]}" install --require-hashes --no-deps "${doc_reqs[@]}"
+  fi
+  rm -f "$data/.pillow.lock"
+fi
+if (( google )); then
+  # taylorwilsdon/google_workspace_mcp (MIT), started by jarvisd only when a Google app is used. Its own
+  # venv: it brings its own FastMCP/Starlette stack and top-level packages (auth, core, gmail…).
+  step "Google Workspace connector (workspace-mcp $(grep -oE '^workspace-mcp==[^ ]+' "$repo/omarchy/locks/google-workspace.lock" | cut -d= -f3), hash-locked, own venv)"
+  gws="$data/venvs/google-workspace"
+  if [[ ! -x $gws/bin/python ]]; then
+    python3 -m venv "$gws"
+  fi
+  gpip=("$gws/bin/python" -m pip --disable-pip-version-check -q)
+  if [[ -n $wheels ]]; then
+    "${gpip[@]}" install --no-index --find-links "$wheels" --require-hashes --no-deps -r "$repo/omarchy/locks/google-workspace.lock"
+  else
+    "${gpip[@]}" install --require-hashes --no-deps --only-binary :all: -r "$repo/omarchy/locks/google-workspace.lock"
+  fi
+fi
+if (( genoffice )); then
+  # genspark-ai/genoffice (Apache-2.0). Pinned release, verified against the sha256 GitHub publishes for
+  # the asset, then unpacked (no FUSE needed, stable CLI path). The GUI's local HTTP server stays off.
+  genoffice_version="0.11.919"
+  genoffice_sha="2268f9f154b90539787234bf97d8298da199c4a3af38ba099054cadff7650850"
+  step "GenOffice $genoffice_version (sha256-verified AppImage, unpacked into $data/genoffice)"
+  go_dir="$data/genoffice/$genoffice_version"
+  if [[ ! -x $go_dir/resources/cli/genoffice ]]; then
+    go_tmp="$(mktemp -d)"
+    if fetch_verified "https://github.com/genspark-ai/genoffice/releases/download/v$genoffice_version/GenOffice-$genoffice_version.AppImage" \
+        "$genoffice_sha" "$go_tmp/GenOffice.AppImage" 230000000; then
+      chmod +x "$go_tmp/GenOffice.AppImage"
+      (cd "$go_tmp" && ./GenOffice.AppImage --appimage-extract >/dev/null)
+      mkdir -p "$data/genoffice"
+      rm -rf "$go_dir"
+      mv "$go_tmp/squashfs-root" "$go_dir"
+      echo "$genoffice_version" > "$go_dir/VERSION"
+    fi
+    rm -rf "$go_tmp"
+  fi
+  if [[ -x $go_dir/resources/cli/genoffice ]]; then
+    ln -sfn "$go_dir" "$data/genoffice/current"
+    mkdir -p "$HOME/.local/share/applications"
+    icon="$(find "$go_dir" -maxdepth 1 -name '*.png' | head -1)"
+    cat > "$HOME/.local/share/applications/jarvis-genoffice.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=GenOffice
+Comment=AI office suite (installed by Jarvis WorkOS)
+Exec=$data/genoffice/current/AppRun %F
+Icon=${icon:-x-office-document}
+Terminal=false
+Categories=Office;
+MimeType=application/vnd.openxmlformats-officedocument.wordprocessingml.document;application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;application/vnd.openxmlformats-officedocument.presentationml.presentation;application/pdf;
+X-Jarvis-WorkOS=true
+EOF
+    update-desktop-database "$HOME/.local/share/applications" >/dev/null 2>&1 || true
+  else
+    warn "GenOffice was not installed; Jarvis's own document engine is used"
+  fi
+fi
 # Build from a private copy: shared or read-only checkouts (e.g. a VM's 9p share) refuse build files.
 build="$(mktemp -d)"
 trap 'rm -rf "$build"' EXIT
@@ -152,6 +249,9 @@ fi
 if (( hey_jarvis_active )); then
   "$bin/jarvis-workos" config set wake.enabled false >/dev/null
 fi
+if (( ! pipecat )); then
+  "$bin/jarvis-workos" config set voice.runtime legacy >/dev/null
+fi
 store_secret() {
   local name="$1" value="${!1:-}"
   [[ -n $value ]] || return 0
@@ -168,6 +268,10 @@ store_secret() {
 }
 store_secret GEMINI_API_KEY
 store_secret ANTHROPIC_API_KEY
+# Connected apps (optional): Composio's API key and your own Google OAuth client ("Desktop app").
+store_secret COMPOSIO_API_KEY
+store_secret GOOGLE_OAUTH_CLIENT_ID
+store_secret GOOGLE_OAUTH_CLIENT_SECRET
 
 if (( echo_cancel )); then
   step "PipeWire echo cancellation"

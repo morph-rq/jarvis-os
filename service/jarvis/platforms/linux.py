@@ -134,6 +134,58 @@ class LinuxPlatform(Platform):
     def open_path(self, path: Path) -> None:
         _spawn(["xdg-open", str(path)])
 
+    def open_url(self, url: str) -> None:
+        if not url.lower().startswith(("https://", "http://")):
+            raise ValueError("only http(s) URLs")
+        _spawn(["omarchy-launch-browser", url] if shutil.which("omarchy-launch-browser") else ["xdg-open", url])
+
+    # ---------------------------------------------------------------- clipboard and input (Wayland)
+    def clipboard_get(self) -> str:
+        if not shutil.which("wl-paste"):
+            raise Unsupported("wl-clipboard missing")
+        out = subprocess.run(["wl-paste", "--no-newline", "--type", "text"], capture_output=True, timeout=5)
+        if out.returncode != 0:
+            return ""   # empty clipboard, or it holds an image
+        return out.stdout[:200_000].decode("utf-8", "replace")
+
+    def clipboard_set(self, text: str) -> None:
+        if not shutil.which("wl-copy"):
+            raise Unsupported("wl-clipboard missing")
+        # wl-copy forks to serve the selection; it must not stay in jarvisd's cgroup or block us.
+        subprocess.run(["wl-copy", "--type", "text/plain;charset=utf-8"], input=text.encode(), timeout=5,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    def type_text(self, text: str) -> None:
+        if not shutil.which("wtype"):
+            raise Unsupported("wtype missing")
+        _run(["wtype", "-d", "4", "--", text], timeout=max(5, len(text) * 0.02 + 5))
+
+    def press_keys(self, combo: str) -> None:
+        """"ctrl+shift+t", "super+1", "Return": modifiers held with -M/-m, keys with -k."""
+        if not shutil.which("wtype"):
+            raise Unsupported("wtype missing")
+        mods = {"ctrl": "ctrl", "control": "ctrl", "shift": "shift", "alt": "alt", "super": "logo", "win": "logo",
+                "meta": "logo", "logo": "logo", "altgr": "altgr"}
+        names = {"enter": "Return", "return": "Return", "esc": "Escape", "escape": "Escape", "tab": "Tab",
+                 "space": "space", "backspace": "BackSpace", "delete": "Delete", "del": "Delete", "up": "Up",
+                 "down": "Down", "left": "Left", "right": "Right", "home": "Home", "end": "End",
+                 "pageup": "Prior", "pagedown": "Next", "insert": "Insert"}
+        parts = [p.strip() for p in combo.replace(" ", "").split("+") if p.strip()]
+        held = [mods[p.lower()] for p in parts[:-1] if p.lower() in mods]
+        if len(held) != len(parts) - 1 or not parts:
+            raise ValueError(f"unknown modifier in {combo!r}")
+        key = parts[-1]
+        key = names.get(key.lower(), key if len(key) > 1 else key.lower())
+        if not re.fullmatch(r"[A-Za-z0-9_]{1,24}|[a-z]", key):
+            raise ValueError(f"unknown key {key!r}")
+        args = ["wtype"]
+        for m in held:
+            args += ["-M", m]
+        args += ["-k", key]
+        for m in reversed(held):
+            args += ["-m", m]
+        _run(args, timeout=5)
+
     # ---------------------------------------------------------------- files
     def search_files(self, query: str, roots: list[Path], limit: int, kind: str) -> list[str]:
         results: list[str] = []
@@ -248,6 +300,8 @@ class LinuxPlatform(Platform):
     def notify(self, title: str, body: str) -> None:
         if self.has["omarchy-notification-send"]:
             _spawn(["omarchy-notification-send", "--app-name", "Jarvis", title, body])
+        elif shutil.which("notify-send"):
+            _spawn(["notify-send", "--app-name=Jarvis", title, body])
 
     def screenshot(self, path: Path) -> Path:
         if not self.has["grim"]:
@@ -259,6 +313,43 @@ class LinuxPlatform(Platform):
     def run_command(self, command: str, timeout: float) -> tuple[int, str]:
         out = subprocess.run(["bash", "-lc", command], capture_output=True, text=True, timeout=timeout)
         return out.returncode, (out.stdout + out.stderr)[-4000:]
+
+    def workspaces(self) -> list[dict]:
+        spaces = json.loads(self._hypr("-j", "workspaces") or "[]")
+        active = json.loads(self._hypr("-j", "activeworkspace") or "{}")
+        return sorted(({"name": str(w.get("name", w.get("id"))), "windows": w.get("windows", 0),
+                        "monitor": w.get("monitor", ""), "active": w.get("id") == active.get("id")} for w in spaces),
+                      key=lambda w: (len(w["name"]), w["name"]))
+
+    def monitors(self) -> list[dict]:
+        return [{"name": m.get("name"), "description": m.get("description", ""), "width": m.get("width"),
+                 "height": m.get("height"), "scale": m.get("scale"), "focused": bool(m.get("focused")),
+                 "workspace": str((m.get("activeWorkspace") or {}).get("name", ""))}
+                for m in json.loads(self._hypr("-j", "monitors") or "[]")]
+
+    def system_status(self) -> dict:
+        status = super().system_status()
+        for bat in sorted(Path("/sys/class/power_supply").glob("BAT*")):
+            try:
+                status["battery_pct"] = int((bat / "capacity").read_text().strip())
+                status["battery_state"] = (bat / "status").read_text().strip().lower()
+            except (OSError, ValueError):
+                pass
+            break
+        if self.has["wpctl"]:
+            try:
+                status["volume"] = _run(["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"]).strip()
+            except (RuntimeError, subprocess.SubprocessError):
+                pass
+        return status
+
+    def omarchy(self, argv: list[str], wait: bool) -> str:
+        if not shutil.which(argv[0]):
+            raise Unsupported(f"{argv[0]} is not installed (older Omarchy?)")
+        if not wait:
+            _spawn(argv)
+            return f"{argv[0]} opened"
+        return _run(argv, timeout=20)
 
 
 def _is_under(path: Path, root: Path) -> bool:

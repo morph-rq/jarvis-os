@@ -62,6 +62,19 @@ class WindowsPlatform(Platform):
             subprocess.Popen([targets[role]], creationflags=0x00000008)  # DETACHED_PROCESS
         return f"launched {role}"
 
+    def open_url(self, url: str) -> None:
+        if not url.lower().startswith(("https://", "http://")):
+            raise ValueError("only http(s) URLs")
+        os.startfile(url)  # noqa: S606 - the default browser
+
+    def clipboard_get(self) -> str:
+        out = subprocess.run(["powershell", "-NoProfile", "-Command", "Get-Clipboard -Raw"],
+                             capture_output=True, text=True, timeout=5, encoding="utf-8", errors="replace")
+        return (out.stdout or "").rstrip("\r\n")
+
+    def clipboard_set(self, text: str) -> None:
+        subprocess.run(["clip"], input=text.encode("utf-16-le"), timeout=5)
+
     def open_path(self, path: Path) -> None:
         os.startfile(str(path))  # noqa: S606
 

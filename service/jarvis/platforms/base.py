@@ -121,6 +121,13 @@ class Platform:
     def launch_app(self, app: AppEntry) -> str: raise Unsupported("launch_app")
     def launch_role(self, role: str) -> str: raise Unsupported(f"launch {role}")
     def open_path(self, path: Path) -> None: raise Unsupported("open_path")
+    def open_url(self, url: str) -> None: raise Unsupported("open_url")
+
+    # Clipboard and input
+    def clipboard_get(self) -> str: raise Unsupported("clipboard")
+    def clipboard_set(self, text: str) -> None: raise Unsupported("clipboard")
+    def type_text(self, text: str) -> None: raise Unsupported("typing")
+    def press_keys(self, combo: str) -> None: raise Unsupported("key presses")
 
     # Files
     def search_files(self, query: str, roots: list[Path], limit: int, kind: str) -> list[str]:
@@ -133,6 +140,8 @@ class Platform:
     def move_window(self, window: Window, workspace: str) -> None: raise Unsupported("move_window")
     def switch_workspace(self, workspace: str) -> None: raise Unsupported("switch_workspace")
     def window_state(self, window: Window, state: str) -> None: raise Unsupported("window_state")
+    def workspaces(self) -> list[dict]: raise Unsupported("workspaces")
+    def monitors(self) -> list[dict]: raise Unsupported("monitors")
 
     # System
     def volume(self, percent: int | None = None, delta: int | None = None, mute: str | None = None) -> str:
@@ -144,3 +153,19 @@ class Platform:
     def notify(self, title: str, body: str) -> None: pass
     def screenshot(self, path: Path) -> Path: raise Unsupported("screenshot")
     def run_command(self, command: str, timeout: float) -> tuple[int, str]: raise Unsupported("run_command")
+    def omarchy(self, argv: list[str], wait: bool) -> str: raise Unsupported("Omarchy helpers")
+
+    def system_status(self) -> dict:
+        """Portable part: memory and load where the OS exposes them; backends add the rest."""
+        status: dict = {}
+        try:
+            with open("/proc/meminfo") as fh:
+                info = {line.split(":")[0]: int(line.split()[1]) for line in fh if line.split()[1:2]}
+            status["memory_used_pct"] = round(100 * (1 - info["MemAvailable"] / info["MemTotal"]))
+            with open("/proc/loadavg") as fh:
+                status["load_1m"] = float(fh.read().split()[0])
+            with open("/proc/uptime") as fh:
+                status["uptime_h"] = round(float(fh.read().split()[0]) / 3600, 1)
+        except (OSError, KeyError, ValueError, IndexError):
+            pass
+        return status

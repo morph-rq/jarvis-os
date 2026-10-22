@@ -225,7 +225,8 @@ class Piper:
     def has(self, lang: str) -> bool:
         return (self.voices_dir / f"{self.names.get(lang, '')}.onnx").exists()
 
-    def synthesize(self, text: str, lang: str) -> tuple[bytes, int]:
+    def voice_for(self, lang: str):
+        """The loaded PiperVoice for a language (English when that voice is missing) and its settings."""
         from piper import PiperVoice, SynthesisConfig
         if not self.has(lang):
             lang = "en"
@@ -233,9 +234,13 @@ class Piper:
         if voice is None:
             voice = PiperVoice.load(str(self.voices_dir / f"{self.names[lang]}.onnx"))
             self._loaded[lang] = voice
+        return voice, SynthesisConfig(length_scale=self.length_scale)
+
+    def synthesize(self, text: str, lang: str) -> tuple[bytes, int]:
+        voice, syn = self.voice_for(lang)
         buf = io.BytesIO()
         with wave.open(buf, "wb") as w:
-            voice.synthesize_wav(text, w, syn_config=SynthesisConfig(length_scale=self.length_scale))
+            voice.synthesize_wav(text, w, syn_config=syn)
         buf.seek(0)
         with wave.open(buf) as w:
             return w.readframes(w.getnframes()), w.getframerate()

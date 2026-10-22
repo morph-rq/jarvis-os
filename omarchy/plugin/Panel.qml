@@ -18,6 +18,8 @@ Item {
 
   property bool isOpen: false
   property bool expanded: false
+  onIsOpenChanged: if (service) service.panelOpen = isOpen
+  onExpandedChanged: if (service) service.panelWidth = expanded ? 680 : 460
   property bool showSettings: false
 
   readonly property var s: root.service
@@ -32,11 +34,27 @@ Item {
     if (st === "idle" && s && s.voice.mode === "wake") return t("wake")
     return t(st === "idle" ? "ready" : st, st)
   }
+  // Which voice is talking: the Live model, "reconnecting…", or local mode, plus the last response time.
+  readonly property string engineLabel: {
+    if (!s || !s.conversing) return ""
+    var p = s.pipeline || {}
+    var name = p.state === "reconnecting" ? t("reconnecting")
+             : (s.voice.engine === "local" || p.engine === "local") ? t("local")
+             : (s.voice.model || "Gemini Live")
+    return name + (s.latencyMs > 0 ? "  ·  " + t("latency") + " " + (s.latencyMs / 1000).toFixed(1) + " s" : "")
+  }
 
   function open(payloadJson) {
-    // Payload {"view": "settings"} opens straight to Settings (e.g. from a keybinding or the CLI).
-    try { root.showSettings = JSON.parse(payloadJson || "{}").view === "settings" } catch (e) { root.showSettings = false }
+    // Payload {"view": "settings"} opens straight to Settings (e.g. from a keybinding or the CLI);
+    // {"view": "apps"} opens Settings at Connected apps.
+    var view = ""
+    try { view = JSON.parse(payloadJson || "{}").view || "" } catch (e) { view = "" }
+    root.showSettings = view === "settings" || view === "apps"
     root.isOpen = true
+    if (view === "apps") {
+      if (s) s.refreshApps()
+      Qt.callLater(function() { settingsView.contentY = Math.max(0, appsHeading.y - 8) })
+    }
     Qt.callLater(function() { input.forceActiveFocus() })
   }
   function close() { root.isOpen = false }
@@ -109,7 +127,7 @@ Item {
             width: parent.width
             elide: Text.ElideRight
             text: root.statusLabel
-                  + (s && s.voice.engine && s.conversing ? "  ·  " + (s.voice.engine === "live" ? (s.voice.model || "Gemini Live") : t("local")) : "")
+                  + (root.engineLabel ? "  ·  " + root.engineLabel : "")
                   + (s && s.micOpen ? "  ·  ● " + t("mic_open") : "")
             color: s && s.micOpen ? root.red : Util.alpha(root.fg, 0.6)
             font.family: Style.fontFamily
@@ -122,6 +140,7 @@ Item {
           anchors.rightMargin: 12
           anchors.verticalCenter: parent.verticalCenter
           spacing: 4
+          IconButton { glyph: "▣"; tip: t("workspace", "Workspace"); onClicked: if (s) s.openWorkspace("") }
           IconButton { glyph: "⚙"; tip: t("settings"); active: root.showSettings; onClicked: root.showSettings = !root.showSettings }
           IconButton { glyph: root.expanded ? "⤡" : "⤢"; tip: root.expanded ? t("compact") : t("expand"); onClicked: root.expanded = !root.expanded }
           IconButton { glyph: "✕"; tip: ""; onClicked: root.close() }
@@ -158,6 +177,20 @@ Item {
         }
         Chip { text: "⏹ " + t("cancel"); onClicked: if (s) { s.stopSpeaking(); s.cancel(null) } }
         Chip { text: "↻ " + t("restart"); onClicked: if (s) s.restartService() }
+        // Status pills: shown only while true. The screen pill is a privacy signal, like the mic dot.
+        Chip {
+          visible: !!(s && s.screenSharing)
+          text: "◉ " + t("screen_on")
+          active: true
+          activeColor: root.red
+          onClicked: if (s && s.settings["vision.continuous"]) s.setSetting("vision.continuous", false)
+        }
+        Chip {
+          visible: !!(s && s.activeTools.length > 0)
+          text: "⚙ " + t("tools_running") + ": " + (s ? s.activeTools.map(function(c) { return c.tool }).join(", ") : "")
+          active: true
+          activeColor: root.amber
+        }
       }
 
       // Dictation status strip.
@@ -239,7 +272,7 @@ Item {
             label: t("wake_word")
             Chip {
               text: s && s.settings["wake.enabled"] ? "ON" : "OFF"
-              active: s && s.settings["wake.enabled"]
+              active: !!(s && s.settings["wake.enabled"])
               onClicked: s.setSetting("wake.enabled", !s.settings["wake.enabled"])
             }
           }
@@ -260,6 +293,47 @@ Item {
               Chip { required property var modelData; text: modelData[1]; active: s && s.settings["voice.engine"] === modelData[0]
                      onClicked: s.setSetting("voice.engine", modelData[0]) }
             }
+          }
+          SettingRow {
+            label: t("runtime")
+            Repeater {
+              model: [["pipecat", "Pipecat"], ["legacy", "Legacy"]]
+              Chip { required property var modelData; text: modelData[1]; active: s && s.settings["voice.runtime"] === modelData[0]
+                     onClicked: s.setSetting("voice.runtime", modelData[0]) }
+            }
+          }
+          SettingRow {
+            label: t("turn_detection")
+            Repeater {
+              model: [["smart", "Smart Turn"], ["silence", "Pause"]]
+              Chip { required property var modelData; text: modelData[1]; active: s && s.settings["local.turn_detection"] === modelData[0]
+                     onClicked: s.setSetting("local.turn_detection", modelData[0]) }
+            }
+          }
+          SettingRow {
+            label: t("screen_share")
+            Chip {
+              text: s && s.settings["vision.continuous"] ? "ON" : "OFF"
+              active: !!(s && s.settings["vision.continuous"])
+              activeColor: root.red
+              onClicked: s.setSetting("vision.continuous", !s.settings["vision.continuous"])
+            }
+          }
+          SettingRow {
+            label: t("companion_style")
+            Repeater {
+              model: [["pebble", "Pebble"], ["orb", "Orb"]]
+              Chip { required property var modelData; text: modelData[1]; active: s && s.settings["ui.companion_style"] === modelData[0]
+                     onClicked: s.setSetting("ui.companion_style", modelData[0]) }
+            }
+          }
+          SettingRow {
+            label: t("hud") + "  ·  " + t("proactive") + "  ·  " + t("clipboard_watch")
+            Chip { text: "HUD"; active: !!(s && s.settings["ui.hud"]); onClicked: s.setSetting("ui.hud", !s.settings["ui.hud"]) }
+            Chip { text: t("proactive"); active: !!(s && s.settings["proactive.enabled"])
+                   onClicked: s.setSetting("proactive.enabled", !s.settings["proactive.enabled"]) }
+            Chip { text: t("clipboard_watch"); active: !!(s && s.settings["proactive.clipboard"])
+                   onClicked: s.setSetting("proactive.clipboard", !s.settings["proactive.clipboard"]) }
           }
           SettingRow {
             label: t("barge")
@@ -283,6 +357,54 @@ Item {
               model: [["gemini", "Gemini"], ["claude", "Claude"]]
               Chip { required property var modelData; text: modelData[1]; active: s && s.settings["brain.provider"] === modelData[0]
                      onClicked: s.setSetting("brain.provider", modelData[0]) }
+            }
+          }
+
+          // Connected apps: what is connected, through which provider, and what a provider still needs.
+          // Connect opens the app's own sign-in page in the browser; nothing here ever asks for a password.
+          Text {
+            id: appsHeading
+            text: t("connected_apps", "Connected apps")
+            color: root.fg
+            font.family: Style.fontFamily; font.pixelSize: Style.font.body; font.weight: Font.DemiBold
+          }
+          Repeater {
+            model: s ? (s.apps.providers || []).filter(function(p) { return !p.ready }) : []
+            Text {
+              required property var modelData
+              width: parent.width
+              wrapMode: Text.Wrap
+              textFormat: Text.PlainText
+              color: Util.alpha(root.fg, 0.55)
+              font.family: Style.fontFamily; font.pixelSize: Style.font.caption
+              text: modelData.label + ": " + modelData.missing
+            }
+          }
+          Repeater {
+            model: s ? (s.apps.apps || []).filter(function(a) { return a.available || (a.accounts && a.accounts.length) }).slice(0, 14) : []
+            Row {
+              required property var modelData
+              width: parent.width
+              spacing: 8
+              readonly property bool connected: (modelData.accounts || []).some(function(x) { return x.status === "active" })
+              readonly property bool pending: (s.apps.pending || []).some(function(p) { return p.app === modelData.app })
+              Text {
+                width: parent.width - 120
+                anchors.verticalCenter: parent.verticalCenter
+                textFormat: Text.PlainText
+                elide: Text.ElideRight
+                color: parent.connected ? root.fg : Util.alpha(root.fg, 0.6)
+                font.family: Style.fontFamily; font.pixelSize: Style.font.caption
+                text: modelData.label + "  ·  " + (parent.pending ? t("signing_in", "waiting for sign-in…")
+                      : parent.connected ? (modelData.accounts || []).map(function(x) { return x.label + (x.status !== "active" ? " (" + x.status + ")" : "") }).join(", ")
+                      : t("not_connected", "not connected")) + (modelData.provider ? "  ·  " + modelData.provider : "")
+              }
+              Chip {
+                text: parent.connected ? t("disconnect", "Disconnect") : t("connect", "Connect")
+                active: !parent.connected
+                onClicked: s.appsAction(parent.connected ? "disconnect" : "connect", modelData.app,
+                                        parent.connected && modelData.accounts.length === 1 ? modelData.accounts[0].label : "")
+              }
             }
           }
           Text {
