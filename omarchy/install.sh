@@ -22,6 +22,8 @@
 #   ./install.sh --echo-cancel   add a PipeWire echo-cancelled microphone for speaker barge-in
 #   ./install.sh --wheels DIR    install Python packages from pre-downloaded wheels (slow or no network;
 #                                hashes are still enforced for the locked speech stack and Pipecat)
+#   ./install.sh --shell caelestia  also build Caelestia Shell with the Jarvis island (user prefix, pinned;
+#                                see omarchy/caelestia/README.md); switch with `jarvis-shell-mode caelestia`
 #
 # Keys are read from GEMINI_API_KEY / ANTHROPIC_API_KEY (and, for connected apps, COMPOSIO_API_KEY,
 # GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET) in the environment if set and stored in the desktop
@@ -41,6 +43,7 @@ google=1
 genoffice=0
 echo_cancel=0
 wheels=""
+shell=""
 while (( $# > 0 )); do
   case "$1" in
     --link) link=1 ;;
@@ -52,6 +55,8 @@ while (( $# > 0 )); do
     --genoffice) genoffice=1 ;;
     --echo-cancel) echo_cancel=1 ;;
     --wheels) wheels="$(cd "$2" && pwd)"; shift ;;
+    --shell) shell="$2"; shift
+      [[ $shell == caelestia ]] || { echo "--shell takes: caelestia" >&2; exit 1; } ;;
     *) echo "unknown option: $1" >&2; exit 1 ;;
   esac
   shift
@@ -323,14 +328,33 @@ else
 fi
 omarchy-plugin-validate "$plugin_dir"
 omarchy-shell shell rescanPlugins >/dev/null
-# The rescan is asynchronous: wait until the shell knows the plugin before enabling it.
-for _ in {1..20}; do
-  if omarchy-plugin-enable jarvis.companion >/dev/null 2>&1; then
-    break
-  fi
-  sleep 0.5
-done
-omarchy-plugin-list | grep -q '^jarvis.companion *enabled' || warn "could not enable jarvis.companion; run: omarchy plugin enable jarvis.companion"
+shell_mode=$(cat "${XDG_STATE_HOME:-$HOME/.local/state}/jarvis-workos/shell-mode" 2>/dev/null || echo omarchy)
+if [[ $shell_mode == caelestia ]]; then
+  # Caelestia hosts the island; the Omarchy plugin stays installed but off (one island).
+  echo "    Caelestia mode: jarvis.companion stays disabled (jarvis-shell-mode omarchy turns it back on)"
+else
+  # The rescan is asynchronous: wait until the shell knows the plugin before enabling it.
+  for _ in {1..20}; do
+    if omarchy-plugin-enable jarvis.companion >/dev/null 2>&1; then
+      break
+    fi
+    sleep 0.5
+  done
+  omarchy-plugin-list | grep -q '^jarvis.companion *enabled' || warn "could not enable jarvis.companion; run: omarchy plugin enable jarvis.companion"
+fi
+
+# jarvis-ui sends island/panel commands to whichever shell hosts Jarvis; jarvis-shell-mode chooses it.
+install -m 755 "$repo/omarchy/bin/jarvis-ui" "$repo/omarchy/bin/jarvis-shell-mode" "$bin/"
+
+if [[ $shell == caelestia ]]; then
+  step "Caelestia Shell with the Jarvis island"
+  "$repo/omarchy/caelestia/install-caelestia.sh"
+elif [[ $shell_mode == caelestia && -d $data/caelestia/src/shell ]]; then
+  step "Caelestia Shell: updating the Jarvis island"
+  "$repo/omarchy/caelestia/assemble.sh" "$data/caelestia/src/shell" "$cfg_home/quickshell/caelestia" >/dev/null
+  "$data/quickshell/bin/qs" -c caelestia kill >/dev/null 2>&1 || true
+  setsid -f "$data/quickshell/bin/qs" -c caelestia -n -d >/dev/null 2>&1
+fi
 
 step "Hyprland keybindings"
 cp "$repo/omarchy/hypr/jarvis.lua" "$hypr/jarvis.lua"

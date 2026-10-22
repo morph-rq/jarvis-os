@@ -174,9 +174,13 @@ def gallery(p, fake, shots):
                 "created": time.time(), "origin": "text", "desk_only": False}
     fake.push("approval", approval=approval)
     fake.push("status", status="approval")
-    yield 0.25
-    clicked_early = p.click_text("Allow (yes)")
-    yield 0.1
+    # Click the moment the button is on screen (how soon depends on the renderer), inside the 600 ms guard.
+    pushed = time.time()
+    clicked_early = False
+    while not clicked_early and time.time() - pushed < 0.5:
+        yield 0.03
+        clicked_early = p.click_text("Allow (yes)")
+    yield 0.05
     assert not fake.sent("approve"), "a click in the first 600 ms must not answer the approval"
     yield 1.0
     _expect(p, "approval expanded")

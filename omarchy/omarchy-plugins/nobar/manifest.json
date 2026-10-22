@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "jarvis.nobar",
+  "name": "No bar (Caelestia mode)",
+  "version": "1.0.0",
+  "author": "Jarvis WorkOS",
+  "license": "MIT",
+  "description": "An empty full-bar option: selected by `jarvis-shell-mode caelestia` while Caelestia draws the bar, so Omarchy's shell keeps running its menu, clipboard, polkit agent and other services without a second bar. `omarchy bar reset` (or `jarvis-shell-mode omarchy`) brings Omarchy's bar back.",
+  "kinds": ["bar"],
+  "entryPoints": {
+    "bar": "Bar.qml"
+  }
+}

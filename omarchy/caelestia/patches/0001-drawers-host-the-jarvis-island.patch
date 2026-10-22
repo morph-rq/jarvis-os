@@ -1,0 +1,126 @@
+diff --git a/modules/drawers/ContentWindow.qml b/modules/drawers/ContentWindow.qml
+index 9f82df2d..70393779 100644
+--- a/modules/drawers/ContentWindow.qml
++++ b/modules/drawers/ContentWindow.qml
+@@ -68,7 +68,7 @@ StyledWindow {
+     name: "drawers"
+     WlrLayershell.exclusionMode: ExclusionMode.Ignore
+     WlrLayershell.layer: (fsTransitionProg > 0 && contentItem.Config.general.showOverFullscreen) || (hasSpecialWorkspace && hasFullscreenOnNormalWs) ? WlrLayer.Overlay : WlrLayer.Top
+-    WlrLayershell.keyboardFocus: screenState.launcher || screenState.session ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
++    WlrLayershell.keyboardFocus: screenState.launcher || screenState.session || panels.jarvis.wantsKeyboard ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+ 
+     mask: hasFullscreen ? emptyRegion : regions
+ 
+@@ -117,6 +117,8 @@ StyledWindow {
+             const conf = root.contentItem.Config;
+             if ((s.launcher && conf.launcher.enabled) || (s.session && conf.session.enabled) || (s.sidebar && conf.sidebar.enabled))
+                 return true;
++            if (panels.jarvis.wantsKeyboard) // Jarvis's conversation: a click outside folds it
++                return true;
+             if (!conf.dashboard.showOnHover && s.dashboard && conf.dashboard.enabled)
+                 return true;
+             if (panels.popouts.currentName.startsWith("traymenu") && (panels.popouts.current as StackView)?.depth > 1)
+@@ -125,6 +127,8 @@ StyledWindow {
+         }
+         windows: [root]
+         onCleared: {
++            if (panels.jarvis.wantsKeyboard)
++                Jarvis.client.requestIsland("");
+             root.screenState.launcher = false;
+             root.screenState.session = false;
+             root.screenState.sidebar = false;
+@@ -181,6 +185,14 @@ StyledWindow {
+             deformAmount: 0.1
+         }
+ 
++        PanelBg {
++            id: jarvisBg
++
++            panel: panels.jarvis
++            deformAmount: 0.12
++            radius: Math.min(panels.jarvis.radius, panels.jarvis.height / 2)
++        }
++
+         PanelBg {
+             id: launcherBg
+ 
+@@ -276,6 +288,9 @@ StyledWindow {
+             launcher.transform: Matrix4x4 {
+                 matrix: launcherBg.deformMatrix
+             }
++            jarvis.transform: Matrix4x4 {
++                matrix: jarvisBg.deformMatrix
++            }
+             session.transform: Matrix4x4 {
+                 matrix: sessionBg.deformMatrix
+             }
+diff --git a/modules/drawers/Interactions.qml b/modules/drawers/Interactions.qml
+index 3d94a528..1d44714f 100644
+--- a/modules/drawers/Interactions.qml
++++ b/modules/drawers/Interactions.qml
+@@ -207,8 +207,8 @@ CustomMouseArea {
+                 screenState.launcher = false;
+         }
+ 
+-        // Show dashboard on hover
+-        const showDashboard = Config.dashboard.showOnHover && inTopPanel(panels.dashboard, x, y);
++        // Show dashboard on hover, unless Jarvis's island is showing something the user is reading or typing into
++        const showDashboard = Config.dashboard.showOnHover && inTopPanel(panels.dashboard, x, y) && !panels.jarvis.busy;
+ 
+         // Always update visibility based on hover if not in shortcut mode
+         if (!dashboardShortcutActive) {
+diff --git a/modules/drawers/Panels.qml b/modules/drawers/Panels.qml
+index 28a03564..259a7237 100644
+--- a/modules/drawers/Panels.qml
++++ b/modules/drawers/Panels.qml
+@@ -4,6 +4,7 @@ import Caelestia.Config
+ import qs.components
+ import qs.modules.bar as Bar
+ import qs.modules.dashboard as Dashboard
++import qs.modules.jarvis as JarvisIsland
+ import qs.modules.launcher as Launcher
+ import qs.modules.notifications as Notifications
+ import qs.modules.osd as Osd
+@@ -28,6 +29,7 @@ Item {
+     readonly property alias sessionWrapper: sessionWrapper
+     readonly property alias launcher: launcher
+     readonly property alias dashboard: dashboard
++    readonly property alias jarvis: jarvis
+     readonly property alias popouts: popoutsWrapper.content
+     readonly property alias popoutsWrapper: popoutsWrapper
+     readonly property alias utilities: utilities
+@@ -116,6 +118,17 @@ Item {
+         anchors.top: parent.top
+     }
+ 
++    // Jarvis: the assistant's island, hanging from the top border above the dashboard's place.
++    JarvisIsland.Wrapper {
++        id: jarvis
++
++        screen: root.screen
++        screenState: root.screenState
++
++        anchors.horizontalCenter: parent.horizontalCenter
++        anchors.top: parent.top
++    }
++
+     BarPopouts.ClipWrapper {
+         id: popoutsWrapper
+ 
+diff --git a/modules/drawers/Regions.qml b/modules/drawers/Regions.qml
+index 47ad0680..72f2c6c1 100644
+--- a/modules/drawers/Regions.qml
++++ b/modules/drawers/Regions.qml
+@@ -27,6 +27,12 @@ Region {
+         height: panel.height * (1 - root.panels.dashboard.offsetScale) + root.borderThickness
+     }
+ 
++    R {
++        panel: root.panels.jarvis
++        y: 0
++        height: panel.height + root.borderThickness
++    }
++
+     R {
+         panel: root.panels.launcher
+         y: root.win.height - height

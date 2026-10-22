@@ -1,0 +1,139 @@
+#!/usr/bin/env bash
+# Choose which shell draws the desktop around Omarchy: Omarchy's own (the default) or Caelestia with
+# the Jarvis island. Omarchy itself (Hyprland config, its menu, omarchy-* tools, updates) is untouched
+# either way; this only decides which of the two Quickshell shells owns each overlapping job.
+#
+#   jarvis-shell-mode caelestia   switch to Caelestia (installed by install.sh --shell caelestia)
+#   jarvis-shell-mode omarchy     switch back, restoring what `caelestia` changed
+#   jarvis-shell-mode status
+#
+# Caelestia mode, one owner per job (omarchy/caelestia/README.md has the table):
+#   Caelestia: bar, notifications, OSD, lock and idle, low-battery notice, wallpaper, launcher, Jarvis
+#   Omarchy:   its menu, clipboard, emoji and image pickers, polkit agent, night light, remote session,
+#              app themes and the choice of wallpaper (Caelestia follows it and derives its colours)
+# Every change is recorded in ~/.local/state/jarvis-workos/shell-mode-backup/ and undone by `omarchy`.
+set -euo pipefail
+
+state="${XDG_STATE_HOME:-$HOME/.local/state}/jarvis-workos"
+data="${XDG_DATA_HOME:-$HOME/.local/share}/jarvis-workos"
+config="${XDG_CONFIG_HOME:-$HOME/.config}"
+mode_file="$state/shell-mode"
+backup_root="$state/shell-mode-backup"
+qs_bin="$data/quickshell/bin/qs"
+caelestia_cfg="$config/quickshell/caelestia"
+hypr_shell="$config/hypr/jarvis-shell.lua"
+# Omarchy's first-party plugins whose jobs Caelestia takes over, and Jarvis's own Omarchy plugin.
+takeover=(omarchy.notifications omarchy.osd omarchy.lock omarchy.idle omarchy.battery omarchy.background omarchy.dock jarvis.companion)
+
+say() { printf '%s\n' "$*"; }
+die() { printf 'jarvis-shell-mode: %s\n' "$*" >&2; exit 1; }
+current() { cat "$mode_file" 2>/dev/null || echo omarchy; }
+
+wallpaper_sync_units() {
+  local units="$config/systemd/user"
+  mkdir -p "$units"
+  # Omarchy decides the wallpaper (themes, its background switcher); Caelestia shows it and derives
+  # its Material colours from it. The link changes inside this directory on every switch.
+  cat > "$units/jarvis-caelestia-wallpaper.path" <<EOF
+[Unit]
+Description=Follow Omarchy's background in Caelestia (Jarvis shell mode)
+
+[Path]
+PathChanged=%h/.local/state/omarchy/current
+Unit=jarvis-caelestia-wallpaper.service
+
+[Install]
+WantedBy=default.target
+EOF
+  cat > "$units/jarvis-caelestia-wallpaper.service" <<EOF
+[Unit]
+Description=Set Caelestia's wallpaper to Omarchy's current background
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'bg=\$(readlink -f "%h/.local/state/omarchy/current/background"); [ -f "\$bg" ] && exec caelestia wallpaper -f "\$bg" || true'
+EOF
+  systemctl --user daemon-reload
+  systemctl --user enable --now jarvis-caelestia-wallpaper.path >/dev/null
+}
+
+to_caelestia() {
+  [[ $(current) == caelestia ]] && { say "Already in Caelestia mode."; return; }
+  [[ -x $qs_bin && -f $caelestia_cfg/JARVIS.txt ]] || die "Caelestia isn't installed; run: ./omarchy/install.sh --shell caelestia"
+  command -v caelestia >/dev/null || die "the caelestia CLI isn't on PATH; run: ./omarchy/install.sh --shell caelestia"
+  command -v omarchy >/dev/null || die "this switches Omarchy's shell; the omarchy command is missing"
+
+  local backup="$backup_root/$(date +%Y%m%d-%H%M%S)"
+  mkdir -p "$backup"
+  [[ -f $config/omarchy/shell.json ]] && cp "$config/omarchy/shell.json" "$backup/shell.json"
+  : > "$backup/disabled"
+
+  # One bar: Omarchy's full-bar slot gets the empty option.
+  mkdir -p "$config/omarchy/plugins"
+  if [[ ! -e $config/omarchy/plugins/jarvis.nobar ]]; then
+    cp -r "$data/omarchy-plugins/nobar" "$config/omarchy/plugins/jarvis.nobar"
+    echo created > "$backup/nobar"
+  fi
+  omarchy-shell shell rescanPlugins >/dev/null
+  omarchy bar use jarvis.nobar >/dev/null
+  # One owner for notifications, OSD, lock, idle, battery, wallpaper; Jarvis moves into Caelestia.
+  for id in "${takeover[@]}"; do
+    if omarchy plugin disable "$id" >/dev/null 2>&1; then echo "$id" >> "$backup/disabled"; fi
+  done
+
+  # Caelestia's settings, only where the user has none yet.
+  mkdir -p "$config/caelestia"
+  [[ -f $config/caelestia/cli.json ]] || cp "$data/caelestia-defaults/cli.json" "$config/caelestia/cli.json"
+  [[ -f $config/caelestia/shell.json ]] || cp "$data/caelestia-defaults/shell.json" "$config/caelestia/shell.json"
+
+  # Start Caelestia with Hyprland, and give its drawers keys (Omarchy's app grid lived in its dock).
+  cat > "$hypr_shell" <<EOF
+-- Written by jarvis-shell-mode caelestia (removed by jarvis-shell-mode omarchy).
+local qs = "$qs_bin -c caelestia"
+hl.on("hyprland.start", function() hl.exec_cmd(qs .. " -n -d") end)
+o.rebind("SUPER + ALT + SPACE", "Apps (Caelestia launcher)", qs .. " ipc call drawers toggle launcher")
+o.bind("SUPER + ALT + B", "Caelestia dashboard", qs .. " ipc call drawers toggle dashboard")
+o.bind("SUPER + ALT + ESCAPE", "Caelestia session menu", qs .. " ipc call drawers toggle session")
+o.bind("SUPER + ALT + O", "Caelestia sidebar (notifications)", qs .. " ipc call drawers toggle sidebar")
+EOF
+  echo caelestia > "$mode_file"
+  wallpaper_sync_units
+  caelestia scheme set -n dynamic >/dev/null 2>&1 || true
+  systemctl --user start jarvis-caelestia-wallpaper.service >/dev/null 2>&1 || true
+
+  hyprctl reload >/dev/null 2>&1 || true
+  setsid -f "$qs_bin" -c caelestia -n -d >/dev/null 2>&1
+  say "Caelestia mode. Undo with: jarvis-shell-mode omarchy   (backup: $backup)"
+}
+
+to_omarchy() {
+  [[ $(current) == omarchy ]] && { say "Already in Omarchy mode."; return; }
+  local backup
+  backup=$(ls -1d "$backup_root"/* 2>/dev/null | tail -1) || true
+  "$qs_bin" -c caelestia kill >/dev/null 2>&1 || true
+  systemctl --user disable --now jarvis-caelestia-wallpaper.path >/dev/null 2>&1 || true
+  rm -f "$hypr_shell"
+  if [[ -n $backup && -f $backup/disabled ]]; then
+    while read -r id; do [[ -n $id ]] && omarchy plugin enable "$id" >/dev/null 2>&1 || true; done < "$backup/disabled"
+  else
+    for id in "${takeover[@]}"; do omarchy plugin enable "$id" >/dev/null 2>&1 || true; done
+  fi
+  # The bar that was in use before (a third-party one stays chosen), else Omarchy's own.
+  local bar=""
+  [[ -n $backup && -f $backup/shell.json ]] && bar=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("bar", {}).get("id", ""))' "$backup/shell.json" 2>/dev/null || true)
+  if [[ -n $bar && $bar != jarvis.nobar && $bar != omarchy.bar ]]; then omarchy bar use "$bar" >/dev/null 2>&1 || omarchy bar reset >/dev/null 2>&1 || true
+  else omarchy bar reset >/dev/null 2>&1 || true; fi
+  [[ -n $backup && -f $backup/nobar ]] && rm -rf "$config/omarchy/plugins/jarvis.nobar"
+  omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
+  echo omarchy > "$mode_file"
+  hyprctl reload >/dev/null 2>&1 || true
+  say "Omarchy mode."
+}
+
+mkdir -p "$state"
+case ${1:-status} in
+  caelestia) to_caelestia ;;
+  omarchy) to_omarchy ;;
+  status) say "$(current)" ;;
+  *) sed -n '2,15p' "$0"; exit 2 ;;
+esac

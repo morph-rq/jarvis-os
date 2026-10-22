@@ -42,10 +42,20 @@ Item {
   readonly property real remaining: a.created ? timeout - ((island ? island.now : Date.now()) / 1000 - a.created) : timeout
   readonly property int pending: s ? s.approvals.length : 0
   // A card that appears under the pointer can't be answered by a click meant for something else:
-  // the buttons arm 600 ms after each new request (Coucou's guard).
+  // the buttons arm 600 ms after the request reached this shell (Coucou's guard). Counted from its
+  // arrival, the same rule as approveLatest, not from when this card was built or last updated.
   property bool armed: false
-  onAChanged: { armed = false; arm.restart() }
-  Timer { id: arm; interval: 600; onTriggered: face.armed = true }
+  property string _armedFor: ""
+  function _rearm() {
+    var arrived = (s && a.id && s._approvalAt && s._approvalAt[a.id]) || 0
+    if (a.id !== _armedFor) { _armedFor = a.id || ""; armed = false }
+    var left = arrived ? 600 - (Date.now() - arrived) : 600
+    if (left <= 0) { armed = true; return }
+    if (!armed) { arm.interval = Math.max(1, Math.ceil(left)); arm.restart() }
+  }
+  onAChanged: _rearm()
+  Component.onCompleted: _rearm()
+  Timer { id: arm; onTriggered: { if (!face.s || !face.s._approvalAt || !face.s._approvalAt[face.a.id]) face.armed = true; else face._rearm() } }
 
   Column {
     id: column

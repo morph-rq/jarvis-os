@@ -10,26 +10,28 @@ import QtQuick
 // the outgoing view fades fast, the incoming one arrives after it, slightly scaled.
 QtObject {
   // ------------------------------------------------------------ colour
-  // Surfaces are near-black with a blue cast; light is restrained blue-violet.
-  readonly property color ink: "#05060c"          // the island body (reads as "black" against any wallpaper)
-  readonly property color surface: "#0c0e1a"
-  readonly property color surfaceHigh: "#141831"
-  readonly property color surfaceHover: "#1b2040"
-  readonly property color hairline: Qt.rgba(0.62, 0.70, 1.0, 0.10)
-  readonly property color text: "#eef1ff"
-  readonly property color textDim: Qt.rgba(0.93, 0.95, 1.0, 0.64)
-  readonly property color textFaint: Qt.rgba(0.93, 0.95, 1.0, 0.40)
+  // Surfaces are near-black with a blue cast; light is restrained blue-violet. These are the defaults;
+  // a host may restyle them (in Caelestia they follow its wallpaper palette, light or dark).
+  property color ink: "#05060c"          // the island body (reads as "black" against any wallpaper)
+  property color surface: "#0c0e1a"
+  property color surfaceHigh: "#141831"
+  property color surfaceHover: "#1b2040"
+  property color hairline: Qt.rgba(0.62, 0.70, 1.0, 0.10)
+  property color text: "#eef1ff"
+  property color textDim: Qt.rgba(0.93, 0.95, 1.0, 0.64)
+  property color textFaint: Qt.rgba(0.93, 0.95, 1.0, 0.40)
 
-  readonly property color cyan: "#4fd8ff"
-  readonly property color blue: "#5b8cff"
-  readonly property color violet: "#9b6bff"
-  readonly property color rose: "#ff6b9a"
-  readonly property color amber: "#f5b942"
-  readonly property color green: "#3ecf8e"
-  readonly property color red: "#ff6b6b"
-  readonly property color ice: "#c9f4ff"
-  readonly property color orbBlue: "#2f6bff"
-  readonly property color orbViolet: "#9a4dff"
+  property color cyan: "#4fd8ff"
+  property color blue: "#5b8cff"
+  property color violet: "#9b6bff"
+  property color rose: "#ff6b9a"
+  property color amber: "#f5b942"
+  property color green: "#3ecf8e"
+  property color red: "#ff6b6b"
+  property color ice: "#c9f4ff"
+  property color orbBlue: "#2f6bff"
+  property color orbViolet: "#9a4dff"
+  property bool light: false              // a light palette (the orb and glows adapt)
 
   // The orb's strand colours and the tint each state lays over them (a = how much).
   readonly property var stateTint: ({

@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Send a command to Jarvis's interface in whichever shell hosts it: Omarchy's shell (the
+# jarvis.companion plugin) or Caelestia (jarvis-shell-mode caelestia). The commands are the `jarvis`
+# IPC target of JarvisClient.qml, the same in both:
+#
+#   jarvis-ui commandBar | toggle | listen | dictate | island toggle|conversation|expanded|peek|close
+#   jarvis-ui islandState | status | approveLatest true|false | ask TEXT | workspace
+set -euo pipefail
+
+mode_file="${XDG_STATE_HOME:-$HOME/.local/state}/jarvis-workos/shell-mode"
+mode=$(cat "$mode_file" 2>/dev/null || echo omarchy)
+
+if [[ $mode == caelestia ]]; then
+  qs_bin="${XDG_DATA_HOME:-$HOME/.local/share}/jarvis-workos/quickshell/bin/qs"
+  [[ -x $qs_bin ]] || qs_bin=qs
+  exec "$qs_bin" -c caelestia ipc call jarvis "$@"
+fi
+exec omarchy-shell jarvis "$@"
