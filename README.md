@@ -8,6 +8,7 @@ An executive AI companion built as native extensions to [Omarchy](https://github
 - Messaging gateway: chat with this same Jarvis from Telegram, Discord, Slack, Signal and WhatsApp (voice notes, photos, files, schedules, approvals with buttons; pairing and a strict remote policy; jarvisd stays the only brain): [docs/MESSAGING.md](docs/MESSAGING.md)
 - WhatsApp voice calls through the official Business Calling API: call Jarvis from WhatsApp and talk (Gemini Live through Pipecat, the same tools and approvals), or let Jarvis call you with reminders: [docs/CALLING.md](docs/CALLING.md)
 - Connected apps (Google Workspace through its MCP server, Composio for Slack/Notion/GitHub/CRMs…), real Office files (Jarvis's engine + GenOffice) and the Living Workspace (interactive results, sandboxed generated interfaces, AG-UI): [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md)
+- The Jarvis Island and orb: states, design system, shortcuts, how to preview and check it without Omarchy, what is verified where: [docs/ISLAND.md](docs/ISLAND.md); the study of the UI reference projects: [docs/UI-REFERENCES.md](docs/UI-REFERENCES.md)
 - Screenshots, test reports and benchmarks: [evidence/](evidence/)
 - Cloud development and bringing changes back locally: [CLAUDE.md](CLAUDE.md)
 

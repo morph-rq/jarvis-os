@@ -55,6 +55,25 @@ Inspected for reference, not used at run time:
 - [pipecat-ai/pipecat-ui](https://github.com/pipecat-ai/pipecat-ui) `f1c9470`: React components for RTVI browser clients; Jarvis's UI is the Quickshell companion, so it is not used.
 - [pipecat-ai/whisker](https://github.com/pipecat-ai/whisker) `60ce122`: the debugger; optional, developer-only, via `omarchy/dev/whisker_setup.py`.
 
+## UI references for the island and orb (studied, not vendored)
+
+Cloned to `upstream/ui-refs/` (gitignored) and read at source level; the full study (what each does well, with file paths and numbers, and what Jarvis must not take) is [docs/UI-REFERENCES.md](docs/UI-REFERENCES.md). No code was copied: Jarvis's island, orb shader and components are its own. Ideas adopted are credited in the code where used.
+
+| Project | Commit | License | Used for |
+|---|---|---|---|
+| [caelestia-dots/shell](https://github.com/caelestia-dots/shell) | `29fcf69` | GPL-3.0 | ideas only (motion, morphing panels) |
+| [louis-cfm/coucou](https://github.com/louis-cfm/coucou) | `1e51809` | MIT code; assets reserved | ideas: open spring 0.5 s / 0.72, hook relay with silence = no decision, 600 ms click guard |
+| [AvengeMedia/DankMaterialShell](https://github.com/AvengeMedia/DankMaterialShell) | `47c9d8d` | MIT | ideas: input region fixed per change, focus handling |
+| [pipecat-ai/pipecat-ui](https://github.com/pipecat-ai/pipecat-ui) | `f1c9470` | BSD-2-Clause | ideas: device controls, connection states (its wave shader: not used, provenance) |
+| [end-4/dots-hyprland](https://github.com/end-4/dots-hyprland) | `2f2a376` | GPL-3.0 | ideas only |
+| [noctalia-dev/noctalia](https://github.com/noctalia-dev/noctalia) | `555324c` | MIT (C++) | ideas only |
+| [elevenlabs/ui](https://github.com/elevenlabs/ui) | `3a28eba` | MIT | orb reference |
+| [livekit/components-js](https://github.com/livekit/components-js) | `af10b16` | Apache-2.0 | agent-state visualizer reference (aura shader: not used, PolyForm history) |
+| [amunozdev/voiceorbs](https://github.com/amunozdev/voiceorbs) | `8b27999` | MIT | orb reference |
+| [exprmntl/orb-ui](https://github.com/exprmntl/orb-ui) | `4d8bed9` | MIT | orb and volume-calibration reference |
+| [agents-ui/agents-kit](https://github.com/agents-ui/agents-kit) | `d84ecea` | Non-commercial | not used |
+| beUI voice orb, 21st.dev voice-powered orb | — | unknown | unreachable from the build container; not used |
+
 ## Brahma AI Evo (reviewed for ideas only; no code or assets used)
 
 | | |
