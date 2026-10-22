@@ -29,6 +29,17 @@ An executive AI companion built as native extensions to [Omarchy](https://github
 
 ## Install on Omarchy
 
+On a fresh Omarchy, for everyday use and live development, run one command; [MIGRATION.md](MIGRATION.md)
+covers moving from Windows, backups, rollback and the `jarvis dev / test / logs / doctor` commands:
+
+```bash
+./install-jarvis.sh --dry-run    # see every step first
+./install-jarvis.sh
+```
+
+It wraps the installer below (as `omarchy/install.sh --dev`), adding a hardware report, missing
+packages, developer tools and a rollback point. To use that installer directly:
+
 ```bash
 GEMINI_API_KEY=... ANTHROPIC_API_KEY=... ./omarchy/install.sh
 ```
@@ -38,6 +49,7 @@ It installs user-level files only, under `jarvis-workos` names, so it never touc
 | Option | Use |
 |---|---|
 | `--link` | symlink the plugin to this checkout (development; QML edits hot-reload, restart the shell for `keepLoaded` parts) |
+| `--dev` | `--link`, plus the Python service installed editable from this checkout (what `install-jarvis.sh` uses) |
 | `--no-local` | skip the local speech stack: no wake word, no offline fallback (push-to-talk + Gemini Live still work) |
 | `--echo-cancel` | add a PipeWire echo-cancelled mic, so you can interrupt Jarvis on speakers with `barge_in = open` |
 | `--no-pipecat` | skip the Pipecat engine (`voice.runtime = legacy`, the previous implementation) |

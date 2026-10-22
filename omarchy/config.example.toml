@@ -9,6 +9,7 @@ barge_in = "gated"             # gated | open (with --echo-cancel or headphones)
 
 [local]
 turn_detection = "smart"       # smart (Silero VAD + Smart Turn v3) | silence (fixed pause)
+# whisper_device = "auto"      # auto picks CUDA on an NVIDIA GPU (e.g. RTX 5090) when CUDA 12 libraries are present
 
 [vision]
 live_delivery = "describe"     # screen questions in Live: describe | context | realtime
@@ -89,3 +90,8 @@ download_dir = "~/Downloads/Jarvis"   # attachments and Drive downloads land her
 enabled = true                 # Super+Alt+W or "открой рабочее пространство"
 offline = true                 # the workspace window gets no internet at all
 generated_ui = true            # interactive views written by the model, run in a sandbox
+
+[browser]
+# Jarvis's own browser window for web tasks (its own profile, never your everyday one).
+# binary = "/usr/bin/chromium"   # default: chromium, google-chrome or brave, whichever is installed
+# headless = false

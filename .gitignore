@@ -18,3 +18,6 @@ vm/
 *.egg-info/
 build/
 .ruff_cache/
+
+# Transfer packages (scripts/make-transfer-package.sh)
+dist/

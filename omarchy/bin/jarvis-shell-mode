@@ -65,7 +65,8 @@ to_caelestia() {
   command -v caelestia >/dev/null || die "the caelestia CLI isn't on PATH; run: ./omarchy/install.sh --shell caelestia"
   command -v omarchy >/dev/null || die "this switches Omarchy's shell; the omarchy command is missing"
 
-  local backup="$backup_root/$(date +%Y%m%d-%H%M%S)"
+  local backup
+  backup="$backup_root/$(date +%Y%m%d-%H%M%S)"
   mkdir -p "$backup"
   [[ -f $config/omarchy/shell.json ]] && cp "$config/omarchy/shell.json" "$backup/shell.json"
   : > "$backup/disabled"

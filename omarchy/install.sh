@@ -13,6 +13,8 @@
 #
 #   ./install.sh                 install / upgrade
 #   ./install.sh --link          symlink the plugin to this checkout (development; edits hot-reload)
+#   ./install.sh --dev           live development from this checkout: --link, and the Python service
+#                                installed editable (code edits apply on `jarvis restart`, no reinstall)
 #   ./install.sh --no-local      skip the local speech stack (no wake word, no offline fallback)
 #   ./install.sh --no-pipecat    skip the Pipecat voice engine (voice.runtime = legacy)
 #   ./install.sh --no-documents  skip the Office/PDF libraries (create_document / read_document / pdf_tools)
@@ -35,6 +37,7 @@ umask 077
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 link=0
+dev=0
 local_speech=1
 pipecat=1
 documents=1
@@ -47,6 +50,7 @@ shell=""
 while (( $# > 0 )); do
   case "$1" in
     --link) link=1 ;;
+    --dev) dev=1; link=1 ;;
     --no-local) local_speech=0 ;;
     --no-pipecat) pipecat=0 ;;
     --no-documents) documents=0 ;;
@@ -217,15 +221,25 @@ EOF
     warn "GenOffice was not installed; Jarvis's own document engine is used"
   fi
 fi
-# Build from a private copy: shared or read-only checkouts (e.g. a VM's 9p share) refuse build files.
-build="$(mktemp -d)"
-trap 'rm -rf "$build"' EXIT
-cp -r "$repo/service" "$build/service"
-rm -rf "$build/service"/*.egg-info
-if [[ -n $wheels ]]; then
-  "${pip[@]}" install --no-index --find-links "$wheels" --find-links "$wheels/extra" --upgrade "$build/service"
+if (( dev )); then
+  # Editable: the venv runs this checkout's code, so an edit takes effect on the next jarvisd restart.
+  step "Jarvis service from this checkout (editable, for development)"
+  if [[ -n $wheels ]]; then
+    "${pip[@]}" install --no-index --find-links "$wheels" --find-links "$wheels/extra" -e "$repo/service[dev]"
+  else
+    "${pip[@]}" install -e "$repo/service[dev]"   # [dev]: pytest, for `jarvis test`
+  fi
 else
-  "${pip[@]}" install --upgrade "$build/service"
+  # Build from a private copy: shared or read-only checkouts (e.g. a VM's 9p share) refuse build files.
+  build="$(mktemp -d)"
+  trap 'rm -rf "$build"' EXIT
+  cp -r "$repo/service" "$build/service"
+  rm -rf "$build/service"/*.egg-info
+  if [[ -n $wheels ]]; then
+    "${pip[@]}" install --no-index --find-links "$wheels" --find-links "$wheels/extra" --upgrade "$build/service"
+  else
+    "${pip[@]}" install --upgrade "$build/service"
+  fi
 fi
 ln -sfn "$data/venv/bin/jarvis-workos" "$bin/jarvis-workos"
 

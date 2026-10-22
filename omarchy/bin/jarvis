@@ -1,0 +1,297 @@
+#!/usr/bin/env bash
+# jarvis: live development and care of Jarvis on Omarchy (installed by install-jarvis.sh as ~/.local/bin/jarvis
+# and jarvis-os, both linked to this file in the checkout, so it always matches the code you're editing).
+#
+#   jarvis dev [--ui]        run jarvisd in the foreground from the checkout; restart it whenever a Python file
+#                            changes (--ui: also reload the island when QML changes). Ctrl-C hands back to
+#                            the service.
+#   jarvis restart [--ui]    restart the jarvisd service (--ui: and reload the island)
+#   jarvis reload-ui         reload the island after QML edits (Omarchy shell or Caelestia, whichever hosts it)
+#   jarvis logs [ui]         follow jarvisd's log, or the shell's (QML errors)
+#   jarvis doctor            hardware, install, service, shell, keys, dev tools: what works and what doesn't
+#   jarvis test [ARGS]       the Python and island test suites from the checkout
+#   jarvis voice-test        microphone level, a speaker tone, then a real voice conversation
+#   jarvis backup [--with-secrets] [--out FILE]   config, memory and settings (secrets only if asked: encrypted)
+#   jarvis restore FILE      a backup or a Windows export (what's there now is set aside first)
+#   jarvis rollback [GEN] [--packages]            undo the last install (or GEN from `jarvis generations`)
+#   jarvis update            pull the checkout (fast-forward only) and reinstall
+#   jarvis shell caelestia|omarchy|status        which shell hosts the island
+#   jarvis uninstall         remove Jarvis (your backups and the checkout stay)
+# Anything else goes to jarvis-workos: jarvis ask "…", jarvis config set …, jarvis secret set GEMINI_API_KEY,
+# jarvis status, jarvis listen, jarvis apps …
+set -euo pipefail
+
+repo="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../.." && pwd)"
+export JW_REPO="$repo"   # read by the library (backups record the checkout's commit)
+# shellcheck source=../lib/jarvis-common.sh
+. "$repo/omarchy/lib/jarvis-common.sh"
+py="$JW_DATA/venv/bin/python"
+jw="$JW_BIN/jarvis-workos"
+
+shell_mode() { cat "$JW_STATE/shell-mode" 2>/dev/null || echo omarchy; }
+
+editable() {   # does the venv run this checkout's code?
+  [[ -x $py ]] && [[ $("$py" -c 'import jarvis, os; print(os.path.realpath(os.path.dirname(jarvis.__file__)))' 2>/dev/null) == "$(readlink -f "$repo/service/jarvis")" ]]
+}
+
+ui_log() {   # the newest Quickshell instance's log
+  local d="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/quickshell/by-id"
+  local newest
+  newest=$(ls -t "$d" 2>/dev/null | head -1)
+  [[ -n $newest ]] && echo "$d/$newest/log.log"
+}
+
+cmd_reload_ui() {
+  if [[ $(shell_mode) == caelestia ]]; then
+    local qs="$JW_DATA/quickshell/bin/qs" src="$JW_DATA/caelestia/src/shell"
+    [[ -d $src ]] || jw_die "Caelestia isn't installed (./install-jarvis.sh --shell caelestia)"
+    "$repo/omarchy/caelestia/assemble.sh" "$src" "${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/caelestia" >/dev/null
+    "$qs" -c caelestia kill >/dev/null 2>&1 || true
+    setsid -f "$qs" -c caelestia -n -d >/dev/null 2>&1
+  else
+    local plugin="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/plugins/jarvis.companion"
+    if [[ ! -L $plugin ]]; then
+      jw_warn "the island plugin is a copy, not linked to this checkout: run ./install-jarvis.sh to link it"
+    fi
+    if command -v omarchy-restart-shell >/dev/null; then
+      (omarchy-restart-shell >/dev/null 2>&1 &)
+    else
+      omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
+    fi
+  fi
+  sleep 5
+  local log
+  log=$(ui_log)
+  if [[ -n $log ]]; then
+    grep -iE "jarvis|island|\.qml" "$log" | grep -iE "error|warn|unavailable|failed|TypeError|ReferenceError" | tail -20 \
+      || jw_ok "island reloaded; no QML errors in $log"
+  fi
+}
+
+cmd_dev() {
+  local ui=0
+  [[ ${1:-} == --ui ]] && ui=1
+  editable || jw_die "the venv doesn't run this checkout's code; run ./install-jarvis.sh (development mode is its default)"
+  local stamp
+  stamp=$(mktemp)
+  local child=""
+  start_daemon() {
+    JARVIS_LOG="${JARVIS_LOG:-INFO}" "$py" -m jarvis daemon &
+    child=$!
+    jw_ok "jarvisd running from $repo/service (pid $child)"
+  }
+  stop_daemon() {
+    if [[ -n $child ]] && kill -0 "$child" 2>/dev/null; then
+      kill "$child" 2>/dev/null || true
+      wait "$child" 2>/dev/null || true
+    fi
+    child=""
+  }
+  finish() {
+    stop_daemon
+    rm -f "$stamp"
+    systemctl --user start jarvisd.service >/dev/null 2>&1 || true
+    echo
+    jw_ok "dev loop ended; the jarvisd service is back"
+  }
+  trap finish EXIT
+  trap 'exit 0' INT TERM
+  systemctl --user stop jarvisd.service >/dev/null 2>&1 || true
+  jw_step "Live development: edit $repo/service/jarvis (Python)$( (( ui )) && echo " or omarchy/plugin (QML)"); Ctrl-C to stop"
+  start_daemon
+  while sleep 1; do
+    if [[ -n $(find "$repo/service/jarvis" -name '*.py' -newer "$stamp" -print -quit 2>/dev/null) ]]; then
+      touch "$stamp"
+      jw_step "Python changed: restarting jarvisd"
+      stop_daemon
+      start_daemon
+    elif (( ui )) && [[ -n $(find "$repo/omarchy/plugin" \( -name '*.qml' -o -name '*.js' \) -newer "$stamp" -print -quit 2>/dev/null) ]]; then
+      touch "$stamp"
+      jw_step "QML changed: reloading the island"
+      cmd_reload_ui
+    elif [[ -n $child ]] && ! kill -0 "$child" 2>/dev/null; then
+      wait "$child" 2>/dev/null || jw_warn "jarvisd exited ($?); it restarts on your next edit"
+      child=""
+    fi
+  done
+}
+
+cmd_doctor() {
+  local problems=0
+  jw_hardware_report || problems=$((problems + 1))
+  jw_step "Install"
+  jw_ok "checkout: $repo ($(git -C "$repo" rev-parse --abbrev-ref HEAD 2>/dev/null) @ $(git -C "$repo" rev-parse --short HEAD 2>/dev/null))"
+  if [[ -n $(git -C "$repo" status --porcelain 2>/dev/null) ]]; then jw_info "uncommitted changes: git -C $repo status"; fi
+  if editable; then jw_ok "the service runs this checkout's code (live development)"
+  elif [[ -x $py ]]; then jw_warn "the service runs an installed copy, not the checkout (./install-jarvis.sh links it)"
+  else jw_warn "not installed: ./install-jarvis.sh"; problems=$((problems + 1)); fi
+  if systemctl --user is-enabled --quiet jarvisd.service 2>/dev/null; then
+    jw_ok "jarvisd: $(systemctl --user is-active jarvisd.service 2>/dev/null), starts with your session"
+  else
+    jw_warn "jarvisd isn't enabled to start with your session (systemctl --user enable --now jarvisd)"; problems=$((problems + 1))
+  fi
+  local plugin="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/plugins/jarvis.companion"
+  if [[ -L $plugin ]]; then jw_ok "island: linked to the checkout (QML edits: jarvis reload-ui)"
+  elif [[ -d $plugin ]]; then jw_ok "island: installed copy"
+  else jw_warn "island plugin not installed"; problems=$((problems + 1)); fi
+  jw_ok "shell hosting the island: $(shell_mode)"
+  jw_step "Developer tools"
+  local t
+  for t in git python3 node npm claude codex; do
+    if command -v "$t" >/dev/null; then jw_ok "$t"; else jw_warn "$t missing"; fi
+  done
+  if [[ -x $jw ]]; then
+    jw_step "Jarvis (jarvis-workos doctor)"
+    "$jw" doctor || true
+  fi
+  (( problems == 0 )) && jw_step "No problems found" || jw_step "$problems thing(s) to look at above"
+}
+
+cmd_test() {
+  editable || jw_warn "the venv runs an installed copy; tests still run from the checkout"
+  [[ -x $py ]] || jw_die "no venv yet: ./install-jarvis.sh"
+  "$py" -c 'import pytest' 2>/dev/null || "$py" -m pip install -q pytest
+  (cd "$repo/service" && "$py" -m pytest tests -q "$@")
+  if command -v node >/dev/null; then (cd "$repo" && node --test omarchy/dev/island.test.js); fi
+}
+
+cmd_voice_test() {
+  command -v pw-record >/dev/null || jw_die "pw-record (PipeWire) is missing"
+  [[ -x $py ]] || jw_die "no venv yet: ./install-jarvis.sh"
+  local tmp
+  tmp=$(mktemp -d)
+  jw_step "Devices"
+  jw_ok "microphone: $(pactl get-default-source 2>/dev/null || echo '?')   speaker: $(pactl get-default-sink 2>/dev/null || echo '?')"
+  jw_info "change them in the island's device picker, or: jarvis config set voice.input_source NAME"
+  jw_step "Microphone: say something for 4 seconds…"
+  timeout 4 pw-record --rate 16000 --channels 1 --format s16 "$tmp/mic.wav" 2>/dev/null || true
+  "$py" - "$tmp/mic.wav" <<'PY'
+import math, struct, sys, wave
+try:
+    w = wave.open(sys.argv[1])
+    data = w.readframes(w.getnframes())
+except Exception as exc:
+    sys.exit(f"   !! couldn't record: {exc}")
+n = len(data) // 2
+peak = max((abs(s) for (s,) in struct.iter_unpack("<h", data[: n * 2])), default=0)
+rms = math.sqrt(sum(s * s for (s,) in struct.iter_unpack("<h", data[: n * 2])) / max(1, n))
+db = 20 * math.log10(max(rms, 1) / 32768)
+print(f"   level {db:.0f} dBFS (peak {20 * math.log10(max(peak, 1) / 32768):.0f})",
+      "— good" if db > -45 else "— very quiet: wrong microphone, muted, or too far away")
+PY
+  jw_step "Speaker: a short tone"
+  "$py" - "$tmp/tone.wav" <<'PY'
+import math, struct, sys, wave
+w = wave.open(sys.argv[1], "wb"); w.setnchannels(1); w.setsampwidth(2); w.setframerate(24000)
+w.writeframes(b"".join(struct.pack("<h", int(9000 * math.sin(2 * math.pi * 660 * i / 24000) * min(1, (24000 - i) / 2400)))
+                       for i in range(24000)))
+PY
+  pw-play "$tmp/tone.wav" 2>/dev/null || jw_warn "pw-play failed"
+  if jw_confirm "Did you hear the tone?"; then jw_ok "speaker works"; else jw_warn "no sound: check the output device and volume"; fi
+  rm -rf "$tmp"
+  jw_step "A real conversation (Gemini Live through Pipecat)"
+  if jw_confirm "Start one now? Say e.g. \"what time is it?\" — events show here for 30 s"; then
+    "$jw" listen start >/dev/null || jw_die "jarvisd isn't answering: jarvis logs"
+    timeout 30 "$jw" watch 2>/dev/null | grep --line-buffered -E '"event": "(transcript|reply|voice|status)"' | cut -c1-160 || true
+    "$jw" listen stop >/dev/null 2>&1 || true
+  fi
+}
+
+cmd_backup() {
+  local secrets=0 out=""
+  while (( $# )); do
+    case $1 in
+      --with-secrets) secrets=1 ;;
+      --out) out="$2"; shift ;;
+      *) jw_die "backup: unknown option $1" ;;
+    esac
+    shift
+  done
+  local host
+  host=$(hostname 2>/dev/null || cat /etc/hostname 2>/dev/null || echo host)
+  out="${out:-$JW_BACKUPS/jarvis-backup-$host-$(date +%Y%m%d-%H%M%S).tar.gz$( (( secrets )) && echo .gpg)}"
+  (( secrets )) && jw_info "secrets go in encrypted: choose a passphrase you'll remember"
+  jw_backup "$out" "$secrets"
+  jw_ok "$out ($(du -h "$out" | cut -f1))$( (( secrets )) || echo '; no keys or sign-ins in it')"
+}
+
+cmd_rollback() {
+  local gen="" packages=0
+  while (( $# )); do
+    case $1 in
+      --packages) packages=1 ;;
+      *) gen="$1" ;;
+    esac
+    shift
+  done
+  [[ -n $gen ]] || gen=$(jw_generations | tail -1)
+  [[ -n $gen && -d $gen ]] || gen="$JW_GENERATIONS/$gen"
+  [[ -f $gen/install.env ]] || jw_die "no rollback point ${gen##*/} (jarvis generations lists them)"
+  local commit options installed
+  commit=$(sed -n 's/^commit=//p' "$gen/install.env")
+  options=$(sed -n 's/^options=//p' "$gen/install.env" | sed -E 's/--restore +[^ ]+//g; s/--dry-run//g')
+  installed=$(sed -n 's/^installed=//p' "$gen/install.env")
+  jw_step "Roll back to before the install of ${gen##*/}"
+  jw_info "your Jarvis config, memory and settings as they were then; the checkout at ${commit:0:12}"
+  [[ -f $gen/packages-added.txt ]] && jw_info "packages that install added: $(tr '\n' ' ' < "$gen/packages-added.txt")$( (( packages )) || echo '(kept; --packages removes them)')"
+  jw_confirm "Go ahead?" || jw_die "nothing changed"
+  if [[ -n $commit && $(git -C "$repo" rev-parse HEAD) != "$commit" ]]; then
+    if [[ -n $(git -C "$repo" status --porcelain) ]]; then
+      jw_die "the checkout has uncommitted changes; commit or stash them first (nothing was changed)"
+    fi
+    git -C "$repo" switch --detach "$commit"
+    jw_ok "checkout at ${commit:0:12} (back to your branch later: git -C $repo switch -)"
+  fi
+  jw_restore "$gen/backup.tar.gz"
+  if [[ $installed == yes ]]; then
+    # shellcheck disable=SC2086
+    YES=1 bash "$repo/install-jarvis.sh" --yes --no-packages --no-dev-tools $options
+  else
+    bash "$repo/omarchy/uninstall.sh" || true
+  fi
+  if (( packages )) && [[ -s $gen/packages-added.txt ]]; then
+    mapfile -t added < "$gen/packages-added.txt"
+    sudo pacman -Rns "${added[@]}" || jw_warn "some packages are needed by others; kept"
+  fi
+  jw_ok "rolled back"
+}
+
+cmd_uninstall() {
+  jw_confirm "Remove Jarvis (service, island, keybindings, venvs)? Your backups, memory files and the checkout stay." || exit 0
+  bash "$repo/omarchy/uninstall.sh"
+  for l in "$JW_BIN/jarvis" "$JW_BIN/jarvis-os"; do
+    if [[ -L $l && $(readlink "$l") == */omarchy/bin/jarvis ]]; then rm -f "$l"; fi
+  done
+  jw_ok "removed"
+}
+
+cmd=${1:-help}
+shift || true
+case $cmd in
+  dev) cmd_dev "$@" ;;
+  restart)
+    systemctl --user restart jarvisd.service && jw_ok "jarvisd restarted"
+    if [[ ${1:-} == --ui ]]; then cmd_reload_ui; fi ;;
+  reload-ui) cmd_reload_ui ;;
+  logs)
+    if [[ ${1:-} == ui ]]; then
+      log=$(ui_log); [[ -n $log ]] || jw_die "no shell log found"; exec tail -n 100 -f "$log"
+    fi
+    exec journalctl --user -u jarvisd.service -n 100 -f ;;
+  doctor) cmd_doctor ;;
+  test) cmd_test "$@" ;;
+  voice-test) cmd_voice_test ;;
+  backup) cmd_backup "$@" ;;
+  restore) [[ -n ${1:-} ]] || jw_die "restore FILE"; jw_restore "$(readlink -f "$1")" ;;
+  rollback) cmd_rollback "$@" ;;
+  generations) jw_generations | while read -r g; do echo "${g##*/}  $(sed -n 's/^commit=//p' "$g/install.env" | cut -c1-12)"; done ;;
+  update)
+    git -C "$repo" pull --ff-only
+    exec bash "$repo/install-jarvis.sh" "$@" ;;
+  shell) exec "$JW_BIN/jarvis-shell-mode" "${1:-status}" ;;
+  uninstall) cmd_uninstall ;;
+  help|-h|--help) sed -n '2,24p' "$0" ;;
+  *)
+    [[ -x $jw ]] || jw_die "jarvis-workos isn't installed yet: ./install-jarvis.sh"
+    exec "$jw" "$cmd" "$@" ;;
+esac

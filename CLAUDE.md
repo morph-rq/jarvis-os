@@ -47,6 +47,17 @@ Keep API keys and machine-specific settings outside Git. The `upstream/`,
 `vm/`, and `.venv/` directories are local downloads, excluded intentionally;
 their sources and pins are documented in `UPSTREAM.md` and the installer.
 
+## On the Omarchy machine (live development)
+
+`install-jarvis.sh` (see `MIGRATION.md`) installs Jarvis editable from this checkout and links the island's
+QML, so edits are live:
+- `jarvis dev --ui`: run the daemon in the foreground; it restarts on Python edits and reloads the island on QML edits.
+- `jarvis test`: the suites above.
+- `jarvis logs` / `jarvis logs ui`: the daemon's log, or the shell's QML errors.
+- `jarvis doctor`: hardware, service, keys and tools.
+
+Never touch disks, bootloaders, drivers or Windows from here.
+
 ## Bring cloud changes back locally
 
 Commit and push cloud edits to this GitHub repository. If changes are on a
