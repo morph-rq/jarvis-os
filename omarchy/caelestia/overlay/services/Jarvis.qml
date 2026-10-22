@@ -23,6 +23,11 @@ Singleton {
         hostReducedMotion: Tokens.anim.durations.scale <= 0.01
     }
 
+    // The on-screen guide (navigate): the ring around the control to click, and its tip.
+    J.Guide {
+        service: client
+    }
+
     // Settings, connected apps and messaging (Super+Alt+J, `jarvis toggle`): the same panel as in
     // Omarchy's shell, coloured by Caelestia's palette through qs.Commons.
     J.Panel {

@@ -26,6 +26,11 @@ JarvisClient {
     active: root.hudEnabled
   }
 
+  // The on-screen guide: the ring around the control to click, and its tip (navigate).
+  Guide {
+    service: root
+  }
+
   // Command bar (Super+Alt+A, when the island is off): orb, live spectrum, ask anything, quick actions.
   CommandBar {
     service: root

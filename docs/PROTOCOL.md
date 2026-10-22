@@ -37,6 +37,7 @@ jarvisd pushes one JSON object per line over `$XDG_RUNTIME_DIR/jarvis-workos/jar
 | `call` | `call` dict | A phone/WhatsApp call: {call_id, state ringing|connecting|connected|ended…}. |
 | `workspace` | `opened` bool | The Living Workspace was opened. |
 | `agents` | `sessions` list | Coding agent sessions on this desktop (Claude Code, Codex): [{id, agent, label, project, cwd, state, activity, prompt, summary, updated…}]; state is idle, thinking, working, permission, question, waiting, done or error. |
+| `guide` | `op` str, `run_id` str | On-screen guidance (navigate). op show: kind ring|ghost, rect {x,y,width,height} in Hyprland layout px, monitor, label, caption, step, total, mode guide|do|show, hold_s, task_id; op hide: for a capture, show again follows; op end: reason done|stopped|stuck|timeout|error, caption. |
 
 ## Requests the island and agents use
 
@@ -49,5 +50,6 @@ jarvisd pushes one JSON object per line over `$XDG_RUNTIME_DIR/jarvis-workos/jar
 | `agents` | — | `sessions` |
 | `activity` | `action` cancel_reminder (+ `reminder_id`), end_focus, stop_meeting or cancel_meeting | `task_id`: runs as a visible task, not awaited |
 | `devices` | — | `inputs`, `outputs` [{name, label, default}], `input`, `output` (the voice.input_source / voice.output_target settings; setting one switches the open device at once) |
+| `guide` | `action` next, stop or status | `active`, `step`, `label`, `caption`: the walkthrough on screen (navigate) |
 | `listen` / `stop_speaking` / `mute` / `ask` / `cancel` | see daemon.py | |
 

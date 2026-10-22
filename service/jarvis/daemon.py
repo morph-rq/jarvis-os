@@ -289,6 +289,9 @@ class Jarvis:
             return {"ok": True, "cancelled": cancelled}
         if self.answer_approval(text, spoken=source == "voice"):
             return {"ok": True, "approval_answer": True}
+        from jarvis.capabilities import navigator
+        if navigator.heard_next(text):   # "next" while a walkthrough waits on the user: no model call
+            return {"ok": True, "guide": "next"}
 
         route = router.route(text, self.session)
         if route is None:
@@ -501,6 +504,13 @@ class Jarvis:
             return {"ok": True, "sessions": self.agents.public()}
         if op == "activity":
             return self.activity_action(req)
+        if op == "guide":
+            # The guide overlay's Next / Stop buttons, and status for the island.
+            from jarvis.capabilities import navigator
+            action = str(req.get("action") or "status")
+            if action not in ("next", "stop", "status"):
+                return {"ok": False, "message": "action: next, stop or status"}
+            return await navigator.navigate(self.ctx, {"action": action})
         if op == "devices":
             try:
                 found = await asyncio.to_thread(audio_devices)

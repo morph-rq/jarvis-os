@@ -48,7 +48,7 @@ SLOW_TOOLS = {"analyze_screen", "continue_task", "run_command", "recent_files",
               "delegate", "diagnose", "maps", "circuit", "youtube", "meeting_notes", "read_screen", "click_on_screen",
               "qr_code", "network", "disk", "appearance", "email", "calendar", "message", "home", "phone", "music",
               "find_duplicates", "organize_folder", "camera", "skills", "weather", "clipboard", "diagnostics",
-              "apps", "app_tools", "app_action", "office", "generate_ui", "workspace"}
+              "apps", "app_tools", "app_action", "office", "generate_ui", "workspace", "navigate", "screen_controls"}
 
 
 def is_long_running(name: str) -> bool:

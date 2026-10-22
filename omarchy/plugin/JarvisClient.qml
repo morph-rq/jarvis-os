@@ -73,6 +73,9 @@ Item {
                                                   || root.call.state === "connecting"))
   // Coding agents on this desktop (Claude Code, Codex): [{id, label, project, state, activity, summary…}]
   property var agents: []
+  // The on-screen guide (navigate): the latest `guide` event while a ring is up, {} otherwise.
+  property var guide: ({})
+  property bool guideHidden: false   // hidden for a moment while jarvisd takes a screenshot
   property bool vad: false            // Pipecat's VAD: the user is talking right now
   property int protocolVersion: 1
   // Live captions: the newest line of each side, partial until final.
@@ -150,6 +153,8 @@ Item {
     return true
   }
   function cancel(taskId) { return send({ op: "cancel", task_id: taskId || null }) }
+  // The guide tip's Next / Stop: requests; the ring only moves when jarvisd says so.
+  function guideAction(action) { return send({ op: "guide", action: action }) }
   function setSetting(key, value) { return send({ op: "config", action: "set", key: key, value: value }) }
   function openWorkspace(view) { return send({ op: "workspace", view: view || "" }) }
   function appsAction(action, app, account) {
@@ -441,6 +446,11 @@ Item {
     case "meeting": root.meeting = msg; break
     case "focus": root.focusUntil = msg.active ? (msg.until || 0) : 0; root.focusMinutes = msg.minutes || 0; break
     case "control": root.controlUntil = msg.until || 0; break
+    case "guide":
+      if (msg.op === "show") { root.guide = msg; root.guideHidden = false }
+      else if (msg.op === "hide") root.guideHidden = true
+      else if (msg.op === "end" && (!root.guide.run_id || root.guide.run_id === msg.run_id)) root.guide = ({})
+      break
     }
     if (msg.event === "voice" && root.voice.mode !== "conversation") root.vad = false
     if (msg.event === "status" && root.status !== "speaking" && root.status !== "listening" && root.status !== "dictating") {
@@ -488,6 +498,9 @@ Item {
     function callState(): string { return JSON.stringify(root.call || {}) }
     function hangup(): void { root.hangup() }
     function workspace(): void { root.openWorkspace("") }
+    function guideNext(): void { root.guideAction("next") }
+    function guideStop(): void { root.guideAction("stop") }
+    function guideState(): string { return JSON.stringify(root.guide || {}) }
     // The island: "toggle" (open / close), "conversation", "peek", "expanded" or "close".
     function island(mode: string): string {
       if (!root.islandEnabled) return "disabled"

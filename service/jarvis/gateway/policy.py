@@ -22,11 +22,11 @@ from pathlib import Path
 
 from jarvis.tools import CONFIRM, DANGER, SAFE
 
-DENY = frozenset({"run_command", "computer_input", "control_session", "click_on_screen", "skills", "camera",
+DENY = frozenset({"run_command", "computer_input", "control_session", "click_on_screen", "navigate", "skills", "camera",
                   "meeting_notes"})
 MEMBER_ALLOW = frozenset({"web_search", "weather", "maps", "circuit", "generate_image", "read_document", "send_file",
                           "youtube"})
-ESCALATE = frozenset({"analyze_screen", "read_screen", "screenshot", "clipboard"})
+ESCALATE = frozenset({"analyze_screen", "read_screen", "screenshot", "clipboard", "screen_controls"})
 PATH_KEYS = ("path", "paths", "file", "files", "source", "target", "folder", "destination", "dir")
 ROLES = ("owner", "member")
 

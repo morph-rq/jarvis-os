@@ -279,6 +279,42 @@ class Brain:
         raise RuntimeError(f"the model returned no image{': ' + caption[:200] if caption else ''}")
 
     # ---------------------------------------------------------------- vision
+    async def vision_json(self, png: bytes, prompt: str, schema: dict, *, max_tokens: int = 200,
+                          timeout: float | None = None) -> dict:
+        """One question about one image with a structured answer (screen grounding): Gemini's vision model
+        first, Claude if Gemini fails. The image and any text in it are untrusted; the caller frames them."""
+        timeout = timeout or self.config["brain"]["timeout_s"]
+        last: Exception | None = None
+        if self.gemini_key:
+            from google.genai import types
+            try:
+                cfg = types.GenerateContentConfig(temperature=0, max_output_tokens=max_tokens,
+                                                  response_mime_type="application/json", response_json_schema=schema)
+                response, _ = await asyncio.wait_for(self._generate(
+                    self.config["brain"]["vision_model"],
+                    contents=[types.Part.from_bytes(data=png, mime_type="image/png"), prompt], config=cfg), timeout)
+                return _parse_json(response.text or "{}")
+            except Exception as exc:
+                last = exc
+                self.failures["gemini"] = self.failures.get("gemini", 0) + 1
+        if self.claude_key:
+            try:
+                async with httpx.AsyncClient(timeout=timeout) as client:
+                    body = {"model": self.config["brain"]["claude_model"], "max_tokens": max_tokens,
+                            "system": "Reply with one JSON object only, matching this JSON schema:\n" + json.dumps(schema),
+                            "messages": [{"role": "user", "content": [
+                                {"type": "image", "source": {"type": "base64", "media_type": "image/png",
+                                                             "data": base64.b64encode(png).decode()}},
+                                {"type": "text", "text": prompt}]}]}
+                    result = await self._claude_call(client, body)
+                return _parse_json("".join(b.get("text", "") for b in result["content"] if b["type"] == "text"))
+            except Exception as exc:
+                last = exc
+                self.failures["claude"] = self.failures.get("claude", 0) + 1
+        if last is None:
+            raise RuntimeError("Looking at the screen needs GEMINI_API_KEY or ANTHROPIC_API_KEY.")
+        raise RuntimeError(f"the vision model failed: {type(last).__name__}: {str(last)[:200]}")
+
     async def describe_image(self, path: Path, question: str) -> str:
         data = path.read_bytes()
         prompt = (f"{question}\n\nAnswer about this screenshot of the user's desktop. Be concise and concrete; "

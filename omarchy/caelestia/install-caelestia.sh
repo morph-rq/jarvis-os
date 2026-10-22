@@ -32,7 +32,7 @@ if command -v pacman >/dev/null; then
   need=(base-devel cmake ninja git pkgconf spirv-tools cli11 jemalloc libdrm mesa wayland-protocols pipewire pam
         polkit glib2 qt6-base qt6-declarative qt6-shadertools qt6-wayland qt6-svg qt6-imageformats qt6-multimedia
         qt6-5compat aubio libqalculate fftw iniparser lm_sensors ddcutil brightnessctl power-profiles-daemon
-        networkmanager meson python swappy fish)
+        networkmanager meson python swappy fish curl)
   missing=()
   for p in "${need[@]}"; do pacman -Qq "$p" >/dev/null 2>&1 || missing+=("$p"); done
   if (( ${#missing[@]} )); then
@@ -41,7 +41,7 @@ if command -v pacman >/dev/null; then
     exit 3
   fi
 else
-  for t in cmake ninja git pkg-config meson python3; do command -v "$t" >/dev/null || die "missing $t"; done
+  for t in cmake ninja git pkg-config meson python3 curl; do command -v "$t" >/dev/null || die "missing $t"; done
 fi
 
 clone_at() {   # clone_at REPO COMMIT DIR

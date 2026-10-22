@@ -9,7 +9,9 @@ here pretends to be the compositor on a real desktop.
   python3 fake_hyprland.py [--state state.json] [--log requests.log]
 
 Sets up $XDG_RUNTIME_DIR/hypr/<signature>/.socket.sock (requests) and .socket2.sock (events) and prints
-`HYPRLAND_INSTANCE_SIGNATURE=<signature>`. A third socket, .control.sock, takes JSON lines from tests:
+`HYPRLAND_INSTANCE_SIGNATURE=<signature>`. With $SWAYSOCK set, windows come from the running sway
+(clients, activewindow, workspace counts) and focuswindow / movecursor dispatches are carried out by it, so
+window geometry in tests is the real compositor's. A third socket, .control.sock, takes JSON lines from tests:
 {"event": "workspace>>2"} broadcasts an event, {"state": {...}} replaces parts of the state
 (monitors, workspaces, clients, activewindow) and emits the matching events. Every request is logged,
 so a test can assert what the shell asked Hyprland to do (dispatch, keyword, eval).
@@ -20,7 +22,9 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import socket
+import subprocess
 import threading
 import time
 from pathlib import Path
@@ -63,6 +67,62 @@ class FakeHyprland:
         self.subscribers: list[socket.socket] = []
         self.lock = threading.Lock()
 
+    # ------------------------------------------------------------------ sway as the source of windows
+    def _sway(self, *args: str):
+        if not os.environ.get("SWAYSOCK"):
+            return None
+        try:
+            out = subprocess.run(["swaymsg", "-r", *args], capture_output=True, text=True, timeout=3)
+            return json.loads(out.stdout) if out.stdout.strip().startswith(("{", "[")) else None
+        except (OSError, subprocess.SubprocessError, ValueError):
+            return None
+
+    def _sway_clients(self) -> list[dict] | None:
+        tree = self._sway("-t", "get_tree")
+        if tree is None:
+            return None
+        found: list[dict] = []
+
+        def walk(node, ws=None, floating=False):
+            if node.get("type") == "workspace":
+                ws = node.get("name")
+            if node.get("type") in ("con", "floating_con") and node.get("pid"):
+                r = node["rect"]
+                found.append({
+                    "address": f"0x{node['id']:x}", "mapped": True, "hidden": not node.get("visible", True),
+                    "at": [r["x"], r["y"]], "size": [r["width"], r["height"]],
+                    "workspace": {"id": int(ws) if str(ws).isdigit() else 1, "name": str(ws)},
+                    "floating": node["type"] == "floating_con", "pseudo": False, "monitor": 0,
+                    "class": node.get("app_id") or (node.get("window_properties") or {}).get("class", ""),
+                    "title": node.get("name") or "", "initialClass": node.get("app_id") or "", "initialTitle": "",
+                    "pid": node["pid"], "xwayland": node.get("shell") == "xwayland", "pinned": False,
+                    "fullscreen": 1 if node.get("fullscreen_mode") else 0, "fullscreenClient": 0,
+                    "grouped": [], "tags": [], "swallowing": "0x0", "focused": bool(node.get("focused")),
+                })
+            for child in node.get("nodes", []) + node.get("floating_nodes", []):
+                walk(child, ws, floating)
+
+        walk(tree)
+        # Focus history: the focused window first.
+        found.sort(key=lambda c: not c.pop("focused"))
+        for i, c in enumerate(found):
+            c["focusHistoryID"] = i
+        return found
+
+    def _sway_dispatch(self, arg: str) -> None:
+        nums = [int(float(n)) for n in re.findall(r"-?\d+(?:\.\d+)?", arg)]
+        if not os.environ.get("SWAYSOCK"):
+            if (arg.startswith("movecursor") or "cursor.move" in arg) and len(nums) >= 2:
+                self.state["cursor"] = {"x": nums[-2], "y": nums[-1]}
+            return
+        if arg.startswith("focuswindow") and "address:0x" in arg:
+            con = int(arg.split("address:0x", 1)[1].split()[0], 16)
+            subprocess.run(["swaymsg", f"[con_id={con}]", "focus"], capture_output=True, timeout=3)
+        elif (arg.startswith("movecursor") or "cursor.move" in arg) and len(nums) >= 2:
+            self.state["cursor"] = {"x": nums[-2], "y": nums[-1]}   # sway doesn't report it; remember what was set
+            subprocess.run(["swaymsg", "seat", "-", "cursor", "set", str(nums[-2]), str(nums[-1])], capture_output=True,
+                           timeout=3)
+
     # ------------------------------------------------------------------ requests
     def answer(self, request: str) -> bytes:
         self._log(request)
@@ -72,8 +132,15 @@ class FakeHyprland:
         cmd, _, arg = rest.partition(" ")
         js = "j" in flags
         s = self.state
-        if cmd in ("dispatch", "keyword", "eval", "reload", "setcursor", "switchxkblayout", "notify", "output"):
+        if cmd == "dispatch":
+            self._sway_dispatch(arg)
             return b"ok"
+        if cmd in ("keyword", "eval", "reload", "setcursor", "switchxkblayout", "notify", "output"):
+            return b"ok"
+        if cmd in ("clients", "activewindow"):
+            clients = self._sway_clients()
+            if clients is not None:
+                s = dict(s, clients=clients, activewindow=clients[0] if clients else {})
         table = {
             "status": s["status"], "monitors": s["monitors"], "workspaces": s["workspaces"], "clients": s["clients"],
             "activewindow": s["activewindow"], "devices": s["devices"], "layers": s["layers"], "binds": [],

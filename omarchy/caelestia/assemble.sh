@@ -43,7 +43,7 @@ cp -r "$here/overlay/." "$dest/"
 # host files (Service.qml, Island.qml, Hud.qml, CommandBar.qml, BarWidget.qml) are not used here.
 j="$dest/modules/jarvis"
 mkdir -p "$j"
-for f in JarvisClient.qml IslandCore.qml CardBody.qml land.js Panel.qml Messaging.qml Companion.qml; do
+for f in JarvisClient.qml IslandCore.qml Guide.qml CardBody.qml land.js Panel.qml Messaging.qml Companion.qml; do
   cp "$repo/omarchy/plugin/$f" "$j/"
 done
 cp -r "$repo/omarchy/plugin/island" "$repo/omarchy/plugin/ui" "$repo/omarchy/plugin/shaders" "$j/"
@@ -51,6 +51,6 @@ cp -r "$repo/omarchy/plugin/island" "$repo/omarchy/plugin/ui" "$repo/omarchy/plu
 cat > "$dest/JARVIS.txt" <<EOF
 Caelestia shell $CAELESTIA_SHELL_COMMIT (GPL-3.0, https://github.com/caelestia-dots/shell)
 with Jarvis's patches (omarchy/caelestia/patches) and additions (omarchy/caelestia/overlay,
-modules/jarvis from omarchy/plugin), assembled from the Jarvis repository at $(git -C "$repo" rev-parse --short HEAD).
+modules/jarvis from omarchy/plugin), assembled from the Jarvis repository at $(git -C "$repo" rev-parse --short HEAD 2>/dev/null || echo "an unknown revision").
 EOF
 echo "assembled $dest"
