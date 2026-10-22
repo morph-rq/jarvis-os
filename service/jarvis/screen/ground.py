@@ -147,7 +147,7 @@ def _why(answer: dict) -> str:
 def caption_for(el: Element, why: str) -> str:
     """"Click Settings: <reason>" for the ring's tip, without bookkeeping words, one sentence, plain text."""
     why = re.sub(r"^(the user wants to|they want to|to)\s+", "", why.strip(), flags=re.I)
-    why = re.split(r"(?<=[.!?])\s", why, 1)[0].rstrip(".")
+    why = re.split(r"(?<=[.!?])\s", why, maxsplit=1)[0].rstrip(".")
     verb = "Type into" if el.role in ("entry", "text box", "search box", "text") else "Click"
     text = f"{verb} {el.label}" + (f": {why}" if why else "")
     return text[:140]

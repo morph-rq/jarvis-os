@@ -149,6 +149,7 @@ class Run:
                         return self._finish("timeout", self.say("I stopped waiting; say 'show me again' to continue.",
                                                                 "Я перестал ждать; скажите «покажи снова», чтобы продолжить.",
                                                                 "Parei de esperar; diga «mostre de novo» para continuar."))
+                    self.overlay.clear()
                     self.history.append(f"clicked '{el.label}'")
                 else:
                     if policy.consequential(el.label, el.description, self.goal):
@@ -190,7 +191,10 @@ class Run:
 def _risk(args: dict) -> str:
     if args.get("action") != "do":
         return SAFE
-    target = geometry.pick_target(str(args.get("app") or "")) if _hypr() else None
+    try:
+        target = geometry.pick_target(str(args.get("app") or "")) if _hypr() else None
+    except (Unsupported, OSError):
+        target = None
     if target is not None and (target.terminal or target.protected):
         return DANGER
     from jarvis.capabilities.automation import CONTROL
@@ -200,6 +204,21 @@ def _risk(args: dict) -> str:
 def _hypr() -> bool:
     import shutil
     return bool(shutil.which("hyprctl"))
+
+
+def _check(args: dict) -> str | None:
+    """Refused before any approval is asked: Do mode in a terminal or a protected app."""
+    if args.get("action") != "do":
+        return None
+    try:
+        target = geometry.pick_target(str(args.get("app") or ""))
+    except (Unsupported, OSError):
+        return None   # no Hyprland here: the tool itself says so
+    if target is not None and target.terminal:
+        return "I don't drive terminals."
+    if target is not None and target.protected:
+        return "I don't act inside password managers or authentication prompts."
+    return None
 
 
 def _summary(args: dict) -> str:
@@ -216,7 +235,7 @@ def _summary(args: dict) -> str:
        "goal": {"type": "string", "maxLength": 300, "description": "guide/do: what they want, e.g. 'export as PDF'"},
        "target": {"type": "string", "maxLength": 120, "description": "show: the control's label or what it looks like"},
        "app": {"type": "string", "maxLength": 80, "description": "Only if they named an app or window"}},
-      ["action"], risk=_risk, describe=_summary)
+      ["action"], risk=_risk, describe=_summary, check=_check)
 async def navigate(ctx: Context, args: dict) -> dict:
     action = args["action"]
     run: Run | None = ACTIVE["run"]

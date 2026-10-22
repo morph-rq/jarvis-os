@@ -29,6 +29,12 @@ class Overlay:
         self.bus.publish("guide", op="show", kind="ghost", rect=rect.public(), caption=caption[:140], mode=self.mode,
                          run_id=self.run_id, task_id=self.task_id)
 
+    def clear(self) -> None:
+        """The user moved on: take the ring down until the next one (it isn't restored after a capture)."""
+        if self.showing is not None:
+            self.showing = None
+            self.bus.publish("guide", op="hide", run_id=self.run_id)
+
     def end(self, reason: str, message: str = "") -> None:
         self.showing = None
         self.bus.publish("guide", op="end", run_id=self.run_id, reason=reason, caption=message[:200], mode=self.mode)
