@@ -168,6 +168,7 @@ Item {
             anchors { left: parent.left; right: parent.right; top: parent.top; margins: 14; topMargin: 12 }
             spacing: 6
             Text {
+              visible: win.mode !== "show"   // one control, no steps
               text: (win.mode === "do" ? (root.s ? root.s.t("doing", "Doing") : "Doing") : (root.s ? root.s.t("step", "Step") : "Step"))
                     .toUpperCase() + (root.g && root.g.step ? " " + root.g.step + (root.g.total ? " / " + root.g.total : "") : "")
               color: win.mode === "do" ? Tokens.violet : Tokens.cyan

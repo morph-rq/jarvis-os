@@ -128,7 +128,7 @@ start() {
   setsid -f chroot --userspec=$UID_:$UID_ "$ROOT" /usr/bin/env -i HOME=/home/omarchy USER=omarchy LOGNAME=omarchy \
     PATH=/usr/local/bin:/usr/bin:/bin XDG_RUNTIME_DIR=/run/user/$UID_ LANG=C.UTF-8 \
     /work/omarchy/dev/headless/desktop-session.sh > "$ROOT/tmp/session.log" 2>&1
-  for _ in $(seq 1 40); do
+  for _ in $(seq 1 120); do
     grep -q ready "$ROOT/tmp/session.log" 2>/dev/null && [ -s "$ROOT/home/omarchy/session.env" ] && { cat "$ROOT/tmp/session.log"; return; }
     sleep 0.25
   done
@@ -137,7 +137,7 @@ start() {
 
 jarvis() {
   "$repo/omarchy/caelestia/assemble.sh" "$ROOT/build/caelestia-shell" "$ROOT/opt/caelestia-jarvis"
-  in_session sh -c 'cd /work/service && setsid -f /opt/jarvis-venv/bin/python -m jarvis daemon > ~/jarvisd.log 2>&1
+  in_session sh -c 'cd /work/service && JARVIS_SCREENSHOT_CMD="python3 /work/omarchy/dev/headless/wlshot.py" setsid -f /opt/jarvis-venv/bin/python -m jarvis daemon > ~/jarvisd.log 2>&1
     for i in $(seq 1 40); do [ -S "$XDG_RUNTIME_DIR/jarvis-workos/jarvisd.sock" ] && break; sleep 0.25; done
     cd ~ && setsid -f qs -p /opt/caelestia-jarvis -n > ~/cj.log 2>&1'
   for _ in $(seq 1 60); do

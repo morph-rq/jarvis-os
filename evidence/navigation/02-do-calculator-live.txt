@@ -1,0 +1,10 @@
+APPROVAL: Jarvis will click through calculator to: work out 7 plus 1 (up to 10 steps; screenshots of that window go to the vision model; consequential clicks ask again)
+TOOL: {'ok': True, 'first': 'C', 'message': 'Working on it in org.gnome.Calculator: Click C: press C first.'}
+GUIDE: ('show', 'ghost', None, None, 'Click C: press C')
+GUIDE: ('show', 'ghost', None, None, 'Click 7: press 7')
+GUIDE: ('show', 'ghost', None, None, 'Click +: press +')
+GUIDE: ('show', 'ghost', None, None, 'Click 1: press 1')
+GUIDE: ('show', 'ghost', None, None, 'Click =: press =')
+GUIDE: ('end', None, None, 'done', "Done: that's everything for work out 7 plus 1.")
+TASK: succeeded ['2. Click 7: press 7', '2. 7 (action:click)', '3. Click +: press +', '3. + (action:click)', '4. Click 1: press 1', '4. 1 (action:click)', '5. Click =: press =', '5. = (action:click)']
+DISPLAY: ['', '8'] in 11.6s

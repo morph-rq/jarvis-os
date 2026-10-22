@@ -65,6 +65,27 @@ APPS_RUNNING = re.compile(r"^(?:какие (?:приложения|програ�
                           r"what (?:applications|apps|programs) are (?:running|open)|which apps are open)")
 
 
+# On-screen help (navigate): "where is the Share button?", "walk me through exporting a PDF".
+UI_NOUN = r"(?:button|menu|tab|icon|option|setting|field|link|toggle|switch|checkbox)"
+NAV_WHERE = (
+    re.compile(rf"^(?:where(?: s| is)|show me where(?: is)?|point (?:me )?to|highlight)\s+(?:the |my |a )?(.+?)\s+{UI_NOUN}s?$"),
+    re.compile(r"^(?:где|покажи где)\s+(?:находится |тут |здесь )?(?:кнопка|меню|вкладка|значок|иконка|настройка|поле|пункт|"
+               r"переключатель)\s+(.+)$"),
+    re.compile(r"^(?:onde (?:fica|está|esta)|mostre onde (?:fica|está|esta))\s+(?:o |a )?(?:botão|botao|menu|aba|ícone|icone|"
+               r"opção|opcao|campo|configuração|configuracao)\s+(?:de |do |da )?(.+)$"))
+NAV_GUIDE = re.compile(r"^(?:walk me through|show me how to|guide me (?:through|to)|покажи как|проведи меня (?:через|по)|"
+                       r"подскажи как|me mostre como|mostre como|me guie (?:por|até|ate))\s+(.+)$")
+
+
+def _navigate(t: str) -> Route | None:
+    for rx in NAV_WHERE:
+        if m := rx.match(t):
+            return Route("navigate", {"action": "show", "target": m.group(1).strip(" ?.!")})
+    if m := NAV_GUIDE.match(t):
+        return Route("navigate", {"action": "guide", "goal": m.group(1).strip(" ?.!")})
+    return None
+
+
 def _clean(text: str) -> str:
     # NFKC turns "№" into "No", so replace it before normalizing.
     t = normalize(text.replace("№", " "))
@@ -92,6 +113,8 @@ def route(text: str, session: Session) -> Route | None:
     if not t:
         return None
 
+    if r := _navigate(t):
+        return r
     if SCREEN.search(t) and not re.search(r"буфер|clipboard|copied|скопировал|transfer[eê]ncia|copiei", t):
         return Route("analyze_screen", {"question": text.strip()})
     if CONTINUE.match(t):

@@ -371,3 +371,17 @@ def test_stop_cancels_the_run_and_clears_the_ring(jarvis, screen):
         assert navigator.ACTIVE["run"] is None
         assert any(e["event"] == "guide" and e["op"] == "end" for e in drain())
     run(main())
+
+
+def test_router_sends_on_screen_questions_to_navigate_without_a_model():
+    from jarvis import router
+    from jarvis.router import Session
+    cases = {"Where is the share button?": ("show", "share"), "где кнопка поделиться": ("show", "поделиться"),
+             "onde fica o botão de compartilhar": ("show", "compartilhar"),
+             "walk me through exporting a PDF": ("guide", "exporting a pdf"),
+             "покажи как экспортировать в PDF": ("guide", "экспортировать в pdf")}
+    for text, (action, value) in cases.items():
+        r = router.route(text, Session())
+        assert r.tool == "navigate" and r.args["action"] == action, text
+        assert value in (r.args.get("target"), r.args.get("goal")), text
+    assert router.route("where is Lisbon", Session()).tool != "navigate"   # a place, not a control
