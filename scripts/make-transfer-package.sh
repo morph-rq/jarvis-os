@@ -41,15 +41,14 @@ On the Omarchy machine (MIGRATION.md has the whole guide):
 
   1. Copy this zip into your home folder and unpack it there (not on the USB stick itself):
        cd ~ && unzip $name.zip && cd $name
-  2. Either use the folder as it is:
-       cp -r jarvis ~/jarvis
-     or get the full git history (recommended, so you can commit and push your changes):
+  2. Make your working copy from the bundle (full history, so you can commit and push; recommended):
        git clone jarvis.bundle ~/jarvis && cd ~/jarvis && git switch $branch
        git remote set-url origin https://github.com/morph-rq/jarvis.git   # to push to GitHub later
+     (or, without git history: cp -r jarvis ~/jarvis && cd ~/jarvis)
   3. Install:
-       cd ~/jarvis && ./install-jarvis.sh --dry-run    # see what it will do
-       ./install-jarvis.sh
-  4. Bring your data (optional): ./install-jarvis.sh --restore ~/jarvis-windows-export-….zip
+       bash install-jarvis.sh --dry-run    # see what it will do
+       bash install-jarvis.sh
+  4. Bring your data (optional): bash install-jarvis.sh --restore ~/jarvis-windows-export-….zip
      (made on Windows with scripts\\export-windows.ps1), or later: jarvis restore FILE
 EOF
 (cd "$work/$name" && find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS)

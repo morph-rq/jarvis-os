@@ -29,6 +29,9 @@
 set -euo pipefail
 
 repo="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+# A copy unpacked without its permissions (some zip tools drop them): the scripts are executable again.
+chmod +x "$repo/install-jarvis.sh" "$repo"/omarchy/*.sh "$repo"/omarchy/bin/* "$repo"/omarchy/caelestia/*.sh \
+  "$repo"/scripts/*.sh "$repo"/omarchy/dev/headless/*.sh 2>/dev/null || true
 export JW_REPO="$repo"   # read by the library (rollback points record the checkout's commit)
 # shellcheck source=omarchy/lib/jarvis-common.sh
 . "$repo/omarchy/lib/jarvis-common.sh"
