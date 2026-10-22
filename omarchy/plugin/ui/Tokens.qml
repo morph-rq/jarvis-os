@@ -62,6 +62,9 @@ QtObject {
   // ------------------------------------------------------------ motion
   // Set from the ui.reduced_motion setting by the service; everything below collapses to short fades.
   property bool reducedMotion: false
+  // The orb's slow breathing at rest. A host that repaints the whole screen for any frame (Caelestia draws
+  // every drawer in one full-screen window) turns it off: the orb then rests still and only blinks.
+  property bool restMotion: true
 
   readonly property int durFast: reducedMotion ? 0 : 160      // fade out, press feedback
   readonly property int durMedium: reducedMotion ? 120 : 300  // fade in, colour changes

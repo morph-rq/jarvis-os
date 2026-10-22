@@ -16,7 +16,8 @@ import QtQuick.Window
 // the voice level uses a fast attack and a slow release, and reactions use a spring kick, so state
 // changes, interruptions and cancellations always blend instead of jumping. It renders only while
 // visible: at the display's rate while active, ~30 fps when idle (15 fps when small), ~15 fps
-// asleep. If the shader cannot run (no GPU path), the Canvas orb takes over.
+// asleep, or not at all at rest where the host turns rest motion off (blinks aside). If the shader
+// cannot run (no GPU path), the Canvas orb takes over.
 Item {
   id: root
 
@@ -32,6 +33,13 @@ Item {
   readonly property bool shaderOk: shader.status !== ShaderEffect.Error
   readonly property bool active: !sleeping && status !== "idle" && status !== "offline"
                                  && status !== "muted" && status !== "paused"
+  // Without rest motion (Tokens.restMotion) the orb still glides into its rest pose after activity, for a
+  // few seconds, and then holds still.
+  property bool restMotion: Tokens.restMotion
+  property bool easing: false
+  onActiveChanged: if (!active) { easing = true; easeTimer.restart() }
+  onSleepingChanged: { easing = true; easeTimer.restart() }
+  Timer { id: easeTimer; interval: 2500; onTriggered: root.easing = false }
 
   implicitWidth: size
   implicitHeight: size
@@ -158,17 +166,19 @@ Item {
     interval: root.contract > 0.5 || root.status === "offline" || root.size < 40 ? 66 : 33
     repeat: true
     running: root.visible && root.shaderOk && !root.active && Math.abs(root.pulse) <= 0.001
+             && (root.restMotion || root.easing)
     onTriggered: root.tick(interval / 1000)
   }
 
-  // Occasional blinks (2.2–5.4 s apart, sometimes a double blink), never while asleep.
+  // Occasional blinks (2.2–5.4 s apart, sometimes a double blink), never while asleep. Without rest
+  // motion a blink is the only frame the host draws at rest, so they come 6–14 s apart.
   Timer {
     id: blinkTimer
     interval: 3000
     running: root.visible && root.eyes && root.status !== "offline" && !root.sleeping
     repeat: true
     onTriggered: {
-      interval = 2200 + Math.random() * 3200
+      interval = root.restMotion || root.active ? 2200 + Math.random() * 3200 : 6000 + Math.random() * 8000
       blinkAnim.double = Math.random() < 0.22
       blinkAnim.restart()
     }

@@ -50,6 +50,9 @@ Singleton {
     // ---------------------------------------------------------------- theme bridge
     readonly property var p: Colours.palette
 
+    // Every frame here repaints Caelestia's whole drawer window (its border and drawers are one full-screen
+    // surface): the orb rests still and blinks instead of breathing (measured: evidence/perf/).
+    Binding { target: JUi.Tokens; property: "restMotion"; value: false }
     Binding { target: JUi.Tokens; property: "light"; value: Colours.light }
     Binding { target: JUi.Tokens; property: "ink"; value: root.p.m3surface }
     Binding { target: JUi.Tokens; property: "surface"; value: root.p.m3surfaceContainer }

@@ -1,0 +1,48 @@
+{
+  "when": "2026-10-22 08:35",
+  "renderer": "sway pixman + Qt software OpenGL (no GPU)",
+  "idle_window_s": 20,
+  "jarvisd": {
+    "memory": {
+      "rss_mb": 47.3,
+      "pss_mb": 38.3
+    },
+    "requests": [
+      {
+        "text": "quiz me on my spanish flashcards",
+        "reply_ms": 7,
+        "reply": "Spanish quiz: 6 questions.\nQuestion 1 of 6: gato\nA) bread   B) cat   C) dog   D)"
+      },
+      {
+        "text": "b",
+        "reply_ms": 9,
+        "reply": "Right.\nQuestion 2 of 6: libro\nA) goodbye   B) book   C) water   D) bread"
+      },
+      {
+        "text": "stop the quiz",
+        "reply_ms": 15,
+        "reply": "Quiz stopped. Quiz done: 1 of 1. Perfect score."
+      },
+      {
+        "text": "how am I doing with my studies",
+        "reply_ms": 13,
+        "reply": "50% right over 14 answers in the last 90 days; weak spots: Animals; 6 flashcards"
+      }
+    ]
+  },
+  "caelestia": {
+    "ready_s": 1.67,
+    "rss_mb": 604.1,
+    "pss_mb": 518.6,
+    "idle_cpu_pct": 0.5
+  },
+  "caelestia_jarvis": {
+    "ready_s": 2.17,
+    "rss_mb": 595.8,
+    "pss_mb": 508.2,
+    "idle_cpu_pct": 11.0,
+    "open_cpu_pct": 22.6,
+    "open_rss_mb": 577.7,
+    "open_pss_mb": 489.7
+  }
+}
