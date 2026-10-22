@@ -1,0 +1,273 @@
+{
+  "runtime": "pipecat",
+  "local": {
+    "wake": "ready",
+    "vad": "ready",
+    "whisper": "lazy",
+    "piper": "ready"
+  },
+  "wake_score": 0.806,
+  "live": {
+    "state": "connected",
+    "model": "gemini-3.1-flash-live-preview",
+    "connect_ms": 1031,
+    "error": null,
+    "runtime": "pipecat"
+  },
+  "q1_answer": [
+    "56, всё верно."
+  ],
+  "first_audio_ms": [],
+  "q2": {
+    "platform_calls": [
+      [
+        "workspace",
+        "2"
+      ],
+      [
+        "launch",
+        "org.mozilla.firefox"
+      ]
+    ],
+    "answer": [
+      "Firefox открыт, на второй рабочий стол перешёл."
+    ],
+    "tool_events": [
+      [
+        "open_app",
+        "started",
+        null
+      ],
+      [
+        "switch_workspace",
+        "started",
+        null
+      ],
+      [
+        "switch_workspace",
+        "finished",
+        4.9
+      ],
+      [
+        "open_app",
+        "finished",
+        5.1
+      ]
+    ]
+  },
+  "q3_screen": {
+    "answer": [
+      "На экране ошибка ENOSPC: у вас закончилось место на диске. Из-за этого билд не смог сохраниться. Нужно что-нибудь удалить."
+    ],
+    "frames": [
+      {
+        "event": "screen",
+        "ts": 1792587659.7764852,
+        "state": "frame",
+        "engine": "live",
+        "size": [
+          1280,
+          720
+        ],
+        "delivery": "context",
+        "t": 59.7
+      }
+    ],
+    "screenshot_calls": 1,
+    "delivery": "describe"
+  },
+  "q4_approval": {
+    "approval": "close_window(window='this')",
+    "resolved": {
+      "allowed": true,
+      "reason": "user"
+    },
+    "platform_calls": [
+      [
+        "close",
+        "0x2"
+      ]
+    ],
+    "answer": [
+      "Активное окно уже закрыто. Видимо, вы это и хотели сделать."
+    ]
+  },
+  "q5_en": {
+    "platform_calls": [
+      [
+        "move",
+        "0x2",
+        "3"
+      ]
+    ],
+    "answer": [
+      "Moved this window to workspace 3."
+    ]
+  },
+  "q6_pt": {
+    "platform_calls": [
+      [
+        "volume",
+        null,
+        10,
+        null
+      ]
+    ],
+    "answer": [
+      "Volume aumentado."
+    ]
+  },
+  "barge_in": {
+    "was_speaking": true,
+    "barge_event": 0.1,
+    "speech_stopped_after_ms_from_clip_start": 437,
+    "clip_ms": 1393,
+    "quiet_after_4s": true,
+    "tasks_cancelled": []
+  },
+  "health": {
+    "mode": "conversation",
+    "mic_open": true,
+    "mic_error": "",
+    "mic_restarts": 0,
+    "frames": 1429,
+    "last_frame_age_s": 0.1,
+    "speaker_speaking": false,
+    "speaker_failures": 0,
+    "live": true,
+    "local": {
+      "wake": "ready",
+      "vad": "ready",
+      "whisper": "lazy",
+      "piper": "ready"
+    },
+    "runtime": "pipecat",
+    "engine_problem": "",
+    "session": {
+      "engine": "live",
+      "model": "gemini-3.1-flash-live-preview",
+      "first_audio_ms": [
+        1077,
+        6671,
+        1016,
+        843,
+        906
+      ],
+      "ttfb_ms": {
+        "JarvisGeminiLive": 6087
+      },
+      "llm_tokens": 49166,
+      "errors": 0,
+      "reconnects": 0,
+      "interruptions": 2,
+      "overflow_frames": 50,
+      "barge_ins": 1,
+      "barge_clear_ms": 0.1,
+      "stale_audio_frames_dropped": 11,
+      "tools": {
+        "calls": 7,
+        "duplicate_calls": 0,
+        "unknown_tools": 0,
+        "undelivered": 0,
+        "loop_refused": 0,
+        "last_dispatch_ms": 0.2,
+        "last_tool_ms": 1.8
+      },
+      "connect_ms": 1031
+    },
+    "last_session": {}
+  },
+  "transcript": [
+    [
+      21.72,
+      "user",
+      "Скажи, пожалуйста, сколько будет 7 * 8?"
+    ],
+    [
+      22.25,
+      "assistant",
+      "56, всё верно."
+    ],
+    [
+      51.44,
+      "user",
+      "открой браузер Firefox и перейди на второй рабочий стол."
+    ],
+    [
+      53.08,
+      "assistant",
+      "Firefox открыт, на второй рабочий стол перешёл."
+    ],
+    [
+      67.27,
+      "user",
+      "Посмотри на экран и скажи, что там за ошибка."
+    ],
+    [
+      73.92,
+      "assistant",
+      "На экране ошибка ENOSPC: у вас закончилось место на диске. Из-за этого билд не смог сохраниться. Нужно что-нибудь удалить."
+    ],
+    [
+      107.7,
+      "user",
+      "Закрой это окно. Да, подтверждаю."
+    ],
+    [
+      110.16,
+      "assistant",
+      "Активное окно уже закрыто. Видимо, вы это и хотели сделать."
+    ],
+    [
+      118.36,
+      "user",
+      "Move this window to workspace 3."
+    ],
+    [
+      119.17,
+      "assistant",
+      "Moved this window to workspace 3."
+    ],
+    [
+      127.25,
+      "user",
+      "Aumento volume, por favor."
+    ],
+    [
+      127.7,
+      "assistant",
+      "Volume aumentado."
+    ],
+    [
+      140.91,
+      "user",
+      "Расскажи подробней историю операционной системы Linux, минимум 10 приложений."
+    ]
+  ],
+  "pipeline_events": [
+    [
+      3.56,
+      "live",
+      "connecting",
+      "gemini-3.8-live"
+    ],
+    [
+      13.66,
+      "live",
+      "closed",
+      "gemini-3.8-live"
+    ],
+    [
+      13.66,
+      "live",
+      "connecting",
+      "gemini-3.1-flash-live-preview"
+    ],
+    [
+      16.36,
+      "live",
+      "connected",
+      "gemini-3.1-flash-live-preview"
+    ]
+  ]
+}

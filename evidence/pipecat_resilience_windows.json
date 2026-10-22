@@ -1,0 +1,181 @@
+{
+  "session1": {
+    "state": "connected",
+    "model": "gemini-3.8-live",
+    "connect_ms": 1343
+  },
+  "intro": "Запомнил, вас зовут Роман.",
+  "drop": {
+    "outcome": "reconnected",
+    "seconds": 1.44,
+    "events": [
+      [
+        3.72,
+        "connecting"
+      ],
+      [
+        7.06,
+        "connected"
+      ],
+      [
+        15.88,
+        "reconnected"
+      ]
+    ]
+  },
+  "after_drop_name": "Вас зовут Роман.",
+  "goodbye": "Пожалуйста! Рад был помочь.",
+  "goodbye_ended_session": true,
+  "session2": {
+    "state": "connected",
+    "model": "gemini-3.8-live",
+    "connect_ms": 1108
+  },
+  "new_session_name": "Вас зовут Роман.",
+  "screen_answer": null,
+  "screen": {
+    "sharing_started": true,
+    "frames": 13,
+    "deliveries": [
+      "context",
+      "realtime"
+    ],
+    "screenshots_taken": 14,
+    "screenshots_after_end": 1
+  },
+  "health": {
+    "mode": "conversation",
+    "mic_open": true,
+    "mic_error": "",
+    "mic_restarts": 0,
+    "frames": 1045,
+    "last_frame_age_s": 0.1,
+    "speaker_speaking": false,
+    "speaker_failures": 0,
+    "live": true,
+    "local": {
+      "wake": "ready",
+      "vad": "ready",
+      "whisper": "lazy",
+      "piper": "ready"
+    },
+    "runtime": "pipecat",
+    "engine_problem": "",
+    "session": {
+      "engine": "live",
+      "model": "gemini-3.8-live",
+      "first_audio_ms": [
+        421,
+        10438
+      ],
+      "ttfb_ms": {
+        "JarvisGeminiLive": 5031
+      },
+      "llm_tokens": 14017,
+      "errors": 0,
+      "reconnects": 0,
+      "interruptions": 0,
+      "overflow_frames": 0,
+      "barge_ins": 0,
+      "barge_clear_ms": null,
+      "stale_audio_frames_dropped": 0,
+      "tools": {
+        "calls": 1,
+        "duplicate_calls": 0,
+        "unknown_tools": 0,
+        "undelivered": 0,
+        "loop_refused": 0,
+        "last_dispatch_ms": 0.2,
+        "last_tool_ms": 39256.8
+      },
+      "connect_ms": 1108
+    },
+    "last_session": {
+      "engine": "live",
+      "model": "gemini-3.8-live",
+      "error": "",
+      "first_audio_ms": [
+        655,
+        750
+      ],
+      "ttfb_ms": {
+        "JarvisGeminiLive": 6721
+      },
+      "llm_tokens": 15161,
+      "errors": 0,
+      "reconnects": 1,
+      "interruptions": 0,
+      "overflow_frames": 0,
+      "barge_ins": 0,
+      "barge_clear_ms": null,
+      "stale_audio_frames_dropped": 0,
+      "tools": {
+        "calls": 2,
+        "duplicate_calls": 0,
+        "unknown_tools": 0,
+        "undelivered": 0,
+        "loop_refused": 0,
+        "last_dispatch_ms": 0.4,
+        "last_tool_ms": 2.8
+      },
+      "connect_ms": 1343
+    }
+  },
+  "transcript": [
+    [
+      12.55,
+      "user",
+      "Меня зовут Роман.  Запомни, пожалуйста."
+    ],
+    [
+      13.42,
+      "assistant",
+      "Запомнил, вас зовут Роман."
+    ],
+    [
+      22.5,
+      "user",
+      "Как меня зовут?"
+    ],
+    [
+      22.75,
+      "assistant",
+      "Вас зовут Роман."
+    ],
+    [
+      29.19,
+      "user",
+      "Спасибо, это всё."
+    ],
+    [
+      30.16,
+      "assistant",
+      "Пожалуйста! Рад был помочь."
+    ],
+    [
+      42.88,
+      "user",
+      "Напомни, как меня зовут."
+    ],
+    [
+      43.27,
+      "assistant",
+      "Вас зовут Роман."
+    ],
+    [
+      85.83,
+      "user",
+      "Ты сейчас видишь у меня на экране. Fais-y papa cas."
+    ],
+    [
+      89.24,
+      "assistant",
+      "места на диске. Сборка не может завершиться."
+    ],
+    [
+      96.25,
+      "assistant",
+      "Освободите место, чтобы продолжить сборку."
+    ]
+  ]
+}

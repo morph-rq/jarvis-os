@@ -1,0 +1,2 @@
+pipecat-ai==1.13.0
+google-genai>=2.25,<3

@@ -1,0 +1,44 @@
+{
+  "describe": {
+    "answer": [
+      "Это ошибка ENOSPC: нет свободного места на устройстве."
+    ],
+    "frames": [
+      {
+        "event": "screen",
+        "ts": 1792583023.7563376,
+        "state": "frame",
+        "engine": "live",
+        "size": [
+          1280,
+          720
+        ],
+        "delivery": "context",
+        "t": 10.95
+      }
+    ],
+    "screenshot_calls": 1,
+    "delivery": "describe"
+  },
+  "realtime": {
+    "answer": [
+      "Судя по экрану, у вас закончилось место на диске. Ошибка ENOSPC."
+    ],
+    "frames": [
+      {
+        "event": "screen",
+        "ts": 1792583082.6920462,
+        "state": "frame",
+        "engine": "live",
+        "size": [
+          1280,
+          720
+        ],
+        "delivery": "realtime",
+        "t": 24.31
+      }
+    ],
+    "screenshot_calls": 1,
+    "delivery": "realtime"
+  }
+}

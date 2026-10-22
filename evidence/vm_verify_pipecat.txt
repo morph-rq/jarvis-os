@@ -1,0 +1,17 @@
+screen_analysis_ms: 10390
+screenshots_left_behind: 0
+manual_idle_cpu_pct: 0.00
+wake_idle_rss_mb: 347
+recover_before: True
+wake_on_again_capture_nodes: 1
+wake_idle_cpu_pct: 2.60
+local_path: {"heard": "Какие приложения запущены?", "stt_ms": 1859, "engine": "whisper", "reply": "Открыто:\n1. foot — omarchy@try-omarchy:~ [1]\n2. foot — jarvi", "piper_audible_s": 7.7}
+manual_capture_nodes: 0
+wake_capture_nodes: 1
+muted_capture_nodes: 0
+recover_lost: open=True error=''
+binds: ['Jarvis panel', 'Jarvis: cancel tasks', 'Jarvis: dictation on/off', 'Jarvis: microphone on/off', 'Jarvis: stop talking', 'Jarvis: talk (push-to-talk)']
+screen_analysis: На экране отображается ошибка нехватки свободного места на диске (`/dev/vda2`), из-за чего система и программы не могут записать новые файлы.
+recover_after: open=True restarts=0 frame_age=0.1
+shortcut_super_alt_v: conversation -> conversation
+daemons_running: 1

@@ -1,0 +1,229 @@
+{
+  "wake": [
+    0.991
+  ],
+  "live": [
+    {
+      "state": "connected",
+      "model": "gemini-3.8-live",
+      "connect_ms": 1224,
+      "runtime": "pipecat",
+      "error": null
+    }
+  ],
+  "pipeline": [
+    [
+      "live",
+      "connecting",
+      "gemini-3.8-live",
+      null
+    ],
+    [
+      "live",
+      "connected",
+      "gemini-3.8-live",
+      1224
+    ],
+    [
+      "live",
+      "closed",
+      "gemini-3.8-live",
+      null
+    ],
+    [
+      "local",
+      "connecting",
+      "whisper+piper",
+      null
+    ],
+    [
+      "local",
+      "connected",
+      "whisper+piper",
+      50
+    ],
+    [
+      "local",
+      "closed",
+      "whisper+piper",
+      null
+    ]
+  ],
+  "user": [
+    "Скажи, пожалуйста, сколько будет 7 x 8?",
+    "Chrome Browser и перейди на второй рабочий стол.",
+    "Посмотри на экран и скажи, что там за ошибка.",
+    "Закрой окно.",
+    "Да, подтверждаю. Расскажи подробную историю операционной системы Linux, минимум 10 предложений.",
+    "Вот хватит.",
+    "Спасибо, это всё.",
+    "Переключись на рабочий стол №3."
+  ],
+  "jarvis": [
+    "Это будет пятьдесят шесть.",
+    "Открыл Chromium и переключил рабочий стол.",
+    "Ошибка ENOSPC: закончилось свободное место на диске.",
+    "Для закрытия окна нужно подтверждение.",
+    "История Linux началась в 1991 году, когда",
+    "кода, Linux быстро развивался силами сообщества",
+    "Понял.",
+    "Всегда рад помочь, обращайтесь!"
+  ],
+  "interrupted": [
+    "Ошибка ENOSPC: закончилось свободное место на диске.",
+    "История Linux началась в 1991 году, когда",
+    "кода, Linux быстро развивался силами сообщества"
+  ],
+  "tasks": [
+    [
+      "🎙 switch_workspace(workspace='2')",
+      "succeeded"
+    ],
+    [
+      "🎙 open_app(name='google-chrome')",
+      "succeeded"
+    ],
+    [
+      "🎙 open_app(name='chrome')",
+      "succeeded"
+    ],
+    [
+      "🎙 open_app(name='chromium')",
+      "succeeded"
+    ],
+    [
+      "🎙 analyze_screen(question='В чём заключается ошибка на экране?')",
+      "succeeded"
+    ],
+    [
+      "🎙 close_window(window='this')",
+      "succeeded"
+    ],
+    [
+      "Переключись на рабочий стол №3.",
+      "succeeded"
+    ]
+  ],
+  "tool_calls": [
+    [
+      "open_app",
+      "started",
+      null
+    ],
+    [
+      "switch_workspace",
+      "started",
+      null
+    ],
+    [
+      "switch_workspace",
+      "finished",
+      46.1
+    ],
+    [
+      "open_app",
+      "finished",
+      46.8
+    ],
+    [
+      "open_app",
+      "started",
+      null
+    ],
+    [
+      "open_app",
+      "finished",
+      14.6
+    ],
+    [
+      "open_app",
+      "started",
+      null
+    ],
+    [
+      "open_app",
+      "finished",
+      29.0
+    ],
+    [
+      "analyze_screen",
+      "started",
+      null
+    ],
+    [
+      "analyze_screen",
+      "finished",
+      3896.7
+    ],
+    [
+      "close_window",
+      "started",
+      null
+    ],
+    [
+      "close_window",
+      "finished",
+      6064.9
+    ],
+    [
+      "close_window",
+      "started",
+      null
+    ],
+    [
+      "close_window",
+      "finished",
+      0.0
+    ]
+  ],
+  "approvals": [
+    "close_window(window='this')"
+  ],
+  "approval_resolved": [
+    [
+      true,
+      "user"
+    ]
+  ],
+  "screen": [
+    [
+      "frame",
+      "context"
+    ]
+  ],
+  "barge": [
+    2.9,
+    1.8
+  ],
+  "barge_detect_after_stop_clip_s": [
+    0.86
+  ],
+  "first_audio_ms": [
+    2407,
+    4646,
+    810,
+    270,
+    870
+  ],
+  "stop_clip_ms": 626,
+  "jarvis_audible_100ms_windows_before_stop": 14,
+  "jarvis_silent_after_stop_ms": 1100,
+  "jarvis_audio_seconds": 12.8,
+  "conversation_capture_nodes": "1",
+  "players_during": "1",
+  "idle_capture_nodes_before": "1",
+  "windows_before_close": "1",
+  "after_live_capture_nodes": "1",
+  "workspace_after_local": "3",
+  "after_live_rss_mb": "384",
+  "windows_after_close": "0",
+  "health": "{\"rss_mb\": 840.8, \"runtime\": \"pipecat\", \"last_session\": {\"engine\": \"local\", \"model\": \"whisper+piper\", \"error\": \"\", \"first_audio_ms\": [870], \"ttfb_ms\": {\"LocalPiperTTS\": 850}, \"llm_tokens\": 0, \"errors\": 0, \"reconnects\": 0, \"interruptions\": 0, \"turn_end_ms\": 4919, \"overflow_frames\": 0, \"barge_ins\": 0, \"barge_clear_ms\": null, \"connect_ms\": 50}}",
+  "after_local_players": "1",
+  "conversation_ended": "wake",
+  "idle_cpu_pct_after_live": "2.90",
+  "workspace_after_q2": "2",
+  "after_local_capture_nodes": "1",
+  "after_live_players": "1",
+  "workspace_before_screen": "1",
+  "wake_off_capture_nodes": "0"
+}

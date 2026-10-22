@@ -1,0 +1,922 @@
+{
+  "wake": [
+    0.876
+  ],
+  "live": [
+    {
+      "state": "connected",
+      "model": "gemini-3.8-live",
+      "connect_ms": 1298,
+      "runtime": "pipecat",
+      "error": null
+    }
+  ],
+  "pipeline": [
+    [
+      "live",
+      "connecting",
+      "gemini-3.8-live",
+      null
+    ],
+    [
+      "live",
+      "connected",
+      "gemini-3.8-live",
+      1298
+    ],
+    [
+      "live",
+      "closed",
+      "gemini-3.8-live",
+      null
+    ]
+  ],
+  "user": [
+    "Скажи, пожалуйста, сколько будет 7 x 8?",
+    "открой браузер и перейди на второй рабочий стол.",
+    "Посмотри на экран и скажи, что там за ошибка.",
+    "Закрой это окно.",
+    "Да, подтверждаю.",
+    "Расскажи подробную историю операционной системы Linux, минимум 10 предложений.",
+    "podważyć",
+    "Спасибо, это всё.",
+    "Кинопоиск на рабочий стол номер три."
+  ],
+  "jarvis": [
+    "Это будет пятьдесят шесть.",
+    "Открываю браузер, сейчас перемещу его на второй рабочий стол.",
+    "На экране ошибка, сообщающая, что на диске не хватает места.",
+    "Нажмите «ОК» или подтвердите действие в панели, чтобы закрыть окно.",
+    "Пожалуйста, подтвердите еще раз в интерфейсе.",
+    "Окно закрыто.",
+    "История Linux началась в одна тысяча девятьсот девяносто первом",
+    "и модификации кода. Благодаря этому тысячи",
+    "Zrozumiałem, przerywamy.",
+    "Пожалуйста! Рад был помочь. Обращайтесь, если снова что-то понадобится.",
+    "Не могу найти приложение «Кинопоиск». Возможно, вы имели в виду сайт в браузере?"
+  ],
+  "interrupted": [
+    "Нажмите «ОК» или подтвердите действие в панели, чтобы закрыть окно.",
+    "История Linux началась в одна тысяча девятьсот девяносто первом",
+    "и модификации кода. Благодаря этому тысячи",
+    "Не могу найти приложение «Кинопоиск». Возможно, вы имели в виду сайт в браузере?"
+  ],
+  "tasks": [
+    [
+      "🎙 open_app(name='browser')",
+      "succeeded"
+    ],
+    [
+      "🎙 move_window(window='browser', workspace='2')",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 list_windows()",
+      "succeeded"
+    ],
+    [
+      "🎙 analyze_screen(question='what error is on the screen')",
+      "succeeded"
+    ],
+    [
+      "🎙 close_window()",
+      "succeeded"
+    ],
+    [
+      "🎙 open_app(name='kinopoisk')",
+      "succeeded"
+    ]
+  ],
+  "tool_calls": [
+    [
+      "open_app",
+      "started",
+      null
+    ],
+    [
+      "open_app",
+      "finished",
+      29.5
+    ],
+    [
+      "move_window",
+      "started",
+      null
+    ],
+    [
+      "move_window",
+      "finished",
+      13.7
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      12.0
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      18.8
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      13.4
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      14.3
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      17.5
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      12.9
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      13.6
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      14.0
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      13.8
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      12.9
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      13.3
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      19.6
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      19.2
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      17.4
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      14.7
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      13.7
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      14.4
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      14.4
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      12.2
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      11.1
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      20.2
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      15.4
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      13.0
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      11.2
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      13.2
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      14.2
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      13.9
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      13.6
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      18.1
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      14.1
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      13.0
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      15.8
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      14.7
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      13.6
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      15.3
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      13.0
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      14.7
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      18.4
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      16.3
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      46.6
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      17.0
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      18.2
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      41.1
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      46.6
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      38.3
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      12.8
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      21.5
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      14.6
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      18.1
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      14.8
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      28.2
+    ],
+    [
+      "list_windows",
+      "started",
+      null
+    ],
+    [
+      "list_windows",
+      "finished",
+      50.8
+    ],
+    [
+      "analyze_screen",
+      "started",
+      null
+    ],
+    [
+      "analyze_screen",
+      "finished",
+      5241.1
+    ],
+    [
+      "close_window",
+      "started",
+      null
+    ],
+    [
+      "close_window",
+      "started",
+      null
+    ],
+    [
+      "close_window",
+      "finished",
+      6446.1
+    ],
+    [
+      "open_app",
+      "started",
+      null
+    ],
+    [
+      "open_app",
+      "finished",
+      34.1
+    ]
+  ],
+  "approvals": [
+    "close_window()",
+    "close_window(window='this')"
+  ],
+  "approval_resolved": [
+    [
+      true,
+      "user"
+    ]
+  ],
+  "screen": [
+    [
+      "frame",
+      "context"
+    ]
+  ],
+  "barge": [
+    2.4,
+    25.4,
+    1.7
+  ],
+  "first_audio_ms": [
+    3395,
+    6535,
+    1063,
+    4320,
+    959,
+    240,
+    649,
+    1367
+  ],
+  "stop_clip_ms": 650,
+  "jarvis_audible_100ms_windows_before_stop": 15,
+  "jarvis_silent_after_stop_ms": 1600,
+  "jarvis_audio_seconds": 23.7,
+  "conversation_capture_nodes": "1",
+  "players_during": "1",
+  "idle_capture_nodes_before": "1",
+  "windows_before_close": "1",
+  "after_live_capture_nodes": "1",
+  "workspace_after_local": "1",
+  "after_live_rss_mb": "381",
+  "windows_after_close": "0",
+  "health": "{\"rss_mb\": 381.1, \"runtime\": \"pipecat\", \"last_session\": {\"engine\": \"live\", \"model\": \"gemini-3.8-live\", \"error\": \"\", \"first_audio_ms\": [3395, 6535, 1063, 4320, 959, 240, 649, 1367], \"ttfb_ms\": {\"JarvisGeminiLive\": 4236}, \"llm_tokens\": 463464, \"errors\": 0, \"reconnects\": 0, \"interruptions\": 4, \"overflow_frames\": 0, \"barge_ins\": 3, \"barge_clear_ms\": 1.7, \"stale_audio_frames_dropped\": 14, \"tools\": {\"calls\": 58, \"duplicate_calls\": 0, \"unknown_tools\": 0, \"undelivered\": 0, \"last_dispatch_ms\": 0.3, \"last_tool_ms\": 34.1}, \"connect_ms\": 1298}}",
+  "after_local_players": "1",
+  "conversation_ended": "conversation",
+  "idle_cpu_pct_after_live": "1.20",
+  "workspace_after_q2": "1",
+  "after_local_capture_nodes": "1",
+  "after_live_players": "1",
+  "wake_off_capture_nodes": "0"
+}

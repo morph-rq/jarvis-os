@@ -1,0 +1,40 @@
+  Stored in directory: /tmp/pip-ephem-wheel-cache-khfe4do2/wheels/58/7f/62/070a4cadca18cbd1e8537f67d915414a8724c153a467d5526e
+Successfully built jarvis-workos
+Installing collected packages: jarvis-workos
+  Attempting uninstall: jarvis-workos
+    Found existing installation: jarvis-workos 0.1.0
+    Uninstalling jarvis-workos-0.1.0:
+      Successfully uninstalled jarvis-workos-0.1.0
+Successfully installed jarvis-workos-0.1.0
+[1;36m==>[0m Wake word models and Piper voices (sha256-verified)
+[1;36m==>[0m Whisper speech model (pinned revision; ~500 MB on first install)
+    whisper small/cpu
+[1;36m==>[0m Configuration in /home/omarchy/.config/jarvis-workos
+[1;36m==>[0m jarvisd user service
+[1;36m==>[0m Omarchy shell plugin jarvis.companion
+[1;36m==>[0m Hyprland keybindings
+[1;36m==>[0m Done
+2026-10-21 15:23:16.216 | INFO     | pipecat:<module>:54 - ᓚᘏᗢ Pipecat 1.13.0 (Python 3.14.8 (main, Oct  2 2026, 10:23:31) [GCC 16.2.1 20260810]) ᓚᘏᗢ
+jarvis-workos 0.1.0 on linux
+config:  /home/omarchy/.config/jarvis-workos/config.toml
+data:    /home/omarchy/.local/share/jarvis-workos
+runtime: /run/user/1000/jarvis-workos
+secrets: {"GEMINI_API_KEY": "set", "ANTHROPIC_API_KEY": "set"}
+local voice: {"wake": true, "whisper": true, "piper": true}
+voice runtime: pipecat (Pipecat 1.13.0 ready)
+  ok  hyprctl
+  ok  pw-record
+  ok  pw-play
+  ok  wl-copy
+  ok  wl-paste
+  ok  wtype
+  ok  grim
+  ok  plocate
+  ok  fd
+  ok  wpctl
+  --  brightnessctl
+  ok  playerctl
+  ok  omarchy-shell
+  ok  uwsm-app
+  ok  secret-tool
+daemon: {"reply": 1, "ok": true, "uptime_s": 1, "rss_mb": 338.7, "voice": {"mode": "wake", "mic_open": true, "mic_error": "", "mic_restarts": 0, "frames": 1, "last_frame_age_s": 0.0, "speaker_speaking": false, "speaker_failures": 0, "live": false, "local": {"wake": "ready", "vad": "ready", "whisper": "lazy", "piper": "ready"}, "runtime": "pipecat", "engine_problem": "", "session": null, "last_session": {}}, "brain": {"provider": "gemini", "failures": {}}}

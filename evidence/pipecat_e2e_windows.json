@@ -1,0 +1,276 @@
+{
+  "runtime": "pipecat",
+  "local": {
+    "wake": "ready",
+    "vad": "ready",
+    "whisper": "lazy",
+    "piper": "ready"
+  },
+  "wake_score": 0.677,
+  "live": {
+    "state": "connected",
+    "model": "gemini-3.8-live",
+    "connect_ms": 1311,
+    "error": null,
+    "runtime": "pipecat"
+  },
+  "q1_answer": [
+    "Семь на восемь будет пятьдесят шесть."
+  ],
+  "first_audio_ms": [],
+  "q2": {
+    "platform_calls": [
+      [
+        "workspace",
+        "2"
+      ],
+      [
+        "launch",
+        "org.mozilla.firefox"
+      ]
+    ],
+    "answer": [
+      "Открыл Firefox на втором рабочем столе."
+    ],
+    "tool_events": [
+      [
+        "open_app",
+        "started",
+        null
+      ],
+      [
+        "switch_workspace",
+        "started",
+        null
+      ],
+      [
+        "switch_workspace",
+        "finished",
+        4.1
+      ],
+      [
+        "open_app",
+        "finished",
+        4.3
+      ]
+    ]
+  },
+  "q3_screen": {
+    "answer": [
+      "Это ошибка ENOSPC — закончилось место на диске."
+    ],
+    "frames": [
+      {
+        "event": "screen",
+        "ts": 1792590661.9931104,
+        "state": "frame",
+        "engine": "live",
+        "size": [
+          1280,
+          720
+        ],
+        "delivery": "context",
+        "t": 50.75
+      }
+    ],
+    "screenshot_calls": 1,
+    "delivery": "describe"
+  },
+  "q4_approval": {
+    "approval": "close_window(window='this')",
+    "resolved": {
+      "allowed": true,
+      "reason": "user"
+    },
+    "platform_calls": [
+      [
+        "close",
+        "0x2"
+      ]
+    ],
+    "answer": [
+      "Пожалуйста, подтвердите закрытие окна.",
+      "Подождите, пожалуйста, процесс уже запущен."
+    ]
+  },
+  "q5_en": {
+    "platform_calls": [
+      [
+        "move",
+        "0x2",
+        "3"
+      ]
+    ],
+    "answer": [
+      "Moved the window to workspace 3."
+    ]
+  },
+  "q6_pt": {
+    "platform_calls": [
+      [
+        "volume",
+        null,
+        10,
+        null
+      ]
+    ],
+    "answer": [
+      "Aumentei o volume."
+    ]
+  },
+  "barge_in": {
+    "was_speaking": true,
+    "barge_event": 0.1,
+    "speech_stopped_after_ms_from_clip_start": 452,
+    "clip_ms": 1323,
+    "quiet_after_4s": true,
+    "tasks_cancelled": []
+  },
+  "health": {
+    "mode": "conversation",
+    "mic_open": true,
+    "mic_error": "",
+    "mic_restarts": 0,
+    "frames": 1267,
+    "last_frame_age_s": 0.1,
+    "speaker_speaking": false,
+    "speaker_failures": 0,
+    "live": true,
+    "local": {
+      "wake": "ready",
+      "vad": "ready",
+      "whisper": "lazy",
+      "piper": "ready"
+    },
+    "runtime": "pipecat",
+    "engine_problem": "",
+    "session": {
+      "engine": "live",
+      "model": "gemini-3.8-live",
+      "first_audio_ms": [
+        1608,
+        3860,
+        1937,
+        891,
+        1016,
+        1046,
+        546,
+        453,
+        2234
+      ],
+      "ttfb_ms": {
+        "JarvisGeminiLive": 5699
+      },
+      "llm_tokens": 60883,
+      "errors": 0,
+      "reconnects": 0,
+      "interruptions": 2,
+      "overflow_frames": 0,
+      "barge_ins": 1,
+      "barge_clear_ms": 0.1,
+      "stale_audio_frames_dropped": 24,
+      "tools": {
+        "calls": 7,
+        "duplicate_calls": 0,
+        "unknown_tools": 0,
+        "undelivered": 0,
+        "loop_refused": 0,
+        "last_dispatch_ms": 0.1,
+        "last_tool_ms": 2.1
+      },
+      "connect_ms": 1311
+    },
+    "last_session": {}
+  },
+  "transcript": [
+    [
+      11.69,
+      "user",
+      "Скажи, пожалуйста, сколько будет 7 x 8?"
+    ],
+    [
+      13.05,
+      "assistant",
+      "Семь на восемь будет пятьдесят шесть."
+    ],
+    [
+      42.64,
+      "user",
+      "Открой браузер Firefox и перейди на второй рабочий стол."
+    ],
+    [
+      44.22,
+      "assistant",
+      "Открыл Firefox на втором рабочем столе."
+    ],
+    [
+      55.49,
+      "user",
+      "Посмотри на экран и скажи, что там за ошибка."
+    ],
+    [
+      57.95,
+      "assistant",
+      "Это ошибка ENOSPC — закончилось место на диске."
+    ],
+    [
+      88.0,
+      "user",
+      "Закрой это окно."
+    ],
+    [
+      88.02,
+      "assistant",
+      "Пожалуйста, подтвердите закрытие окна."
+    ],
+    [
+      92.28,
+      "user",
+      "Подтверждаю."
+    ],
+    [
+      93.84,
+      "assistant",
+      "Подождите, пожалуйста, процесс уже запущен."
+    ],
+    [
+      102.31,
+      "user",
+      "Move this window to workspace 3."
+    ],
+    [
+      103.24,
+      "assistant",
+      "Moved the window to workspace 3."
+    ],
+    [
+      111.36,
+      "user",
+      "Aumente o volume, por favor."
+    ],
+    [
+      111.69,
+      "assistant",
+      "Aumentei o volume."
+    ],
+    [
+      125.66,
+      "user",
+      "Расскажи подробную историю операционной системы Linux минимум 10 предложений."
+    ]
+  ],
+  "pipeline_events": [
+    [
+      3.95,
+      "live",
+      "connecting",
+      "gemini-3.8-live"
+    ],
+    [
+      6.53,
+      "live",
+      "connected",
+      "gemini-3.8-live"
+    ]
+  ]
+}
