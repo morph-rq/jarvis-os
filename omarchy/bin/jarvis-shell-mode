@@ -53,8 +53,10 @@ Description=Set Caelestia's wallpaper to Omarchy's current background
 Type=oneshot
 ExecStart=/bin/sh -c 'bg=\$(readlink -f "%h/.local/state/omarchy/current/background"); [ -f "\$bg" ] && exec caelestia wallpaper -f "\$bg" || true'
 EOF
-  systemctl --user daemon-reload
-  systemctl --user enable --now jarvis-caelestia-wallpaper.path >/dev/null
+  # Not fatal: without a systemd user session Caelestia keeps its last wallpaper until the next switch.
+  systemctl --user daemon-reload >/dev/null 2>&1 &&
+    systemctl --user enable --now jarvis-caelestia-wallpaper.path >/dev/null 2>&1 ||
+    say "Note: couldn't start the wallpaper follower (systemd --user); Caelestia keeps its wallpaper for now."
 }
 
 to_caelestia() {
@@ -87,6 +89,7 @@ to_caelestia() {
   [[ -f $config/caelestia/shell.json ]] || cp "$data/caelestia-defaults/shell.json" "$config/caelestia/shell.json"
 
   # Start Caelestia with Hyprland, and give its drawers keys (Omarchy's app grid lived in its dock).
+  mkdir -p "$(dirname "$hypr_shell")"
   cat > "$hypr_shell" <<EOF
 -- Written by jarvis-shell-mode caelestia (removed by jarvis-shell-mode omarchy).
 local qs = "$qs_bin -c caelestia"
