@@ -285,7 +285,9 @@ DEFAULTS: dict = {
         "home": "",                     # "" = Hermes's own (~/.hermes): its memory and skills are kept
         # What Hermes may use when Jarvis delegates. No terminal, process, code execution, cron or browser by
         # default; add "terminal" only if you want it (every risky command still asks you, through Jarvis).
-        "toolsets": ["web", "file", "skills", "todo", "memory", "session_search"],
+        # Its web searches go through Jarvis's research (the jarvis_research MCP tool, research.share_with_hermes)
+        # rather than Hermes's own web toolset, so there is one search path, one cache and one set of limits.
+        "toolsets": ["file", "skills", "todo", "memory", "session_search"],
         "model": "gemini/gemini-3.5-flash",
         "model_keys": ["GEMINI_API_KEY"],
         "timeout_s": 900,
@@ -302,6 +304,38 @@ DEFAULTS: dict = {
         "trusted": [],
         # One notice per batch of updates at most this often.
         "notify_hours": 24,
+    },
+    # ---- Web research: Morphic's research pipeline on a local SearXNG (jarvis/research, docs/RESEARCH.md) ----
+    "research": {
+        "enabled": True,
+        # The engine (Node, built from Morphic's source) and SearXNG: auto = their installed user units when
+        # present, else jarvisd runs them; systemd | child | external | off.
+        "manage": "auto",
+        "searxng_manage": "auto",       # "external": use a SearXNG you already run (searxng_url), start nothing
+        "searxng_url": "http://127.0.0.1:18890",
+        "socket": "",                   # "" = $XDG_RUNTIME_DIR/jarvis-workos/research.sock
+        # Answer model, Morphic's "provider:model" form. "" = Gemini with brain.gemini_model (your GEMINI_API_KEY),
+        # then brain.gemini_fallbacks. A local model works too: "ollama:qwen3:8b" (with ollama_url) or
+        # "openai-compatible:NAME" (with openai_compatible_url).
+        "model": "",
+        "ollama_url": "",
+        "openai_compatible_url": "",
+        # auto picks Quick, Adaptive or Thorough per question; or force one: quick | adaptive | thorough.
+        "default_mode": "auto",
+        # Spoken questions never start Thorough on their own (it takes longer than a voice turn should).
+        "voice_max_mode": "adaptive",
+        "images": True,                 # image results (loaded from the image's own site when shown)
+        "favicons": True,               # site icons for source cards (fetched from the site, cached)
+        # How long search results stay reusable, in minutes, by kind of question.
+        "cache_minutes": {"fresh": 10, "technical": 720, "default": 360},
+        "max_active": 3,                # research runs at once; more wait in line
+        # When the research service is down, web_search falls back to Gemini's Google Search grounding.
+        "fallback_grounding": True,
+        # Search goes to SearXNG (no key, no cost). A paid API is used only if you name it here and store its key.
+        "search_provider": "searxng",
+        # Who else may use Jarvis's research tool (MCP, through jarvisd, with the same limits):
+        "share_with_hermes": True,
+        "share_with_openclaw": False,
     },
 }
 
@@ -390,6 +424,15 @@ SCHEMA: dict[str, tuple] = {
     "catalog.sync_hours": (int, (1, 168)), "catalog.update_check_hours": (int, (1, 336)),
     "catalog.auto_update_skills": (str, ("off", "trusted")), "catalog.auto_update_plugins": (str, ("off", "trusted")),
     "catalog.auto_update_core": (str, ("off", "trusted")), "catalog.notify_hours": (int, (1, 336)),
+    "research.enabled": (bool, None), "research.manage": (str, ("auto", "systemd", "child", "external", "off")),
+    "research.searxng_manage": (str, ("auto", "systemd", "child", "external", "off")),
+    "research.searxng_url": (str, None), "research.model": (str, None), "research.ollama_url": (str, None),
+    "research.openai_compatible_url": (str, None),
+    "research.default_mode": (str, ("auto", "quick", "adaptive", "thorough")),
+    "research.voice_max_mode": (str, ("quick", "adaptive", "thorough")),
+    "research.images": (bool, None), "research.favicons": (bool, None), "research.max_active": (int, (1, 8)),
+    "research.fallback_grounding": (bool, None), "research.share_with_hermes": (bool, None),
+    "research.share_with_openclaw": (bool, None), "research.search_provider": (str, ("searxng", "tavily", "brave")),
 }
 
 
@@ -403,7 +446,10 @@ SECRET_NAMES = ("GEMINI_API_KEY", "ANTHROPIC_API_KEY", "HOME_ASSISTANT_TOKEN", "
                 # Shared with the local OpenClaw gateway and Hermes API server (jarvis/backends); made by Jarvis.
                 "OPENCLAW_GATEWAY_TOKEN", "HERMES_API_KEY",
                 # A Telegram bot connected through OpenClaw (not Jarvis's own gateway, which uses TELEGRAM_BOT_TOKEN).
-                "OPENCLAW_TELEGRAM_BOT_TOKEN")
+                "OPENCLAW_TELEGRAM_BOT_TOKEN",
+                # Research (jarvis/research): SearXNG's secret_key (made by Jarvis), an optional OpenAI-compatible
+                # model endpoint's key, and optional paid search APIs, used only when research.search_provider names them.
+                "SEARXNG_SECRET", "OPENAI_COMPATIBLE_API_KEY", "TAVILY_API_KEY", "BRAVE_SEARCH_API_KEY")
 
 
 def _deep_merge(base: dict, override: dict) -> dict:

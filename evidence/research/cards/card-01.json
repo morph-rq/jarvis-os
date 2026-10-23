@@ -1,0 +1,314 @@
+{
+ "id": "research-r2b8fbbd94683",
+ "kind": "research",
+ "title": "Compare the Helios X1 and Vega Pro 14 laptops",
+ "data": {
+  "run_id": "r2b8fbbd94683",
+  "query": "Compare the Helios X1 and Vega Pro 14 laptops",
+  "mode": "adaptive",
+  "mode_ui": "adaptive",
+  "mode_reason": "comparison, recommendation or recent developments",
+  "state": "done",
+  "phase": "done",
+  "phases": [
+   {
+    "phase": "searching",
+    "at": 0
+   },
+   {
+    "phase": "searching",
+    "at": 0
+   },
+   {
+    "phase": "reading",
+    "at": 24
+   },
+   {
+    "phase": "answering",
+    "at": 32
+   },
+   {
+    "phase": "verifying",
+    "at": 2472
+   }
+  ],
+  "answer": "Our picks under $1,000 this season are the Helios X1 ($899), the Vega Pro 14 ($949), the Nimbus Air 13 ($749), the Atlas 15 ($699) and the Corvo 16 ($999). [1]\n\n### Details\n- The Vega Pro 14 costs $949 with a 14-inch OLED display, 16 GB of RAM and a 512 GB SSD. [2]\n- Vega Pro 14 стоит 949 долларов, у него OLED-экран 14 дюймов и 16 ГБ памяти. [3]\n- The Helios X1 costs $899 and has a 14-inch 2.8K display, 16 GB of RAM and a 1 TB SSD. [4]\n- Ноутбук Helios X1 стоит 899 долларов, у него 14-дюймовый экран 2.8K и 16 ГБ памяти. [5]\n\n### Comparison\n| Item | Price | RAM | Battery | Weight | Source |\n|---|---|---|---|---|---|\n| Vega Pro 14 | $949 | 16 GB | n/a | n/a | [2] |\n| Helios X1 | $899 | 16 GB | n/a | n/a | [4] |\n| Corvo 16 | $999 | 32 GB | n/a | n/a | [6] |\n| Atlas 15 budget | $699 | 16 GB | n/a | n/a | [7] |",
+  "interim": "",
+  "citations": [
+   {
+    "n": 1,
+    "label": "S1",
+    "url": "http://127.0.0.1:36889/page/laptops-under-1000",
+    "title": "Best laptops under $1,000",
+    "domain": "127.0.0.1"
+   },
+   {
+    "n": 2,
+    "label": "S2",
+    "url": "http://127.0.0.1:36889/page/vega-pro14",
+    "title": "Vega Pro 14 laptop review",
+    "domain": "127.0.0.1"
+   },
+   {
+    "n": 3,
+    "label": "S3",
+    "url": "http://127.0.0.1:36889/page/vega-ru",
+    "title": "Обзор ноутбука Vega Pro 14",
+    "domain": "127.0.0.1"
+   },
+   {
+    "n": 4,
+    "label": "S4",
+    "url": "http://127.0.0.1:36889/page/helios-x1",
+    "title": "Helios X1 laptop review",
+    "domain": "127.0.0.1"
+   },
+   {
+    "n": 5,
+    "label": "S5",
+    "url": "http://127.0.0.1:36889/page/helios-ru",
+    "title": "Обзор ноутбука Helios X1",
+    "domain": "127.0.0.1"
+   },
+   {
+    "n": 6,
+    "label": "S6",
+    "url": "http://127.0.0.1:36889/page/corvo-16",
+    "title": "Corvo 16 laptop review",
+    "domain": "127.0.0.1"
+   },
+   {
+    "n": 7,
+    "label": "S7",
+    "url": "http://127.0.0.1:36889/page/atlas-15",
+    "title": "Atlas 15 budget laptop review",
+    "domain": "127.0.0.1"
+   }
+  ],
+  "blocks": [
+   {
+    "type": "related",
+    "questions": [
+     "What changed recently about Compare the Helios X1 and Vega Pro 14 laptops?",
+     "How do I use Compare the Helios X1 and Vega Pro 14 laptops?",
+     "What are alternatives to Compare the Helios X1 and Vega Pro 14 laptops?"
+    ]
+   },
+   {
+    "type": "table",
+    "headers": [
+     "Item",
+     "Price",
+     "RAM",
+     "Battery",
+     "Weight",
+     "Source"
+    ],
+    "rows": [
+     [
+      "Vega Pro 14",
+      "$949",
+      "16 GB",
+      "n/a",
+      "n/a",
+      "[2](http://127.0.0.1:36889/page/vega-pro14)"
+     ],
+     [
+      "Helios X1",
+      "$899",
+      "16 GB",
+      "n/a",
+      "n/a",
+      "[4](http://127.0.0.1:36889/page/helios-x1)"
+     ],
+     [
+      "Corvo 16",
+      "$999",
+      "32 GB",
+      "n/a",
+      "n/a",
+      "[6](http://127.0.0.1:36889/page/corvo-16)"
+     ],
+     [
+      "Atlas 15 budget",
+      "$699",
+      "16 GB",
+      "n/a",
+      "n/a",
+      "[7](http://127.0.0.1:36889/page/atlas-15)"
+     ]
+    ]
+   }
+  ],
+  "verification": {
+   "cited_sentences": 9,
+   "verified": 6,
+   "snippet_only": 3,
+   "weak": 0,
+   "uncited_numeric": 0,
+   "distinct_domains": 1,
+   "evidence": "moderate"
+  },
+  "conflicts": [
+   {
+    "claim": "The Vega Pro 14 costs $949 with a 14-inch OLED display, 16 GB of RAM and a 512 GB SSD.",
+    "values": {
+     "512 gb": [
+      "S2",
+      "S7"
+     ],
+     "16 gb": [
+      "S4",
+      "S7"
+     ],
+     "32 gb": [
+      "S6"
+     ]
+    }
+   }
+  ],
+  "metrics": {
+   "first_source_ms": 24,
+   "first_text_ms": 345,
+   "first_answer_token_ms": 345,
+   "first_citation_ms": 486,
+   "search_done_ms": 24,
+   "read_done_ms": 31,
+   "model_first_token_ms": 313,
+   "model_ms": 2440,
+   "total_ms": 2489
+  },
+  "fresh": false,
+  "followup": false,
+  "reused": false,
+  "error": "",
+  "warnings": [],
+  "sources": [
+   {
+    "label": "S1",
+    "n": 1,
+    "title": "Best laptops under $1,000",
+    "url": "http://127.0.0.1:36889/page/laptops-under-1000",
+    "domain": "127.0.0.1",
+    "published": "2026-10-08T00:00:00.000Z",
+    "snippet": "Oct 8, 2026 — Our picks under $1,000 this season are the Helios X1 ($899), the Vega Pro 14 ($949), the Nimbus Air 13 ($749), the Atlas 15 ($699) and the Corvo 16 ($999).",
+    "cached": false,
+    "retrieved_at": 1792730840050,
+    "opened": true,
+    "cited": true,
+    "favicon": ""
+   },
+   {
+    "label": "S2",
+    "n": 2,
+    "title": "Vega Pro 14 laptop review",
+    "url": "http://127.0.0.1:36889/page/vega-pro14",
+    "domain": "127.0.0.1",
+    "published": "2026-09-28T00:00:00.000Z",
+    "snippet": "Sep 28, 2026 — The Vega Pro 14 costs $949 with a 14-inch OLED display, 16 GB of RAM and a 512 GB SSD.",
+    "cached": false,
+    "retrieved_at": 1792730840050,
+    "opened": true,
+    "cited": true,
+    "favicon": ""
+   },
+   {
+    "label": "S3",
+    "n": 3,
+    "title": "Обзор ноутбука Vega Pro 14",
+    "url": "http://127.0.0.1:36889/page/vega-ru",
+    "domain": "127.0.0.1",
+    "published": "2026-09-29T00:00:00.000Z",
+    "snippet": "Sep 29, 2026 — Vega Pro 14 стоит 949 долларов, у него OLED-экран 14 дюймов и 16 ГБ памяти.",
+    "cached": false,
+    "retrieved_at": 1792730840050,
+    "opened": true,
+    "cited": true,
+    "favicon": ""
+   },
+   {
+    "label": "S4",
+    "n": 4,
+    "title": "Helios X1 laptop review",
+    "url": "http://127.0.0.1:36889/page/helios-x1",
+    "domain": "127.0.0.1",
+    "published": "2026-10-03T00:00:00.000Z",
+    "snippet": "Oct 3, 2026 — The Helios X1 costs $899 and has a 14-inch 2.8K display, 16 GB of RAM and a 1 TB SSD.",
+    "cached": false,
+    "retrieved_at": 1792730840050,
+    "opened": true,
+    "cited": true,
+    "favicon": ""
+   },
+   {
+    "label": "S5",
+    "n": 5,
+    "title": "Обзор ноутбука Helios X1",
+    "url": "http://127.0.0.1:36889/page/helios-ru",
+    "domain": "127.0.0.1",
+    "published": "2026-10-04T00:00:00.000Z",
+    "snippet": "Oct 4, 2026 — Ноутбук Helios X1 стоит 899 долларов, у него 14-дюймовый экран 2.8K и 16 ГБ памяти.",
+    "cached": false,
+    "retrieved_at": 1792730840050,
+    "opened": false,
+    "cited": true,
+    "favicon": ""
+   },
+   {
+    "label": "S6",
+    "n": 6,
+    "title": "Corvo 16 laptop review",
+    "url": "http://127.0.0.1:36889/page/corvo-16",
+    "domain": "127.0.0.1",
+    "published": "2026-10-01T00:00:00.000Z",
+    "snippet": "Oct 1, 2026 — The Corvo 16 costs $999 with a 16-inch 2.5K display, 32 GB of RAM and a 1 TB SSD.",
+    "cached": false,
+    "retrieved_at": 1792730840050,
+    "opened": false,
+    "cited": true,
+    "favicon": ""
+   },
+   {
+    "label": "S7",
+    "n": 7,
+    "title": "Atlas 15 budget laptop review",
+    "url": "http://127.0.0.1:36889/page/atlas-15",
+    "domain": "127.0.0.1",
+    "published": "2026-10-05T00:00:00.000Z",
+    "snippet": "Oct 5, 2026 — The Atlas 15 costs $699 with a 15.6-inch display, 16 GB of RAM and a 512 GB SSD.",
+    "cached": false,
+    "retrieved_at": 1792730840050,
+    "opened": false,
+    "cited": true,
+    "favicon": ""
+   },
+   {
+    "label": "S8",
+    "n": null,
+    "title": "Best laptops under $1,000",
+    "url": "http://127.0.0.1:36889/page/laptops-under-1000",
+    "domain": "127.0.0.1",
+    "published": "2026-10-08T00:00:00.000Z",
+    "snippet": "Best laptops under $1,000\nOur picks under $1,000 this season are the Helios X1 ($899), the Vega Pro 14 ($949), the Nimbus Air 13 ($749), the Atlas 15 ($699) and the Corvo 16 ($999).\n\nThe Nimbus Air 13 has the longest battery life of the group.",
+    "cached": false,
+    "retrieved_at": 1792730840057,
+    "opened": true,
+    "cited": false,
+    "favicon": ""
+   }
+  ],
+  "searches": 1,
+  "engines_failed": [
+   "google"
+  ],
+  "fallback": false
+ },
+ "ttl": 300,
+ "ts": 1792730842.5173337,
+ "provenance": {
+  "tool": "web_search",
+  "source": "Morphic + SearXNG",
+  "live": true
+ },
+ "task_id": "tae6cb-2"
+}

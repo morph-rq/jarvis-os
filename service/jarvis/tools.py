@@ -27,6 +27,8 @@ SCREEN_SINK: contextvars.ContextVar[weakref.WeakMethod | None] = \
 # The risk level the central policy evaluated (and, if needed, had approved) for the call running now.
 # Tools whose target can change between approval and execution (input into a terminal) re-check it.
 CALL_RISK: contextvars.ContextVar[str] = contextvars.ContextVar("jarvis_call_risk", default="")
+# Who asked for the running tool call: voice, text, widget, hermes, openclaw… (set by Jarvis.run_tool).
+TOOL_ORIGIN: contextvars.ContextVar[str] = contextvars.ContextVar("jarvis_tool_origin", default="")
 
 ORDINALS = {
     "first": 1, "1st": 1, "первый": 1, "первую": 1, "первое": 1, "первого": 1,

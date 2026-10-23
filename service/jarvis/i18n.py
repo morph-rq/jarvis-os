@@ -638,3 +638,53 @@ HUB_UI = {
 for _lang, _labels in HUB_UI.items():
     UI[_lang].update(_labels)
 
+# The research card (ResearchCard.qml).
+RESEARCH_UI = {
+    "en": {
+        "research_searching": "Searching the web", "research_reading": "Reading sources",
+        "research_verifying": "Verifying information", "research_answering": "Preparing answer",
+        "research_mode_auto": "Auto", "research_mode_quick": "Quick", "research_mode_adaptive": "Adaptive",
+        "research_mode_thorough": "Thorough", "research_first": "first words {s} s", "research_total": "{s} s",
+        "research_today": "today", "research_days_ago": "{n} d ago", "research_read": "read", "research_cached": "earlier",
+        "research_initial": "Initial findings", "research_checked": "✓ {v} of {n} statements checked against the pages",
+        "research_snippet_only": "{n} from search snippets only", "research_weak": "{n} not supported by its source",
+        "research_off_topic": "The sources don't mention what you asked about", "research_conflict": "Sources disagree",
+        "research_followup": "Follow-up: earlier sources", "research_fresh": "Fresh results",
+        "research_fallback": "Some engines failed; others answered", "research_cancelled": "Stopped",
+        "research_failed": "Research failed", "research_stop": "Stop", "research_deeper": "Go deeper",
+        "research_refresh": "Check again", "research_sheet": "Spreadsheet", "research_report": "Report",
+    },
+    "ru": {
+        "research_searching": "Ищу в интернете", "research_reading": "Читаю источники",
+        "research_verifying": "Проверяю информацию", "research_answering": "Готовлю ответ",
+        "research_mode_auto": "Авто", "research_mode_quick": "Быстро", "research_mode_adaptive": "Адаптивно",
+        "research_mode_thorough": "Тщательно", "research_first": "первые слова через {s} с", "research_total": "{s} с",
+        "research_today": "сегодня", "research_days_ago": "{n} дн. назад", "research_read": "прочитан",
+        "research_cached": "ранее", "research_initial": "Первые выводы",
+        "research_checked": "✓ {v} из {n} утверждений сверены со страницами",
+        "research_snippet_only": "{n} — только по фрагментам поиска", "research_weak": "{n} — источник не подтверждает",
+        "research_off_topic": "Источники не упоминают то, о чём вы спросили", "research_conflict": "Источники расходятся",
+        "research_followup": "Уточнение: прежние источники", "research_fresh": "Свежие результаты",
+        "research_fallback": "Часть поисковиков не ответила, ответили другие", "research_cancelled": "Остановлено",
+        "research_failed": "Поиск не удался", "research_stop": "Стоп", "research_deeper": "Глубже",
+        "research_refresh": "Проверить снова", "research_sheet": "Таблица", "research_report": "Отчёт",
+    },
+    "pt": {
+        "research_searching": "Pesquisando na web", "research_reading": "Lendo as fontes",
+        "research_verifying": "Verificando as informações", "research_answering": "Preparando a resposta",
+        "research_mode_auto": "Auto", "research_mode_quick": "Rápido", "research_mode_adaptive": "Adaptativo",
+        "research_mode_thorough": "Detalhado", "research_first": "primeiras palavras em {s} s", "research_total": "{s} s",
+        "research_today": "hoje", "research_days_ago": "há {n} d", "research_read": "lida", "research_cached": "anterior",
+        "research_initial": "Primeiras conclusões",
+        "research_checked": "✓ {v} de {n} afirmações conferidas nas páginas",
+        "research_snippet_only": "{n} só pelos trechos da busca", "research_weak": "{n} sem apoio na fonte",
+        "research_off_topic": "As fontes não mencionam o que você perguntou", "research_conflict": "As fontes divergem",
+        "research_followup": "Continuação: fontes anteriores", "research_fresh": "Resultados novos",
+        "research_fallback": "Alguns buscadores falharam; outros responderam", "research_cancelled": "Interrompido",
+        "research_failed": "A pesquisa falhou", "research_stop": "Parar", "research_deeper": "Aprofundar",
+        "research_refresh": "Verificar de novo", "research_sheet": "Planilha", "research_report": "Relatório",
+    },
+}
+for _lang, _labels in RESEARCH_UI.items():
+    UI[_lang].update(_labels)
+

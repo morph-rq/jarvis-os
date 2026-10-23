@@ -75,6 +75,7 @@ Item {
   property var agents: []
   // OpenClaw and Hermes behind Jarvis: {openclaw: {state, healthy, version, error, manage}, hermes: {…}, lockdown}
   property var backends: ({ lockdown: false })
+  property var research: ({ enabled: false, ready: false })   // web research services (jarvis/research)
   property var catalogSummary: ({})   // the capability registry: {total, usable, duplicates, by_provider}
   // The Capabilities Hub's view (op hub, action snapshot): skills, plugins, channels, apps, automations, updates,
   // history, discover, recent, events, runs, tasks, channels_info. Asked for when the hub opens or something changes.
@@ -199,6 +200,14 @@ Item {
   function refreshHub() { return hubAction({ action: "snapshot" }) }
   // While the hub is open, task changes (a delegated run starting, a step, the end) refresh it, at most every 0.4 s.
   Timer { id: hubRefresh; interval: 400; onTriggered: root.refreshHub() }
+  // Web research: ask (a mode from the card's selector, or a related question), open a cited source,
+  // stop, or turn an answer into a spreadsheet/report through the document tools.
+  function researchAsk(query, mode, fresh) {
+    return send({ op: "research", action: "ask", query: query, mode: mode || "auto", fresh: fresh ? true : null })
+  }
+  function researchOpen(url) { return send({ op: "research", action: "open", url: url }) }
+  function researchCancel() { return send({ op: "research", action: "cancel" }) }
+  function researchExport(runId, kind) { return send({ op: "research", action: "export", run_id: runId, kind: kind || "xlsx" }) }
   function stopAll() { return send({ op: "stop_all" }) }
   function resumeAgents() { return send({ op: "resume_agents" }) }
   function hangup() { return gatewayAction({ action: "hangup" }) }
@@ -394,6 +403,7 @@ Item {
       root.approvals = msg.approvals || []
       root.agents = msg.agents || []
       root.backends = msg.backends || ({ lockdown: false })
+      root.research = msg.research || ({ enabled: false, ready: false })
       root.catalogSummary = msg.catalog || ({})
       root.protocolVersion = msg.protocol || 1
       var live = msg.activities || {}
@@ -478,6 +488,7 @@ Item {
       break
     case "agents": root.agents = msg.sessions || []; break
     case "backends": root.backends = msg.status || ({}); if (root.hubOpen) root.refreshHub(); break
+    case "research": root.research = msg.status || ({}); break
     case "catalog": root.catalogSummary = msg.summary || ({}); if (root.hubOpen) root.refreshHub(); break
     case "vad": root.vad = !!msg.speaking; break
     case "barge": root.reaction("barge"); break

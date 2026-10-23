@@ -33,7 +33,8 @@ Item {
     "diagnosis": textCard, "skill_draft": textCard, "comparison": compareCard, "chart": chartCard,
     "table": tableCard, "metrics": compareCard, "generated": textCard, "files": listCard, "apps": listCard,
     "calendar": listCard, "email": listCard, "quiz": quizCard, "scorecard": scoreCard, "flashcard": flashCard,
-    "progress": progressCard, "triage": triageCard, "connect": connectCard, "skill_review": reviewCard
+    "progress": progressCard, "triage": triageCard, "connect": connectCard, "skill_review": reviewCard,
+    "research": researchCard
   })
 
   implicitHeight: body.height
@@ -495,6 +496,18 @@ Item {
                  color: Util.alpha(root.fg, 0.75); font.family: Style.fontFamily; font.pixelSize: Style.font.caption }
         }
       }
+    }
+  }
+
+  // Web research (jarvis/research): its own file, ResearchCard.qml.
+  Component {
+    id: researchCard
+    ResearchCard {
+      width: parent ? parent.width : 300
+      d: parent && parent.d ? parent.d : ({})
+      service: root.s
+      fg: root.fg
+      accent: root.accent
     }
   }
 

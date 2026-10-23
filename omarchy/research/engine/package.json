@@ -1,0 +1,35 @@
+{
+  "name": "jarvis-research-engine",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Jarvis's research engine: Morphic's research pipeline (pinned source) served to jarvisd over a local socket",
+  "license": "Apache-2.0",
+  "type": "module",
+  "morphic": {
+    "repository": "https://github.com/miurla/morphic",
+    "tag": "v1.8.0",
+    "commit": "a95b1d7aa17f729fd8cae7e9896fa8d32b76989d"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "4.0.39",
+    "@ai-sdk/gateway": "4.0.52",
+    "@ai-sdk/google": "4.0.44",
+    "@ai-sdk/openai": "4.0.42",
+    "@ai-sdk/openai-compatible": "3.0.31",
+    "@json-render/core": "0.16.0",
+    "@json-render/react": "0.16.0",
+    "ai": "7.0.66",
+    "ai-sdk-ollama": "4.1.0",
+    "clsx": "2.1.1",
+    "tailwind-merge": "2.6.0",
+    "undici": "7.29.0",
+    "zod": "4.3.6"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12"
+  }
+}

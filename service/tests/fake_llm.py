@@ -5,7 +5,8 @@ Each rule matches the latest user message (regex, case-insensitive) and lists st
 tool call ({"tool": name, "args": {...}}) or the final answer ({"say": text}). The step to answer with is
 picked from how many tool results already followed that user message, so a rule plays out as a
 multi-turn tool loop. A step may add "delay" (seconds) before answering. `{result}` in a final answer is replaced by the last tool result (trimmed). A rule
-whose tool the request didn't offer answers "TOOL_UNAVAILABLE: name" instead of calling it.
+whose tool the request didn't offer answers "TOOL_UNAVAILABLE: name" instead of calling it; a tool name with
+"*" matches the first offered name that fits (agents prefix MCP tools differently).
 
     python -m tests.fake_llm --port 0 --rules rules.json      # prints "PORT <n>", serves until killed
 
@@ -17,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import fnmatch
 import json
 import re
 import time
@@ -72,9 +74,12 @@ class FakeLLM:
                 steps = rule["steps"]
                 step = steps[min(len(results), len(steps) - 1)]
                 if "tool" in step:
-                    if step["tool"] not in offered:
-                        return {"say": f"TOOL_UNAVAILABLE: {step['tool']}"}
-                    return {"tool": step["tool"], "args": step.get("args", {})}
+                    name = step["tool"]
+                    if "*" in name:   # e.g. "*jarvis_research*": however the agent prefixes an MCP tool
+                        name = next((o for o in sorted(n for n in offered if n) if fnmatch.fnmatch(o, name)), name)
+                    if name not in offered:
+                        return {"say": f"TOOL_UNAVAILABLE: {step['tool']} (offered: {', '.join(sorted(n for n in offered if n))[:600]})"}
+                    return {"tool": name, "args": step.get("args", {})}
                 last = results[-1] if results else ""
                 return {"say": step["say"].replace("{result}", last[:1500]), "delay": step.get("delay", 0)}
         return {"say": f"OK: {last_user[:200]}"}

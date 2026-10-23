@@ -21,3 +21,6 @@ build/
 
 # Transfer packages (scripts/make-transfer-package.sh)
 dist/
+
+# The research engine's npm dependencies (omarchy/research/engine/package-lock.json pins them)
+node_modules/

@@ -34,8 +34,8 @@ from typing import Any
 log = logging.getLogger("jarvis.catalog")
 
 # How a capability gets things done, best first when the evidence is equal (select.py weighs it).
-METHODS = ("official_api", "native", "skill", "browser", "desktop", "vision", "agent", "build")
-METHOD_WEIGHT = {"official_api": 1.0, "native": 1.0, "skill": 0.85, "browser": 0.7, "desktop": 0.6,
+METHODS = ("official_api", "local_service", "native", "skill", "browser", "desktop", "vision", "agent", "build")
+METHOD_WEIGHT = {"official_api": 1.0, "local_service": 1.0, "native": 1.0, "skill": 0.85, "browser": 0.7, "desktop": 0.6,
                  "vision": 0.5, "agent": 0.55, "build": 0.2}
 LATENCY_MS = {"instant": 300, "fast": 2000, "slow": 30000}
 
@@ -43,11 +43,11 @@ LATENCY_MS = {"instant": 300, "fast": 2000, "slow": 30000}
 TOOL_METHOD = {
     "browser": "browser", "navigate": "desktop", "computer_input": "desktop", "click_on_screen": "vision",
     "analyze_screen": "vision", "read_screen": "vision", "screenshot": "native", "delegate": "agent",
-    "web_search": "official_api", "weather": "official_api", "maps": "official_api", "app_action": "official_api",
+    "web_search": "local_service", "weather": "official_api", "maps": "official_api", "app_action": "official_api",
     "app_tools": "official_api", "email": "official_api", "calendar": "official_api", "generate_image": "official_api",
     "youtube": "official_api", "home": "official_api", "music": "official_api", "message": "official_api",
 }
-TOOL_LATENCY = {"official_api": "fast", "browser": "slow", "desktop": "slow", "vision": "slow", "agent": "slow"}
+TOOL_LATENCY = {"local_service": "fast", "official_api": "fast", "browser": "slow", "desktop": "slow", "vision": "slow", "agent": "slow"}
 EXTERNAL = {"email", "message", "app_action", "call", "phone", "send_file", "home", "browser"}
 
 # Upstream skills Jarvis serves itself, so they are listed but never routed to.
@@ -55,6 +55,10 @@ NATIVE_DUPLICATES = {
     "gog": "app:gmail", "himalaya": "app:gmail", "gmail": "app:gmail", "google-calendar": "app:calendar",
     "gcal": "app:calendar", "google-drive": "app:drive", "weather": "jarvis:tool:weather",
     "spotify-player": "jarvis:tool:music", "screenshot": "jarvis:tool:screenshot",
+    # Web search: Jarvis's research (Morphic on SearXNG) is the one search path; the agents' own web search
+    # skills and the research MCP bridge they reach it through are the same capability.
+    "jarvis_research": "jarvis:tool:web_search", "searxng": "jarvis:tool:web_search",
+    "web-search": "jarvis:tool:web_search", "web_search": "jarvis:tool:web_search",
 }
 
 SCHEMA = """

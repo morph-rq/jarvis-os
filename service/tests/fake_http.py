@@ -1,7 +1,8 @@
 """Tiny fake HTTP + websocket servers on loopback for the Discord, Slack, Signal and WhatsApp tests.
 
 Routes are (METHOD, path regex) -> handler(req) returning (status, body) where body is a dict (JSON),
-bytes, or an async iterator of bytes (a streamed response, e.g. server-sent events)."""
+bytes, or an async iterator of bytes (a streamed response, e.g. server-sent events); (status, body,
+content_type) sets the type of a bytes body."""
 
 from __future__ import annotations
 
@@ -94,10 +95,10 @@ class FakeHttp:
                 self.requests.append(req)
                 for m, pattern, fn in self.routes:
                     if m == method and pattern.fullmatch(parts.path):
-                        status, out = await fn(req)
+                        status, out, *ctype_override = await fn(req)
                         break
                 else:
-                    status, out = 404, {"error": "not found"}
+                    status, out, ctype_override = 404, {"error": "not found"}, []
                 if hasattr(out, "__aiter__"):
                     writer.write(f"HTTP/1.1 {status} X\r\nContent-Type: text/event-stream\r\nTransfer-Encoding: chunked\r\n\r\n".encode())
                     await writer.drain()
@@ -108,7 +109,7 @@ class FakeHttp:
                     await writer.drain()
                     continue
                 payload = out if isinstance(out, bytes) else json.dumps(out).encode()
-                ctype = "application/octet-stream" if isinstance(out, bytes) else "application/json"
+                ctype = ctype_override[0] if ctype_override else "application/octet-stream" if isinstance(out, bytes) else "application/json"
                 writer.write(f"HTTP/1.1 {status} X\r\nContent-Type: {ctype}\r\nContent-Length: {len(payload)}\r\n\r\n".encode() + payload)
                 await writer.drain()
         except (asyncio.IncompleteReadError, ConnectionError, asyncio.LimitOverrunError):

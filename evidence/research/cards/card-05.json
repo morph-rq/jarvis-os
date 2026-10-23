@@ -1,0 +1,93 @@
+{
+ "id": "research-r2b90a1a70065",
+ "kind": "research",
+ "title": "capital of Kazakhstan",
+ "data": {
+  "run_id": "r2b90a1a70065",
+  "query": "capital of Kazakhstan",
+  "mode": "instant",
+  "mode_ui": "quick",
+  "mode_reason": "a direct question",
+  "state": "done",
+  "phase": "done",
+  "phases": [
+   {
+    "phase": "searching",
+    "at": 0
+   },
+   {
+    "phase": "searching",
+    "at": 0
+   },
+   {
+    "phase": "answering",
+    "at": 1
+   }
+  ],
+  "answer": "Astana is the capital city of Kazakhstan. [1]\n\n### Details\n- It has been the capital since 1997, when the seat of government moved from Almaty. [1]",
+  "interim": "",
+  "citations": [
+   {
+    "n": 1,
+    "label": "S1",
+    "url": "http://127.0.0.1:36889/page/kz-capital-en",
+    "title": "Astana - capital of Kazakhstan",
+    "domain": "127.0.0.1"
+   }
+  ],
+  "blocks": [],
+  "verification": {
+   "cited_sentences": 2,
+   "verified": 0,
+   "snippet_only": 2,
+   "weak": 0,
+   "uncited_numeric": 0,
+   "distinct_domains": 1,
+   "evidence": "moderate"
+  },
+  "conflicts": [],
+  "metrics": {
+   "first_source_ms": 1,
+   "first_text_ms": 317,
+   "first_answer_token_ms": 317,
+   "first_citation_ms": 354,
+   "search_done_ms": 1,
+   "read_done_ms": null,
+   "model_first_token_ms": 316,
+   "model_ms": 469,
+   "total_ms": 470
+  },
+  "fresh": false,
+  "followup": false,
+  "reused": false,
+  "error": "",
+  "warnings": [],
+  "sources": [
+   {
+    "label": "S1",
+    "n": 1,
+    "title": "Astana - capital of Kazakhstan",
+    "url": "http://127.0.0.1:36889/page/kz-capital-en",
+    "domain": "127.0.0.1",
+    "published": "2025-09-18T00:00:00.000Z",
+    "snippet": "Sep 18, 2025 — Astana is the capital city of Kazakhstan. It has been the capital since 1997, when the seat of government moved from Almaty.",
+    "cached": true,
+    "retrieved_at": 1792730839441,
+    "opened": false,
+    "cited": true,
+    "favicon": ""
+   }
+  ],
+  "searches": 1,
+  "engines_failed": [],
+  "fallback": false
+ },
+ "ttl": 300,
+ "ts": 1792730899.3294923,
+ "provenance": {
+  "tool": "web_search",
+  "source": "Morphic + SearXNG",
+  "live": true
+ },
+ "task_id": "tae6cb-9"
+}

@@ -7,6 +7,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import secrets
 import signal
 import time
@@ -21,7 +22,7 @@ from jarvis.capabilities import Hub
 from jarvis.memory import Memory
 from jarvis.platforms import detect
 from jarvis.tasks import REMOTE, Bus, Task, TaskManager
-from jarvis.tools import CALL_RISK, DANGER, REGISTRY, SAFE, Context, Session, ToolArgError, safe_run, validate
+from jarvis.tools import CALL_RISK, DANGER, REGISTRY, SAFE, TOOL_ORIGIN, Context, Session, ToolArgError, safe_run, validate
 
 log = logging.getLogger("jarvis")
 
@@ -85,6 +86,9 @@ class Jarvis:
         # OpenClaw and Hermes behind Jarvis, and the one capability registry over everything (docs/AGENT-BACKENDS.md).
         self.backends = Backends(self)
         self.catalog = Catalog(self)
+        from jarvis.research import Research
+        # Web research: Morphic's pipeline on a local SearXNG, behind web_search (docs/RESEARCH.md).
+        self.research = Research(self)
         self.brain.selector = self._tools_for
         self.voice = None
         # Results that finished after the conversation that asked for them had ended; the next Live
@@ -155,7 +159,8 @@ class Jarvis:
                 "voice": self.voice.public() if self.voice else {"mode": "unavailable"},
                 "settings": {k: self.config.get(k) for k in configmod.SCHEMA},
                 "history": self.memory.recent_turns(30), "activities": self.activities(),
-                "backends": self.backends.snapshot(), "catalog": self.catalog.registry.summary(), **self.tasks.snapshot()}
+                "backends": self.backends.snapshot(), "catalog": self.catalog.registry.summary(),
+                "research": self.research.snapshot(), **self.tasks.snapshot()}
 
     def activities(self) -> dict:
         """What the island shows as live activities after a (re)connect: timers and reminders due within
@@ -265,6 +270,7 @@ class Jarvis:
         self.tasks.step(task, "tool", tool.summary(args), tool=name)
         started = time.perf_counter()
         CALL_RISK.set(risk)
+        TOOL_ORIGIN.set(origin or task.source)
         result = await safe_run(tool, self.ctx, args)
         card = result.pop("card", None) if isinstance(result, dict) else None
         if card:
@@ -306,6 +312,7 @@ class Jarvis:
             return {"ok": True, "stopped_speech": True}
         if router.is_cancel(text):
             cancelled = self.tasks.cancel()
+            asyncio.create_task(self.research.cancel_all())   # answers still streaming to the screen
             if self.voice:
                 await self.voice.stop_speaking()
             self.bus.publish("reply", text=i18n.say("cancelled", lang), task_id=None)
@@ -416,6 +423,85 @@ class Jarvis:
                 raise
         return holder.get("result") or {"ok": False, "message": task.error or task.state.value}
 
+    async def research_op(self, req: dict) -> dict:
+        """The research panel and the research MCP bridge. ask runs web_search as a visible task; open opens a
+        source of a recent answer (only those); mcp is how Hermes and OpenClaw reach the same tool."""
+        action = str(req.get("action", "status"))
+        r = self.research
+        if action == "status":
+            await r.refresh()
+            return {"ok": True, **r.snapshot()}
+        if action == "stats":
+            try:
+                return {"ok": True, **(await r.client.stats() if r.client else {}), "jarvis": r.stats}
+            except Exception as exc:
+                return {"ok": False, "message": str(exc)[:200]}
+        if action == "cancel":
+            return {"ok": True, "cancelled": await r.cancel_all()}
+        if action == "restart":
+            name = str(req.get("target") or "research")
+            if name not in ("research", "searxng"):
+                return {"ok": False, "message": "unknown service"}
+            return await r.restart(name)
+        if action == "ask":
+            query = str(req.get("query", "")).strip()
+            if not query:
+                return {"ok": False, "message": "empty query"}
+            args = {"query": query, "mode": str(req.get("mode") or "auto")}
+            if req.get("fresh") is not None:
+                args["fresh"] = bool(req.get("fresh"))
+            self.memory.add_turn("user", query, source="ui")
+            self.bus.publish("transcript", role="user", text=query, final=True, source="ui")
+
+            async def work(task: Task) -> str:
+                result = await self.run_tool(task, "web_search", args, origin="ui")
+                reply = str(result.get("final_answer") or result.get("message", ""))
+                self.memory.add_turn("assistant", reply, source="research")
+                self.bus.publish("reply", text=reply, task_id=task.id)
+                return reply
+            task = self.tasks.start(query, "ui", work, text=query)
+            return {"ok": True, "task_id": task.id}
+        if action == "open":
+            url = str(req.get("url", ""))
+            known = any(s.get("url") == url for res in r.recent.values() for s in res.get("sources", []))
+            if not known or not url.lower().startswith(("https://", "http://")):
+                return {"ok": False, "message": "Only sources of a recent answer can be opened from here."}
+            return await self.run_ui_tool("open_url", {"url": url})
+        if action == "export":
+            # The card's spreadsheet/report button: the document tools make the file from the stored result.
+            kind = str(req.get("kind") or "xlsx")
+            run_id = str(req.get("run_id") or "latest")
+            found = r.latest("" if run_id == "latest" else run_id)
+            if kind not in ("xlsx", "docx", "pdf", "md") or not found:
+                return {"ok": False, "message": "Nothing to export (the answer is no longer kept) or unknown kind."}
+            title = re.sub(r"[^\w\s-]", "", found.get("query", "Research"))[:60].strip() or "Research"
+            return await self.run_ui_tool("create_document", {"kind": kind, "title": title, "from_research": found["run_id"]})
+        if action == "mcp":
+            agent = str(req.get("agent", ""))
+            allowed = {"hermes": "share_with_hermes", "openclaw": "share_with_openclaw"}
+            if agent not in allowed or not self.config["research"].get(allowed[agent]):
+                return {"ok": False, "message": f"research is not shared with {agent or 'this client'} "
+                                                f"(research.{allowed.get(agent, 'share_with_' + agent)})"}
+            query = str(req.get("query", "")).strip()
+            if not query:
+                return {"ok": False, "message": "empty query"}
+            args = {"query": query, "mode": str(req.get("mode") or "auto")}
+            if req.get("fresh") is not None:
+                args["fresh"] = bool(req.get("fresh"))
+            holder: dict = {}
+
+            async def agent_work(task: Task) -> str:
+                holder["r"] = await self.run_tool(task, "web_search", args, origin=agent)
+                return str(holder["r"].get("message", ""))[:300]
+            task = self.tasks.start(f"{agent}: research {query[:80]}", agent, agent_work, text=query)
+            try:
+                await asyncio.shield(task.handle)
+            except asyncio.CancelledError:
+                task.handle.cancel()
+                raise
+            return holder.get("r") or {"ok": False, "message": task.error or task.state.value}
+        return {"ok": False, "message": f"unknown research action {action}"}
+
     # ---------------------------------------------------------------- voice hooks
     async def voice_tool(self, name: str, args: dict, call_id: str = "", on_approval=None) -> dict:
         """Gemini Live tool calls run as tasks, with the same policy and approvals as typed requests.
@@ -458,6 +544,7 @@ class Jarvis:
             return
         if router.is_cancel(text):
             self.tasks.cancel()
+            asyncio.create_task(self.research.cancel_all())
             if self.voice:
                 await self.voice.stop_speaking()
         elif router.is_stop_speech(text) and self.voice:
@@ -573,7 +660,9 @@ class Jarvis:
             # The Capabilities Hub panel: catalog, connections, updates, agents, activity.
             return await self.catalog.op(req, self.run_ui_tool)
         if op == "stop_all":
-            return {"ok": True, **await self.backends.stop_all()}
+            return {"ok": True, **await self.backends.stop_all(), "research_runs": await self.research.cancel_all()}
+        if op == "research":
+            return await self.research_op(req)
         if op == "resume_agents":
             self.backends.lift()
             return {"ok": True}
@@ -772,12 +861,14 @@ async def serve(cfg: configmod.Config) -> None:
     await jarvis.gateway.start()
     await jarvis.backends.start()
     await jarvis.catalog.start()
+    await jarvis.research.start()
     jarvis.bus.publish("status", status="idle")
     async with server:
         serving = asyncio.create_task(server.serve_forever())
         await stop.wait()
         log.info("shutting down")
         await jarvis.gateway.stop()
+        await jarvis.research.stop()
         await jarvis.catalog.stop()
         await jarvis.backends.stop()
         await jarvis.hub.stop()

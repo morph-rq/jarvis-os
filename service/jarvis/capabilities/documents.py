@@ -913,7 +913,9 @@ def _require(kind: str) -> None:
        "title": {"type": "string", "description": "Document title; also the file name"},
        "instructions": {"type": "string", "description": "What the document should contain, in the user's words"},
        "content": CONTENT_PARAM,
-       "open_after": {"type": "boolean", "description": "Open the new file afterwards (default true)"}},
+       "open_after": {"type": "boolean", "description": "Open the new file afterwards (default true)"},
+       "from_research": {"type": "string", "description": "A web_search result's research_id (or 'latest'): the "
+                                                          "document is built from that answer, its tables and its sources"}},
       ["kind", "title"], risk=SAFE)
 async def create_document(ctx: Context, args: dict) -> dict:
     kind = args["kind"]
@@ -922,6 +924,14 @@ async def create_document(ctx: Context, args: dict) -> dict:
     lang = i18n.detect(f"{title} {instructions}", ctx.hub.j.lang() if ctx.hub else "en")
     await _sync(_require, kind)   # imports and font discovery (fc-match) are blocking
     data = args.get("content")
+    if not data and args.get("from_research"):
+        research = getattr(ctx.hub.j, "research", None) if ctx.hub else None
+        rid = str(args["from_research"])
+        found = research.latest("" if rid == "latest" else rid) if research is not None else None
+        if not found or not found.get("ok"):
+            return {"ok": False, "message": "That research result is not available any more; search again first."}
+        from jarvis.research import export
+        data = export.content(kind, found, title)
     if not data:
         if ctx.brain is None:
             return {"ok": False, "message": "Writing a document needs a model key (GEMINI_API_KEY or "

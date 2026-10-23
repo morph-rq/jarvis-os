@@ -28,6 +28,7 @@ import secrets
 import shutil
 import signal
 import subprocess
+import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -139,6 +140,14 @@ def record_migration(text: str) -> None:
         fh.write(f"{time.strftime('%Y-%m-%dT%H:%M:%S')} {text}\n")
 
 
+def research_mcp(agent: str) -> dict:
+    """The MCP server entry that gives an agent Jarvis's research tool (jarvis/research/mcp.py). It runs as the
+    user, talks only to jarvisd's socket, and carries the directories it needs to find that socket."""
+    env = {k: os.environ[k] for k in ("XDG_RUNTIME_DIR", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME", "HOME")
+           if os.environ.get(k)}
+    return {"command": sys.executable, "args": ["-m", "jarvis", "research", "mcp", "--agent", agent], "env": env}
+
+
 def setup(name: str, cfg, *, run=subprocess.run) -> list[str]:
     """Bring an agent's own config to what Jarvis needs, through its own config tools. Idempotent;
     returns what changed (also appended to agents/migrations.log)."""
@@ -184,6 +193,15 @@ def setup(name: str, cfg, *, run=subprocess.run) -> list[str]:
         dirs = get("skills.load.extraDirs") or []
         if str(shared) not in dirs:
             put("skills.load.extraDirs", list(dirs) + [str(shared)])
+        # Jarvis's research as an MCP tool, only when the user lets OpenClaw use it (research.share_with_openclaw).
+        share = bool(cfg["research"].get("share_with_openclaw")) and bool(cfg["research"].get("enabled"))
+        entry = get("mcp.servers.jarvis_research")
+        if share:
+            want = {**research_mcp("openclaw"), "enabled": True, "requestTimeoutMs": 120000}
+            if not isinstance(entry, dict) or any(entry.get(k) != v for k, v in want.items()):
+                put("mcp.servers.jarvis_research", want)
+        elif isinstance(entry, dict) and entry.get("enabled", True):
+            put("mcp.servers.jarvis_research.enabled", False)
         model = cfg["openclaw"].get("model", "")
         if model and not get("agents.defaults.model.primary"):
             put("agents.defaults.model.primary", model)   # only when the user has none of their own
@@ -196,6 +214,9 @@ def setup(name: str, cfg, *, run=subprocess.run) -> list[str]:
     else:
         py = Path(argv[0]).with_name("python")
         toolsets = list(cfg["hermes"]["toolsets"])
+        share = bool(cfg["research"].get("share_with_hermes")) and bool(cfg["research"].get("enabled"))
+        if share and "jarvis_research" not in toolsets:
+            toolsets.append("jarvis_research")   # the MCP server's toolset (Hermes names it after the server)
         model = cfg["hermes"].get("model", "")
         # Hermes's own config module writes its YAML (hermes_cli/config.py save_config, merging).
         script = (
@@ -208,13 +229,19 @@ def setup(name: str, cfg, *, run=subprocess.run) -> list[str]:
             "sk = dict(raw.get('skills') or {}); ext = list(sk.get('external_dirs') or [])\n"
             "if want['shared'] not in ext:\n"
             "    ext.append(want['shared']); sk['external_dirs'] = ext; raw['skills'] = sk; changed.append('skills.external_dirs')\n"
+            "ms = dict(raw.get('mcp_servers') or {})\n"
+            "if want['mcp'] and ms.get('jarvis_research') != want['mcp']:\n"
+            "    ms['jarvis_research'] = want['mcp']; raw['mcp_servers'] = ms; changed.append('mcp_servers.jarvis_research')\n"
+            "elif not want['mcp'] and (ms.get('jarvis_research') or {}).get('enabled', False):\n"
+            "    ms['jarvis_research'] = dict(ms['jarvis_research'], enabled=False); raw['mcp_servers'] = ms; changed.append('mcp_servers.jarvis_research off')\n"
             "m = dict(raw.get('model') or {})\n"
             "if want['model'] and not m.get('default'):\n"
             "    p, _, d = want['model'].partition('/'); m.update(provider=p, default=d); raw['model'] = m; changed.append('model')\n"
             "if changed:\n"
             "    save_config(raw, merge_existing=True)\n"
             "print(json.dumps(changed))\n")
-        r = run([str(py), "-I", "-c", script, json.dumps({"toolsets": toolsets, "shared": str(shared), "model": model})],
+        r = run([str(py), "-I", "-c", script, json.dumps({"toolsets": toolsets, "shared": str(shared), "model": model,
+                                                         "mcp": {**research_mcp("hermes"), "enabled": True} if share else None})],
                 env=env, capture_output=True, text=True, timeout=120)
         if r.returncode != 0:
             raise RuntimeError(f"Hermes config update failed: {(r.stderr or r.stdout).strip()[-400:]}")

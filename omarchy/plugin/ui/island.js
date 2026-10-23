@@ -71,9 +71,12 @@ function activity(s) {
   var agents = s.agents || []
   for (var i = 0; i < agents.length; i++)
     if (agents[i].state === "question") return { kind: "question", item: agents[i] }
-  if (_voiceLive(s)) return { kind: "voice", item: null }
+  // A research answer being written is the thing to look at, during a spoken question as well: its sources
+  // and text stream in while Jarvis speaks (the orb in the card shows the voice state).
+  var research = s.card && s.card.kind === "research" && _fresh(s.card, s.now)
+  if (_voiceLive(s)) return research ? { kind: "result", item: s.card } : { kind: "voice", item: null }
   if (s.inbound && s.inbound.at && s.now - s.inbound.at < MESSAGE_S * 1000) return { kind: "message", item: s.inbound }
-  if (s.running && s.running.id) return { kind: "task", item: s.running }
+  if (s.running && s.running.id) return research ? { kind: "result", item: s.card } : { kind: "task", item: s.running }
   if (_fresh(s.card, s.now)) return { kind: "result", item: s.card }
   if (s.notice) return { kind: "notice", item: s.notice }
   var newest = null

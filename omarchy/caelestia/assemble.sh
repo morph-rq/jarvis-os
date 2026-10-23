@@ -44,7 +44,7 @@ cp -r "$here/overlay/." "$dest/"
 j="$dest/modules/jarvis"
 mkdir -p "$j"
 for f in JarvisClient.qml IslandCore.qml Guide.qml CardBody.qml land.js Panel.qml Messaging.qml Companion.qml \
-         CapabilitiesHub.qml; do
+         CapabilitiesHub.qml ResearchCard.qml; do
   cp "$repo/omarchy/plugin/$f" "$j/"
 done
 cp -r "$repo/omarchy/plugin/island" "$repo/omarchy/plugin/ui" "$repo/omarchy/plugin/shaders" "$j/"

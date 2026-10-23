@@ -144,3 +144,12 @@ test("background activities never hide foreground ones; recording beats timers, 
   assert.deepStrictEqual(show(st({ meeting, hovered: true })), ["recording", "peek"])
   assert.deepStrictEqual(show(st({ meeting, autohide: true })), ["recording", "mini"])   // never auto-hidden
 })
+
+test("a research card shows while its task runs and during a spoken question", () => {
+  const card = { kind: "research", born: NOW - 500, ttl: 600 }
+  assert.deepStrictEqual(show(st({ running: { id: "t1" }, card })), ["result", "expanded"])
+  assert.deepStrictEqual(show(st({ conversing: true, status: "speaking", card }))[0], "result")
+  // Any other card still waits for the task, and voice still wins over it.
+  assert.deepStrictEqual(show(st({ running: { id: "t1" }, card: { kind: "weather", born: NOW, ttl: 15 } }))[0], "task")
+  assert.deepStrictEqual(show(st({ conversing: true, card: { kind: "weather", born: NOW, ttl: 15 } }))[0], "voice")
+})

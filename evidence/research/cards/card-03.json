@@ -1,0 +1,298 @@
+{
+ "id": "research-r2b8fce3394ed",
+ "kind": "research",
+ "title": "Is it safe to run SearXNG publicly without the limiter? Give evidence.",
+ "data": {
+  "run_id": "r2b8fce3394ed",
+  "query": "Is it safe to run SearXNG publicly without the limiter? Give evidence.",
+  "mode": "thorough",
+  "mode_ui": "thorough",
+  "mode_reason": "asked for depth or evidence",
+  "state": "done",
+  "phase": "done",
+  "phases": [
+   {
+    "phase": "searching",
+    "at": 0
+   },
+   {
+    "phase": "searching",
+    "at": 0
+   },
+   {
+    "phase": "searching",
+    "at": 0
+   },
+   {
+    "phase": "reading",
+    "at": 466
+   },
+   {
+    "phase": "answering",
+    "at": 470
+   },
+   {
+    "phase": "verifying",
+    "at": 1203
+   },
+   {
+    "phase": "searching",
+    "at": 1526
+   },
+   {
+    "phase": "verifying",
+    "at": 4102
+   }
+  ],
+  "answer": "PEP 703 proposes adding a build configuration (--disable-gil) to CPython so that it can run Python code without the global interpreter lock. [1]\n\n### Details\n- The limiter is SearXNG's bot protection. [2]\n- Public instances should run it, because engines such as Google and Bing block instances that send automated traffic. [2]\n- Without the limiter, a public instance can be abused and get its IP address banned by upstream search engines. [3]\n- The limiter protects public instances from bots; it should be enabled on any instance reachable from the internet. [4]\n\n### Findings\n- PEP 703 proposes adding a build configuration (--disable-gil) to CPython so that it can run Python code without the global interpreter lock. [1]\n- The limiter is SearXNG's bot protection. [2]\n- Public instances should run it, because engines such as Google and Bing block instances that send automated traffic. [2]",
+  "interim": "PEP 703 proposes adding a build configuration (--disable-gil) to CPython so that it can run Python code without the global interpreter lock. [1]\n\n- The limiter is SearXNG's bot protection. [2]\n- Public instances should run it, because engines such as Google and Bing block instances that send automated traffic. [2]\n- Without the limiter, a public instance can be abused and get its IP address banned by upstream search engines. [3]",
+  "citations": [
+   {
+    "n": 1,
+    "label": "S13",
+    "url": "http://127.0.0.1:36889/page/pep703",
+    "title": "PEP 703 - Making the Global Interpreter Lock Optional in CPython",
+    "domain": "127.0.0.1"
+   },
+   {
+    "n": 2,
+    "label": "S11",
+    "url": "http://127.0.0.1:36889/page/searxng-limiter",
+    "title": "SearXNG limiter and bot detection",
+    "domain": "127.0.0.1"
+   },
+   {
+    "n": 3,
+    "label": "S21",
+    "url": "http://127.0.0.1:36889/page/searxng-limiter",
+    "title": "SearXNG limiter and bot detection",
+    "domain": "127.0.0.1"
+   },
+   {
+    "n": 4,
+    "label": "S12",
+    "url": "http://127.0.0.1:36889/page/searxng-port",
+    "title": "SearXNG settings.yml reference",
+    "domain": "127.0.0.1"
+   }
+  ],
+  "blocks": [
+   {
+    "type": "related",
+    "questions": [
+     "What changed recently about Is it safe to run SearXNG publicly without the lim?",
+     "How do I use Is it safe to run SearXNG publicly without the lim?",
+     "What are alternatives to Is it safe to run SearXNG publicly without the lim?"
+    ]
+   }
+  ],
+  "verification": {
+   "cited_sentences": 8,
+   "verified": 8,
+   "snippet_only": 0,
+   "weak": 0,
+   "uncited_numeric": 0,
+   "distinct_domains": 1,
+   "evidence": "moderate"
+  },
+  "conflicts": [],
+  "metrics": {
+   "first_source_ms": 308,
+   "first_text_ms": 779,
+   "first_answer_token_ms": 1863,
+   "first_citation_ms": 1991,
+   "search_done_ms": 466,
+   "read_done_ms": 470,
+   "model_first_token_ms": null,
+   "model_ms": 2899,
+   "total_ms": 4108,
+   "interim_done_ms": 1203
+  },
+  "fresh": false,
+  "followup": false,
+  "reused": false,
+  "error": "",
+  "warnings": [],
+  "sources": [
+   {
+    "label": "S11",
+    "n": 2,
+    "title": "SearXNG limiter and bot detection",
+    "url": "http://127.0.0.1:36889/page/searxng-limiter",
+    "domain": "127.0.0.1",
+    "published": "2026-08-24T00:00:00.000Z",
+    "snippet": "Aug 24, 2026 — The limiter is SearXNG's bot protection. Public instances should run it, because engines such as Google and Bing block instances that send automated traffic.",
+    "cached": false,
+    "retrieved_at": 1792730845189,
+    "opened": true,
+    "cited": true,
+    "favicon": ""
+   },
+   {
+    "label": "S21",
+    "n": 3,
+    "title": "SearXNG limiter and bot detection",
+    "url": "http://127.0.0.1:36889/page/searxng-limiter",
+    "domain": "127.0.0.1",
+    "published": "2026-08-24T00:00:00.000Z",
+    "snippet": "SearXNG limiter and bot detection\nThe limiter is SearXNG's bot protection. Public instances should run it, because engines such as Google and Bing block instances that send automated traffic.\n\nWithout the limiter, a public instance can be abused and get its IP address banned by u",
+    "cached": false,
+    "retrieved_at": 1792730845193,
+    "opened": true,
+    "cited": true,
+    "favicon": ""
+   },
+   {
+    "label": "S12",
+    "n": 4,
+    "title": "SearXNG settings.yml reference",
+    "url": "http://127.0.0.1:36889/page/searxng-port",
+    "domain": "127.0.0.1",
+    "published": "2026-07-25T00:00:00.000Z",
+    "snippet": "Jul 25, 2026 — The limiter protects public instances from bots; it should be enabled on any instance reachable from the internet.",
+    "cached": false,
+    "retrieved_at": 1792730845189,
+    "opened": true,
+    "cited": true,
+    "favicon": ""
+   },
+   {
+    "label": "S13",
+    "n": 1,
+    "title": "PEP 703 - Making the Global Interpreter Lock Optional in CPython",
+    "url": "http://127.0.0.1:36889/page/pep703",
+    "domain": "127.0.0.1",
+    "published": "2024-11-22T00:00:00.000Z",
+    "snippet": "Nov 22, 2024 — PEP 703 proposes adding a build configuration (--disable-gil) to CPython so that it can run Python code without the global interpreter lock.",
+    "cached": false,
+    "retrieved_at": 1792730845189,
+    "opened": true,
+    "cited": true,
+    "favicon": ""
+   },
+   {
+    "label": "S1",
+    "n": null,
+    "title": "SearXNG limiter and bot detection",
+    "url": "http://127.0.0.1:36889/page/searxng-limiter",
+    "domain": "127.0.0.1",
+    "published": "2026-08-24T00:00:00.000Z",
+    "snippet": "Aug 24, 2026 — The limiter is SearXNG's bot protection. Public instances should run it, because engines such as Google and Bing block instances that send automated traffic.",
+    "cached": false,
+    "retrieved_at": 1792730845032,
+    "opened": true,
+    "cited": false,
+    "favicon": ""
+   },
+   {
+    "label": "S22",
+    "n": null,
+    "title": "SearXNG limiter and bot detection",
+    "url": "http://127.0.0.1:36889/page/searxng-limiter",
+    "domain": "127.0.0.1",
+    "published": "2026-08-24T00:00:00.000Z",
+    "snippet": "Aug 24, 2026 — The limiter is SearXNG's bot protection. Public instances should run it, because engines such as Google and Bing block instances that send automated traffic.",
+    "cached": false,
+    "retrieved_at": 1792730846273,
+    "opened": true,
+    "cited": false,
+    "favicon": ""
+   },
+   {
+    "label": "S23",
+    "n": null,
+    "title": "SearXNG settings.yml reference",
+    "url": "http://127.0.0.1:36889/page/searxng-port",
+    "domain": "127.0.0.1",
+    "published": "2026-07-25T00:00:00.000Z",
+    "snippet": "Jul 25, 2026 — The limiter protects public instances from bots; it should be enabled on any instance reachable from the internet.",
+    "cached": false,
+    "retrieved_at": 1792730846273,
+    "opened": true,
+    "cited": false,
+    "favicon": ""
+   },
+   {
+    "label": "S2",
+    "n": null,
+    "title": "SearXNG settings.yml reference",
+    "url": "http://127.0.0.1:36889/page/searxng-port",
+    "domain": "127.0.0.1",
+    "published": "2026-07-25T00:00:00.000Z",
+    "snippet": "Jul 25, 2026 — The limiter protects public instances from bots; it should be enabled on any instance reachable from the internet.",
+    "cached": false,
+    "retrieved_at": 1792730845032,
+    "opened": true,
+    "cited": false,
+    "favicon": ""
+   },
+   {
+    "label": "S24",
+    "n": null,
+    "title": "PEP 703 - Making the Global Interpreter Lock Optional in CPython",
+    "url": "http://127.0.0.1:36889/page/pep703",
+    "domain": "127.0.0.1",
+    "published": "2024-11-22T00:00:00.000Z",
+    "snippet": "Nov 22, 2024 — PEP 703 proposes adding a build configuration (--disable-gil) to CPython so that it can run Python code without the global interpreter lock.",
+    "cached": false,
+    "retrieved_at": 1792730846273,
+    "opened": true,
+    "cited": false,
+    "favicon": ""
+   },
+   {
+    "label": "S3",
+    "n": null,
+    "title": "PEP 703 - Making the Global Interpreter Lock Optional in CPython",
+    "url": "http://127.0.0.1:36889/page/pep703",
+    "domain": "127.0.0.1",
+    "published": "2024-11-22T00:00:00.000Z",
+    "snippet": "Nov 22, 2024 — PEP 703 proposes adding a build configuration (--disable-gil) to CPython so that it can run Python code without the global interpreter lock.",
+    "cached": false,
+    "retrieved_at": 1792730845032,
+    "opened": true,
+    "cited": false,
+    "favicon": ""
+   },
+   {
+    "label": "S14",
+    "n": null,
+    "title": "TCP vs UDP",
+    "url": "http://127.0.0.1:36889/page/tcp-udp",
+    "domain": "127.0.0.1",
+    "published": "2025-06-10T00:00:00.000Z",
+    "snippet": "Jun 10, 2025 — UDP is connectionless: it sends datagrams without delivery or ordering guarantees, which gives lower latency and overhead.",
+    "cached": false,
+    "retrieved_at": 1792730845189,
+    "opened": false,
+    "cited": false,
+    "favicon": ""
+   },
+   {
+    "label": "S25",
+    "n": null,
+    "title": "TCP vs UDP",
+    "url": "http://127.0.0.1:36889/page/tcp-udp",
+    "domain": "127.0.0.1",
+    "published": "2025-06-10T00:00:00.000Z",
+    "snippet": "Jun 10, 2025 — UDP is connectionless: it sends datagrams without delivery or ordering guarantees, which gives lower latency and overhead.",
+    "cached": false,
+    "retrieved_at": 1792730846273,
+    "opened": false,
+    "cited": false,
+    "favicon": ""
+   }
+  ],
+  "searches": 3,
+  "engines_failed": [],
+  "fallback": false
+ },
+ "ttl": 300,
+ "ts": 1792730848.8338215,
+ "provenance": {
+  "tool": "web_search",
+  "source": "Morphic + SearXNG",
+  "live": true
+ },
+ "task_id": "tae6cb-4"
+}

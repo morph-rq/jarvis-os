@@ -1,0 +1,177 @@
+{
+ "id": "research-r2b8fe3897ae3",
+ "kind": "research",
+ "title": "What is the context window of Orion-7?",
+ "data": {
+  "run_id": "r2b8fe3897ae3",
+  "query": "What is the context window of Orion-7?",
+  "mode": "instant",
+  "mode_ui": "quick",
+  "mode_reason": "a direct question",
+  "state": "done",
+  "phase": "done",
+  "phases": [
+   {
+    "phase": "searching",
+    "at": 0
+   },
+   {
+    "phase": "searching",
+    "at": 0
+   },
+   {
+    "phase": "answering",
+    "at": 18
+   }
+  ],
+  "answer": "Orion-7 supports a context window of 512,000 tokens and is available through the company's API from today. [1]\n\n### Details\n- Northwind Labs unveiled Orion-6, its newest model at the time, with a 128,000-token context window. [2]\n- In Wayland the compositor is also the display server, while X11 separates the X server from the window manager and compositor. [3]",
+  "interim": "",
+  "citations": [
+   {
+    "n": 1,
+    "label": "S1",
+    "url": "http://127.0.0.1:36889/page/northwind-orion7",
+    "title": "Northwind Labs releases Orion-7 language model",
+    "domain": "127.0.0.1"
+   },
+   {
+    "n": 2,
+    "label": "S2",
+    "url": "http://127.0.0.1:36889/page/northwind-orion6",
+    "title": "Northwind Labs unveils Orion-6",
+    "domain": "127.0.0.1"
+   },
+   {
+    "n": 3,
+    "label": "S3",
+    "url": "http://127.0.0.1:36889/page/wayland-x11",
+    "title": "Wayland vs X11",
+    "domain": "127.0.0.1"
+   }
+  ],
+  "blocks": [],
+  "verification": {
+   "cited_sentences": 3,
+   "verified": 0,
+   "snippet_only": 3,
+   "weak": 0,
+   "uncited_numeric": 0,
+   "distinct_domains": 1,
+   "evidence": "moderate"
+  },
+  "conflicts": [],
+  "metrics": {
+   "first_source_ms": 18,
+   "first_text_ms": 329,
+   "first_answer_token_ms": 329,
+   "first_citation_ms": 433,
+   "search_done_ms": 18,
+   "read_done_ms": null,
+   "model_first_token_ms": 310,
+   "model_ms": 662,
+   "total_ms": 681
+  },
+  "fresh": true,
+  "followup": false,
+  "reused": false,
+  "error": "",
+  "warnings": [],
+  "sources": [
+   {
+    "label": "S1",
+    "n": 1,
+    "title": "Northwind Labs releases Orion-7 language model",
+    "url": "http://127.0.0.1:36889/page/northwind-orion7",
+    "domain": "127.0.0.1",
+    "published": "2026-10-21T00:00:00.000Z",
+    "snippet": "Oct 21, 2026 — Orion-7 supports a context window of 512,000 tokens and is available through the company's API from today.",
+    "cached": false,
+    "retrieved_at": 1792730850205,
+    "opened": false,
+    "cited": true,
+    "favicon": ""
+   },
+   {
+    "label": "S2",
+    "n": 2,
+    "title": "Northwind Labs unveils Orion-6",
+    "url": "http://127.0.0.1:36889/page/northwind-orion6",
+    "domain": "127.0.0.1",
+    "published": "2025-11-22T00:00:00.000Z",
+    "snippet": "Nov 22, 2025 — Northwind Labs unveiled Orion-6, its newest model at the time, with a 128,000-token context window.",
+    "cached": false,
+    "retrieved_at": 1792730850205,
+    "opened": false,
+    "cited": true,
+    "favicon": ""
+   },
+   {
+    "label": "S3",
+    "n": 3,
+    "title": "Wayland vs X11",
+    "url": "http://127.0.0.1:36889/page/wayland-x11",
+    "domain": "127.0.0.1",
+    "published": "2026-03-17T00:00:00.000Z",
+    "snippet": "Mar 17, 2026 — In Wayland the compositor is also the display server, while X11 separates the X server from the window manager and compositor.",
+    "cached": false,
+    "retrieved_at": 1792730850205,
+    "opened": false,
+    "cited": true,
+    "favicon": ""
+   },
+   {
+    "label": "S4",
+    "n": null,
+    "title": "Astana - capital of Kazakhstan",
+    "url": "http://127.0.0.1:36889/page/kz-capital-en",
+    "domain": "127.0.0.1",
+    "published": "2025-09-18T00:00:00.000Z",
+    "snippet": "Sep 18, 2025 — Astana is the capital city of Kazakhstan. It has been the capital since 1997, when the seat of government moved from Almaty.",
+    "cached": false,
+    "retrieved_at": 1792730850205,
+    "opened": false,
+    "cited": false,
+    "favicon": ""
+   },
+   {
+    "label": "S5",
+    "n": null,
+    "title": "Python global interpreter lock (GIL)",
+    "url": "http://127.0.0.1:36889/page/python-gil",
+    "domain": "127.0.0.1",
+    "published": "2026-04-06T00:00:00.000Z",
+    "snippet": "Apr 6, 2026 — The global interpreter lock (GIL) in CPython is a mutex that allows only one thread to execute Python bytecode at a time.",
+    "cached": false,
+    "retrieved_at": 1792730850205,
+    "opened": false,
+    "cited": false,
+    "favicon": ""
+   },
+   {
+    "label": "S6",
+    "n": null,
+    "title": "Mount Everest height",
+    "url": "http://127.0.0.1:36889/page/everest",
+    "domain": "127.0.0.1",
+    "published": "2024-05-06T00:00:00.000Z",
+    "snippet": "May 6, 2024 — Mount Everest is 8,849 metres (29,032 feet) above sea level, according to the joint survey by China and Nepal announced in December 2020.",
+    "cached": false,
+    "retrieved_at": 1792730850205,
+    "opened": false,
+    "cited": false,
+    "favicon": ""
+   }
+  ],
+  "searches": 1,
+  "engines_failed": [],
+  "fallback": false
+ },
+ "ttl": 300,
+ "ts": 1792730850.86928,
+ "provenance": {
+  "tool": "web_search",
+  "source": "Morphic + SearXNG",
+  "live": true
+ },
+ "task_id": "tae6cb-7"
+}

@@ -259,6 +259,89 @@ def hub_cli(args) -> int:
     return 0 if result.get("ok", True) else 1
 
 
+def research_cli(args) -> int:
+    """`jarvis-workos research …`: ask, status, search engines, cancel; `run` and `mcp` work without jarvisd's
+    help (systemd's ExecStart; Hermes and OpenClaw start `mcp` as their MCP server)."""
+    from jarvis.research import launch
+    action, rest = args.action, " ".join(args.target)
+    if action == "run":
+        if rest not in launch.NAMES:
+            print("research run searxng|research", file=sys.stderr)
+            return 1
+        launch.run(rest, configmod.load())   # execs; returns only on error
+        return 1
+    if action == "mcp":
+        from jarvis.research import mcp
+        if args.agent not in ("hermes", "openclaw"):
+            print("research mcp --agent hermes|openclaw", file=sys.stderr)
+            return 1
+        asyncio.run(mcp.serve(args.agent))
+        return 0
+    if action == "setup":
+        cfg = configmod.load()
+        print(f"SearXNG settings: {launch.ensure_searxng_settings(cfg)}")
+        return 0
+    if action == "logs":
+        name = rest or "research"
+        if name not in launch.NAMES:
+            print("research logs searxng|research", file=sys.stderr)
+            return 1
+        cfg = configmod.load()
+        key = "searxng_manage" if name == "searxng" else "manage"
+        unit = (configmod.config_dir().parent / "systemd" / "user" / launch.UNITS[name])
+        if cfg["research"].get(key, "auto") in ("auto", "systemd") and unit.exists():
+            return subprocess.call(["journalctl", "--user", "-u", launch.UNITS[name], "-f", "-n", "100"])
+        return subprocess.call(["tail", "-n", "100", "-F", str(configmod.data_dir() / "logs" / f"{name}.log")])
+    if action == "ask":
+        fields = {"action": "ask", "query": rest, "mode": args.mode}
+        if args.fresh:
+            fields["fresh"] = True
+        started = asyncio.run(request("research", **fields))
+        if not started.get("ok"):
+            print(started.get("message"), file=sys.stderr)
+            return 1
+        return asyncio.run(_follow(started["task_id"]))
+    fields = {"action": action}
+    if action == "restart":
+        fields["target"] = rest or "research"
+    result = asyncio.run(request("research", **fields))
+    print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
+    return 0 if result.get("ok", True) else 1
+
+
+async def _follow(task_id: str) -> int:
+    """Print a research task's answer and sources as they arrive."""
+    reader, writer = await _connect()
+    writer.write((json.dumps({"op": "subscribe", "id": 1}) + "\n").encode())
+    await writer.drain()
+    shown = 0
+    while line := await reader.readline():
+        msg = json.loads(line)
+        card = msg.get("card") if msg.get("event") == "hud" else None
+        if card and card.get("kind") == "research" and card.get("task_id") == task_id:
+            data = card["data"]
+            answer = data.get("answer") or ""
+            if len(answer) > shown:
+                print(answer[shown:], end="", flush=True)
+                shown = len(answer)
+            if data.get("state") != "running":
+                print("\n")
+                for s in data.get("sources", []):
+                    if s.get("cited"):
+                        print(f"[{s.get('n')}] {s.get('title')} — {s.get('url')}")
+                m = data.get("metrics") or {}
+                v = data.get("verification") or {}
+                print(f"\n{data.get('mode_ui')} · first words {m.get('first_answer_token_ms')} ms · total "
+                      f"{m.get('total_ms')} ms · evidence {v.get('evidence', '?')}")
+                writer.close()
+                return 0 if data.get("state") == "done" else 1
+        if msg.get("event") == "task" and msg["task"]["id"] == task_id and msg["task"]["state"] in ("failed", "cancelled"):
+            print(f"\n{msg['task']['state']}: {msg['task'].get('error') or ''}")
+            writer.close()
+            return 1
+    return 1
+
+
 async def gateway_cli(args) -> int:
     """Pairing and credentials from the terminal. Tokens are read from a hidden prompt (or stdin),
     sent over the owner-only socket and checked by jarvisd before they are stored."""
@@ -411,6 +494,15 @@ def main(argv: list[str] | None = None) -> int:
                             "updates", "update", "rollback", "history", "connect", "disconnect", "restart", "logs",
                             "stop-all", "resume", "setup", "run"])
     p.add_argument("target", nargs="*")
+    p = sub.add_parser("research", help="web research (Morphic + local SearXNG): ask TEXT [--mode quick|adaptive|thorough] "
+                                        "[--fresh] | status | stats | cancel | restart [research|searxng] | "
+                                        "logs [research|searxng] | setup | run research|searxng | mcp --agent hermes|openclaw")
+    p.add_argument("action", nargs="?", default="status",
+                   choices=["ask", "status", "stats", "cancel", "restart", "logs", "setup", "run", "mcp"])
+    p.add_argument("target", nargs="*")
+    p.add_argument("--mode", default="auto", choices=["auto", "quick", "adaptive", "thorough"])
+    p.add_argument("--fresh", action="store_true")
+    p.add_argument("--agent", default="")
     p = sub.add_parser("secret", help="store a key without it touching shell history: secret set NAME (prompts)")
     p.add_argument("action", choices=["set", "clear", "status"])
     p.add_argument("name", nargs="?", choices=list(configmod.SECRET_NAMES))
@@ -449,6 +541,8 @@ def main(argv: list[str] | None = None) -> int:
             return asyncio.run(gateway_cli(args))
         if args.cmd == "hub":
             return hub_cli(args)
+        if args.cmd == "research":
+            return research_cli(args)
         if args.cmd == "config" and args.action == "path":
             print(configmod.load().path)
             return 0

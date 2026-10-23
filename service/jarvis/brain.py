@@ -49,6 +49,24 @@ def system_prompt(platform: str, facts: list[dict]) -> str:
     return SYSTEM.format(platform=platform, facts=lines)
 
 
+# A request that asks for more than an answer ("…and make a spreadsheet", "…then e-mail it") needs the model's
+# next turn; a plain question answered by research does not.
+_MORE_TO_DO = re.compile(
+    r"\b(and|then|also)\s+(make|create|save|send|write|draft|export|put|add|email|e-mail|remind|schedule|open|"
+    r"compare|summari[sz]e|translate|build|turn)\b|\b(spreadsheet|excel|xlsx|document|docx|pdf|slides?|presentation|"
+    r"email|e-mail|message|remind|calendar|note)\b|(сделай|создай|сохрани|отправь|напиши|таблиц|документ|письм|напомни)",
+    re.I)
+
+
+def final_answer(request: str, names: list[str], results: list[dict]) -> str | None:
+    """The research answer itself, when the step was one web_search that produced a final, cited answer and the
+    request asked for nothing else: a second model turn would only reword it (and could lose citations)."""
+    if names != ["web_search"] or len(results) != 1 or _MORE_TO_DO.search(request):
+        return None
+    answer = results[0].get("final_answer")
+    return answer if isinstance(answer, str) and answer.strip() else None
+
+
 class Brain:
     def __init__(self, config, platform_name: str) -> None:
         self.config = config
@@ -178,9 +196,13 @@ class Brain:
             # Keep the model turn verbatim so Gemini 3 thought signatures survive the round trip.
             contents.append(response.candidates[0].content)
             parts = []
+            results = []
             for call in calls:
                 result = await run_tool(call.name, dict(call.args or {}))
+                results.append(result)
                 parts.append(types.Part.from_function_response(name=call.name, response=result))
+            if (final := final_answer(text, [c.name for c in calls], results)) is not None:
+                return final
             contents.append(types.Content(role="user", parts=parts))
         return "I stopped after too many steps."
 
@@ -201,11 +223,15 @@ class Brain:
                 if data.get("stop_reason") != "tool_use" or not uses:
                     return "".join(b.get("text", "") for b in data["content"] if b["type"] == "text").strip()
                 results = []
+                raw = []
                 for use in uses:
                     result = await run_tool(use["name"], use.get("input") or {})
+                    raw.append(result)
                     results.append({"type": "tool_result", "tool_use_id": use["id"],
                                     "content": json.dumps(result, ensure_ascii=False),
                                     "is_error": not result.get("ok", True)})
+                if (final := final_answer(text, [u["name"] for u in uses], raw)) is not None:
+                    return final
                 messages.append({"role": "user", "content": results})
         return "I stopped after too many steps."
 

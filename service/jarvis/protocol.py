@@ -72,6 +72,10 @@ EVENTS: dict[str, tuple[dict, str]] = {
     "backends": ({"status": dict}, "OpenClaw and Hermes: {openclaw: {state, healthy, version, error, manage…}, "
                  "hermes: {…}, lockdown} (lockdown: Stop all is in effect)."),
     "catalog": ({"summary": dict}, "The capability registry changed: {total, usable, duplicates, by_provider, refreshed}."),
+    "research": ({"status": dict}, "Web research services: {enabled, ready, engine: {state, healthy, model, model_ready, "
+                 "version, morphic…}, searxng: {state, healthy, url…}, active, stats}. Answers themselves arrive as "
+                 "hud cards of kind research (run_id, query, mode, state, phase, sources[], answer, citations[], "
+                 "blocks[], verification, conflicts, metrics)."),
     "guide": ({"op": str, "run_id": str}, "On-screen guidance (navigate). op show: kind ring|ghost, rect {x,y,width,height} "
               "in Hyprland layout px, monitor, label, caption, step, total, mode guide|do|show, hold_s, task_id; "
               "op hide: for a capture, show again follows; op end: reason done|stopped|stuck|timeout|error, caption."),
@@ -139,6 +143,10 @@ def markdown() -> str:
               "on screen (navigate) |",
               "| `learn` | `action` answer (+ `question` number, `choice` index: a tapped option), reveal, grade (+ `grade` "
               "again/hard/good/easy) or stop | the `learn` tool's result; the quiz or flashcard card updates by `hud` |",
+              "| `research` | `action` ask (+ `query`, `mode` auto/quick/adaptive/thorough, `fresh`), cancel, status, "
+              "stats, open (+ `url`: a source of a recent answer), export (+ `run_id`, `kind` xlsx/docx/pdf/md), restart "
+              "(+ `target` research/searxng), mcp (+ `agent`, `query`: the Hermes/OpenClaw bridge) | ask: `task_id` (the "
+              "answer streams as a `hud` card of kind research); others: their result |",
               "| `listen` / `stop_speaking` / `mute` / `ask` / `cancel` | see daemon.py | |", ""]
     return "\n".join(lines)
 
