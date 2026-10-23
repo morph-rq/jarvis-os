@@ -115,6 +115,21 @@ def doctor() -> int:
         "google_oauth_client": "set" if cfg.secret("GOOGLE_OAUTH_CLIENT_ID") else "missing",
         "composio_api_key": "set" if cfg.secret("COMPOSIO_API_KEY") else "missing",
         "genoffice": (genoffice.parent.parent.parent / "VERSION").read_text().strip() if genoffice.exists() else "not installed"}))
+    from jarvis import backends
+    agents = {}
+    for name in ("openclaw", "hermes"):
+        cur = backends.agents_dir() / name / "current"
+        state = {"installed": os.path.basename(os.path.realpath(cur)) if cur.exists() else "no",
+                 "enabled": cfg[name]["enabled"], "manage": backends.manage_mode(name, cfg)}
+        url = cfg[name]["url"].replace("ws://", "http://")
+        try:   # loopback health endpoints; nothing leaves this machine
+            import httpx
+            r = httpx.get(f"{url}/{'healthz' if name == 'openclaw' else 'health'}", timeout=2, trust_env=False)
+            state["answers"] = r.status_code == 200
+        except Exception:
+            state["answers"] = False
+        agents[name] = state
+    print("agents (jarvis-workos hub status):", json.dumps(agents))
     if sys.platform != "win32":
         for cmd in ("hyprctl", "pw-record", "pw-play", "wl-copy", "wl-paste", "wtype", "grim", "plocate", "fd", "wpctl",
                     "brightnessctl", "playerctl", "omarchy-shell", "uwsm-app", "secret-tool", "chromium", "pdftoppm",
@@ -166,6 +181,82 @@ GATEWAY_FIELDS = {
     "whatsapp": [("gateway.whatsapp_phone_id", "Phone number id"), ("WHATSAPP_ACCESS_TOKEN", "Access token"),
                  ("WHATSAPP_APP_SECRET", "App secret")],
 }
+
+
+def hub_cli(args) -> int:
+    """`jarvis-workos hub …`: the Capabilities Hub from a terminal. `run` and `setup` work without jarvisd
+    (systemd's ExecStart, the installer); the rest asks jarvisd, so approvals and history are the same."""
+    from jarvis import backends
+    action, target = args.action, " ".join(args.target)
+    if action in ("run", "setup", "logs"):
+        cfg = configmod.load()
+        names = [target] if target else ["openclaw", "hermes"]
+        if any(n not in ("openclaw", "hermes") for n in names):
+            print("openclaw or hermes", file=sys.stderr)
+            return 1
+        if action == "run":
+            backends.run(names[0], cfg)        # execs; returns only on error
+            return 1
+        if action == "logs":
+            unit = backends.UNITS[names[0]]
+            log_file = configmod.data_dir() / "logs" / f"{names[0]}.log"
+            if backends.manage_mode(names[0], cfg) == "systemd":
+                return subprocess.call(["journalctl", "--user", "-u", unit, "-f", "-n", "100"])
+            return subprocess.call(["tail", "-n", "100", "-F", str(log_file)])
+        for name in names:
+            if not backends.installed(name, cfg):
+                print(f"{backends.LABELS[name]}: not installed (omarchy/install.sh --agents)")
+                continue
+            changes = backends.setup(name, cfg)
+            print(f"{backends.LABELS[name]}: " + ("; ".join(changes) if changes else "already set up"))
+        return 0
+    fields: dict = {"action": action}
+    if action in ("find", "search"):
+        fields["query"] = target
+    elif action == "discover":
+        fields["view"] = target or "new"
+    elif action == "updates":
+        fields["action"] = "check_updates"
+    elif action in ("install",):
+        fields["ref"] = target
+    elif action in ("enable", "disable", "uninstall", "update", "rollback"):
+        fields["id"] = target
+    elif action == "restart":
+        fields["name"] = target
+    elif action == "status":
+        fields["action"] = "snapshot"
+    elif action == "history":
+        fields["action"] = "snapshot"
+    elif action == "connect":
+        plan = asyncio.run(request("hub", action="connect_plan", service=target))
+        print(f"{plan.get('label', target)}: {plan.get('needs', '')}")
+        if plan.get("blocked"):
+            print(plan["blocked"])
+            return 1
+        if plan.get("flow") == "token":
+            import getpass
+            token = getpass.getpass("Bot token (hidden): ").strip()
+            fields = {"action": "connect_token", "service": plan["service"], "token": token}
+        elif plan.get("command"):
+            print(f"Run in a terminal: {plan['command']}")
+            return 0
+        else:
+            return 0
+    elif action == "disconnect":
+        fields["service"] = target
+    if action == "stop-all":
+        result = asyncio.run(request("stop_all"))
+    elif action == "resume":
+        result = asyncio.run(request("resume_agents"))
+    else:
+        result = asyncio.run(request("hub", **fields))
+    if action == "status":
+        result = {"backends": result.get("backends"), "summary": result.get("summary"),
+                  "updates": result.get("updates"), "runs": result.get("runs")}
+    elif action == "history":
+        result = {"history": result.get("history"), "events": result.get("events")}
+    print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
+    return 0 if result.get("ok", True) else 1
 
 
 async def gateway_cli(args) -> int:
@@ -310,6 +401,16 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("action", nargs="?", default="status", choices=["status", "hooks"])
     p.add_argument("verb", nargs="?", choices=["install", "remove", "status"])
     p.add_argument("agent", nargs="?", default="claude", choices=["claude", "codex"])
+    p = sub.add_parser("hub", help="Capabilities Hub, with OpenClaw and Hermes behind Jarvis: status | find TEXT | search TEXT | "
+                                   "discover [new|recent|all] | sync | install REF | enable|disable|uninstall SKILL | "
+                                   "updates | update SKILL | rollback SKILL | history | connect SERVICE | disconnect SERVICE | "
+                                   "restart openclaw|hermes | logs openclaw|hermes | stop-all | resume | "
+                                   "setup [openclaw|hermes] | run openclaw|hermes")
+    p.add_argument("action", nargs="?", default="status",
+                   choices=["status", "find", "search", "discover", "sync", "install", "enable", "disable", "uninstall",
+                            "updates", "update", "rollback", "history", "connect", "disconnect", "restart", "logs",
+                            "stop-all", "resume", "setup", "run"])
+    p.add_argument("target", nargs="*")
     p = sub.add_parser("secret", help="store a key without it touching shell history: secret set NAME (prompts)")
     p.add_argument("action", choices=["set", "clear", "status"])
     p.add_argument("name", nargs="?", choices=list(configmod.SECRET_NAMES))
@@ -346,6 +447,8 @@ def main(argv: list[str] | None = None) -> int:
             return agents_cli(args)
         if args.cmd == "gateway":
             return asyncio.run(gateway_cli(args))
+        if args.cmd == "hub":
+            return hub_cli(args)
         if args.cmd == "config" and args.action == "path":
             print(configmod.load().path)
             return 0

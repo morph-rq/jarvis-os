@@ -136,8 +136,9 @@ def tool_names_for(registry: Registry | None, text: str, all_names: list[str], *
     Without a registry (or nothing matches) every tool is offered, as before."""
     if registry is None:
         return all_names
-    chosen = [n for n in CORE if n in all_names]
+    core = [n for n in CORE if n in all_names]
+    chosen = list(core)
     for c in rank(registry, text, k=k, kinds=("tool",)):
         if c.cap.provider == "jarvis" and c.cap.name in all_names and c.cap.name not in chosen:
             chosen.append(c.cap.name)
-    return chosen if len(chosen) > len(CORE) else all_names
+    return chosen if len(chosen) > len(core) else all_names

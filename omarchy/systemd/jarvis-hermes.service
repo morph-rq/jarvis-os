@@ -1,0 +1,21 @@
+[Unit]
+Description=Hermes Agent API server for Jarvis (loopback only, key auth)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# `hub run` passes the API key (and only the model keys allowed in Jarvis's config) in the environment.
+# --external-supervisor: systemd owns restarts; Hermes's in-chat restarts/updates exit back to it.
+ExecStart=%h/.local/share/jarvis-workos/venv/bin/jarvis-workos hub run hermes
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+KillMode=mixed
+UMask=0077
+NoNewPrivileges=yes
+LockPersonality=yes
+RestrictSUIDSGID=yes
+
+[Install]
+WantedBy=default.target

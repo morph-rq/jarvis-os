@@ -293,6 +293,15 @@ class Child:
             await asyncio.gather(self._task, return_exceptions=True)
 
 
+def manage_mode(name: str, cfg) -> str:
+    """systemd (installed units), child (jarvisd runs it), external (someone else does), or off."""
+    mode = cfg[name].get("manage", "auto")
+    if mode == "auto":
+        unit = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "systemd/user" / UNITS[name]
+        return "systemd" if unit.exists() and shutil.which("systemctl") else "child"
+    return mode
+
+
 async def _systemctl(*args: str) -> tuple[int, str]:
     if not shutil.which("systemctl"):
         return 127, "no systemctl"
@@ -322,12 +331,7 @@ class Backends:
         return bool(self.cfg[name]["enabled"])
 
     def manage(self, name: str) -> str:
-        """systemd (installed units), child (jarvisd runs it), external (someone else does), or off."""
-        mode = self.cfg[name].get("manage", "auto")
-        if mode == "auto":
-            unit = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "systemd/user" / UNITS[name]
-            return "systemd" if unit.exists() and shutil.which("systemctl") else "child"
-        return mode
+        return manage_mode(name, self.cfg)
 
     def on_change(self, fn) -> None:
         self._listeners.append(fn)

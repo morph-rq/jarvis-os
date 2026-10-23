@@ -34,6 +34,9 @@ DEFAULTS: dict = {
         "claude_model": "claude-haiku-5-5",
         "vision_model": "gemini-3.5-flash",
         "max_steps": 12,          # model turns per request (each may call several tools)
+        # "relevant": the text model gets the core tools and the ones that fit the request (catalog.select);
+        # "all": every tool on every request, as before.
+        "tool_selection": "relevant",
         "timeout_s": 45,
     },
     "voice": {
@@ -306,6 +309,7 @@ DEFAULTS: dict = {
 SCHEMA: dict[str, tuple] = {
     "brain.provider": (str, ("gemini", "claude")),
     "brain.gemini_model": (str, None), "brain.claude_model": (str, None), "brain.vision_model": (str, None),
+    "brain.tool_selection": (str, ("relevant", "all")),
     "voice.engine": (str, ("live", "local")),
     "voice.runtime": (str, ("pipecat", "legacy")),
     "voice.connect_timeout_s": (float, (3, 60)),

@@ -12,6 +12,7 @@
 #   --no-packages            don't install system packages (only report what's missing)
 #   --no-dev-tools           skip Node.js, Claude Code and Codex
 #   --agent-hooks            route Claude Code / Codex permission prompts to the Jarvis island
+#   --no-agents              skip OpenClaw and Hermes (Jarvis works without them; add later with this installer)
 #   --                       pass the rest to omarchy/install.sh (e.g. -- --no-local --echo-cancel)
 #
 # What it does, in order (MIGRATION.md has the details):
@@ -22,6 +23,7 @@
 #   5. dev tools: Node.js, Claude Code and Codex (user-level, ~/.local), if missing
 #   6. omarchy/install.sh --dev: the venv with Gemini/Pipecat voice and every tool, the jarvisd user service
 #      (autostart), the Omarchy shell plugin linked to this checkout, Hyprland keybindings
+#      plus OpenClaw and Hermes as loopback user services behind Jarvis (omarchy/install.sh --agents)
 #   7. the `jarvis` command (dev, restart, logs, doctor, test, backup, restore, rollback, update)
 #
 # It never partitions, formats or mounts a disk, touches a bootloader or Windows, installs or changes
@@ -43,6 +45,7 @@ production=0
 packages=1
 dev_tools=1
 agent_hooks=0
+agents=1
 inner_extra=()
 while (( $# > 0 )); do
   case "$1" in
@@ -54,6 +57,7 @@ while (( $# > 0 )); do
     --no-packages) packages=0 ;;
     --no-dev-tools) dev_tools=0 ;;
     --agent-hooks) agent_hooks=1 ;;
+    --no-agents) agents=0 ;;
     --) shift; inner_extra=("$@"); break ;;
     -h|--help) sed -n '2,32p' "$0"; exit 0 ;;
     *) jw_die "unknown option: $1 (see --help)" ;;
@@ -151,6 +155,7 @@ jw_step "Jarvis (omarchy/install.sh)"
 inner_args=()
 (( production )) || inner_args+=(--dev)
 [[ -n $shell ]] && inner_args+=(--shell "$shell")
+(( agents )) && inner_args+=(--agents)
 inner_args+=("${inner_extra[@]}")
 jw_run bash "$inner" "${inner_args[@]}"
 

@@ -26,6 +26,8 @@
 #                                hashes are still enforced for the locked speech stack and Pipecat)
 #   ./install.sh --shell caelestia  also build Caelestia Shell with the Jarvis island (user prefix, pinned;
 #                                see omarchy/caelestia/README.md); switch with `jarvis-shell-mode caelestia`
+#   ./install.sh --agents        also install OpenClaw (pinned npm lock, on its own Node 24) and Hermes Agent
+#                                (hash-locked venv) as loopback user services behind Jarvis (docs/AGENT-BACKENDS.md)
 #
 # Keys are read from GEMINI_API_KEY / ANTHROPIC_API_KEY (and, for connected apps, COMPOSIO_API_KEY,
 # GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET) in the environment if set and stored in the desktop
@@ -47,6 +49,7 @@ genoffice=0
 echo_cancel=0
 wheels=""
 shell=""
+agents=0
 while (( $# > 0 )); do
   case "$1" in
     --link) link=1 ;;
@@ -58,6 +61,7 @@ while (( $# > 0 )); do
     --no-google) google=0 ;;
     --genoffice) genoffice=1 ;;
     --echo-cancel) echo_cancel=1 ;;
+    --agents) agents=1 ;;
     --wheels) wheels="$(cd "$2" && pwd)"; shift ;;
     --shell) shell="$2"; shift
       [[ $shell == caelestia ]] || { echo "--shell takes: caelestia" >&2; exit 1; } ;;
@@ -321,6 +325,88 @@ cp "$repo/omarchy/systemd/jarvisd.service" "$units/jarvisd.service"
 systemctl --user daemon-reload
 systemctl --user enable jarvisd.service >/dev/null 2>&1
 systemctl --user restart jarvisd.service
+
+# ---------------------------------------------------------------- OpenClaw and Hermes
+if (( agents )); then
+  # Each version goes into its own folder; `current` moves only after the new one installed. The previous
+  # folder stays, so going back is switching the link (and `jarvis-workos hub restart NAME`).
+  ag="$data/agents"
+  mkdir -p "$ag/node" "$ag/openclaw" "$ag/hermes"
+  node_v=24.22.1
+  case "$(uname -m)" in
+    x86_64) node_arch=x64; node_sha=6c172a9ab6718f7b801fb5a7bd486af2ee5e32758086a04b84fcce2aa77095e6 ;;
+    aarch64) node_arch=arm64; node_sha=dbabf7a1cbf947e6059ffad2c27b80041db97dea1e553b62afdee7f13fca336e ;;
+    *) node_arch="" ;;
+  esac
+  oc_v=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["dependencies"]["openclaw"])' "$repo/omarchy/locks/openclaw/package.json")
+  step "OpenClaw $oc_v (npm lock, integrity-checked, install scripts off) on Node $node_v"
+  if [[ -z $node_arch ]]; then
+    warn "no Node build for $(uname -m); OpenClaw skipped"
+  elif fetch_verified "https://nodejs.org/dist/v$node_v/node-v$node_v-linux-$node_arch.tar.xz" "$node_sha" \
+         "$ag/node/node-v$node_v.tar.xz" $((96 << 20)); then
+    if [[ ! -x $ag/node/$node_v/bin/node ]]; then
+      mkdir -p "$ag/node/$node_v"
+      tar -xJf "$ag/node/node-v$node_v.tar.xz" -C "$ag/node/$node_v" --strip-components=1
+    fi
+    ln -sfn "$node_v" "$ag/node/current"
+    if [[ ! -x $ag/openclaw/$oc_v/node_modules/.bin/openclaw ]]; then
+      mkdir -p "$ag/openclaw/$oc_v.tmp"
+      cp "$repo/omarchy/locks/openclaw/package.json" "$repo/omarchy/locks/openclaw/package-lock.json" "$ag/openclaw/$oc_v.tmp/"
+      if (cd "$ag/openclaw/$oc_v.tmp" && PATH="$ag/node/current/bin:$PATH" npm ci --ignore-scripts --omit=dev \
+            --no-audit --no-fund --loglevel=error); then
+        rm -rf "$ag/openclaw/$oc_v" && mv "$ag/openclaw/$oc_v.tmp" "$ag/openclaw/$oc_v"
+      else
+        rm -rf "$ag/openclaw/$oc_v.tmp"
+        warn "OpenClaw did not install (npm ci failed); Jarvis works without it"
+      fi
+    fi
+    if PATH="$ag/node/current/bin:$PATH" "$ag/openclaw/$oc_v/node_modules/.bin/openclaw" --version >/dev/null 2>&1; then
+      ln -sfn "$oc_v" "$ag/openclaw/current"
+      echo "   $("$ag/openclaw/current/node_modules/.bin/openclaw" --version 2>/dev/null | head -1)"
+    fi
+  fi
+
+  hermes_v=$(grep -oE '^hermes-agent(\[[a-z,]+\])?==[^ ]+' "$repo/omarchy/locks/hermes.lock" | cut -d= -f3)
+  step "Hermes Agent $hermes_v (hash-locked venv)"
+  hpy=""
+  for cand in python3 python3.13 python3.12 python3.11; do
+    if command -v "$cand" >/dev/null 2>&1 && "$cand" -c 'import sys; sys.exit(not ((3, 11) <= sys.version_info[:2] < (3, 14)))'; then
+      hpy=$(command -v "$cand"); break
+    fi
+  done
+  hdir="$ag/hermes/$hermes_v"
+  if [[ ! -x $hdir/bin/hermes ]]; then
+    # Built in its final folder (venvs record their path); `current` moves only once it is complete.
+    rm -rf "$hdir"
+    if [[ -n $hpy ]]; then
+      "$hpy" -m venv "$hdir"
+    elif command -v uv >/dev/null 2>&1; then
+      uv venv -q --python 3.13 "$hdir" && uv pip install -q --python "$hdir/bin/python" pip
+    fi
+    if ! { [[ -x $hdir/bin/python ]] && "$hdir/bin/python" -m pip install --disable-pip-version-check -q \
+           --require-hashes --only-binary :all: --no-deps -r "$repo/omarchy/locks/hermes.lock"; }; then
+      rm -rf "$hdir"
+      warn "Hermes needs Python 3.11-3.13 (or uv) and its locked wheels; skipped. Jarvis works without it."
+    fi
+  fi
+  [[ -x $hdir/bin/hermes ]] && ln -sfn "$hermes_v" "$ag/hermes/current"
+
+  step "Agent services (loopback only) and their settings"
+  mkdir -p "$units"
+  for name in openclaw hermes; do
+    cur="$ag/$name/current"
+    if [[ -e $cur ]]; then
+      cp "$repo/omarchy/systemd/jarvis-$name.service" "$units/jarvis-$name.service"
+    fi
+  done
+  systemctl --user daemon-reload
+  "$bin/jarvis-workos" hub setup || warn "agent settings not applied; run: jarvis-workos hub setup"
+  for name in openclaw hermes; do
+    [[ -f $units/jarvis-$name.service ]] && systemctl --user enable --now "jarvis-$name.service" >/dev/null 2>&1 \
+      || true
+  done
+  systemctl --user restart jarvisd.service
+fi
 
 # ---------------------------------------------------------------- shell plugin
 step "Omarchy shell plugin jarvis.companion"

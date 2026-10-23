@@ -1,0 +1,23 @@
+[Unit]
+Description=OpenClaw gateway for Jarvis (loopback only, token auth)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# `hub run` reads the gateway token and the model key from Jarvis's keyring and execs OpenClaw with them in its
+# environment; they are never written into OpenClaw's config file.
+ExecStart=%h/.local/share/jarvis-workos/venv/bin/jarvis-workos hub run openclaw
+Restart=on-failure
+RestartSec=5
+# OpenClaw drains running work on SIGTERM; don't hold up logout for long.
+TimeoutStopSec=45
+KillMode=mixed
+Environment=OPENCLAW_DISABLE_BUNDLED_PLUGIN_POSTINSTALL=1
+UMask=0077
+NoNewPrivileges=yes
+LockPersonality=yes
+RestrictSUIDSGID=yes
+
+[Install]
+WantedBy=default.target

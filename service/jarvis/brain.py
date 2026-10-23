@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import logging
 import re
 import time
 from pathlib import Path
@@ -13,7 +14,7 @@ from typing import Awaitable, Callable
 import httpx
 
 from jarvis.tasks import ApprovalDenied
-from jarvis.tools import declarations
+from jarvis.tools import REGISTRY, declarations
 
 ToolRunner = Callable[[str, dict], Awaitable[dict]]
 
@@ -40,6 +41,8 @@ SYSTEM = """You are Jarvis, a calm, precise executive assistant built into the u
 Known facts about the user:
 {facts}"""
 
+log = logging.getLogger("jarvis.brain")
+
 
 def system_prompt(platform: str, facts: list[dict]) -> str:
     lines = "\n".join(f"- {f['text']}" for f in facts) or "- (none yet)"
@@ -56,6 +59,8 @@ class Brain:
         self.last_provider = ""
         self.failures: dict[str, int] = {}
         self._resting: dict[str, float] = {}   # model -> time it may be tried again (quota / overload)
+        # text -> the tool names to offer for it; set by jarvisd from the capability registry (None = all).
+        self.selector = None
 
     def _models(self, first: str | None = None) -> list[str]:
         """The configured model, then brain.gemini_fallbacks, skipping models resting after a 429/503."""
@@ -100,6 +105,13 @@ class Brain:
     async def respond(self, text: str, history: list[dict], facts: list[dict], run_tool: ToolRunner,
                       exclude: tuple[str, ...] = (), system: str | None = None) -> str:
         system = system or system_prompt(self.platform_name, facts)
+        if self.selector is not None:
+            # Only the tools that fit this request (catalog.select), not every declaration on every turn.
+            try:
+                offered = set(self.selector(text))
+                exclude = tuple(exclude) + tuple(n for n in REGISTRY if n not in offered)
+            except Exception:
+                log.debug("tool selection failed; offering every tool", exc_info=True)
         order = [self.provider] + [p for p in ("gemini", "claude") if p != self.provider and self._has(p)]
         if order == ["none"]:
             return "No language model is configured. Add GEMINI_API_KEY or ANTHROPIC_API_KEY (see `jarvis-workos doctor`)."

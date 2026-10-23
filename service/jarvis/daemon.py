@@ -85,6 +85,7 @@ class Jarvis:
         # OpenClaw and Hermes behind Jarvis, and the one capability registry over everything (docs/AGENT-BACKENDS.md).
         self.backends = Backends(self)
         self.catalog = Catalog(self)
+        self.brain.selector = self._tools_for
         self.voice = None
         # Results that finished after the conversation that asked for them had ended; the next Live
         # session is told about them, the panel shows them at once.
@@ -93,6 +94,17 @@ class Jarvis:
         self._executed: dict[str, dict] = {}   # consequential calls already done in a task
         self._evidence: deque[tuple[float, str]] = deque(maxlen=60)
         self.bus.resolver = self._status
+
+    def _tools_for(self, text: str) -> list[str]:
+        """The tools the text model is offered for one request (brain.tool_selection)."""
+        from jarvis.catalog.select import tool_names_for
+        names = list(REGISTRY)
+        if self.config["brain"].get("tool_selection") != "relevant" or len(text.split()) < 6 \
+                or router.is_multi_step(router.normalize(text)):
+            return names   # follow-ups ("open the second one") and multi-step requests keep every tool
+        chosen = tool_names_for(self.catalog.registry, text, names, k=20)
+        recent = [s.get("tool") for t in list(self.tasks.tasks.values())[-3:] for s in t.steps if s.get("tool")]
+        return list(dict.fromkeys(chosen + [n for n in recent if n in REGISTRY]))
 
     async def start_voice(self) -> None:
         if os.environ.get("JARVIS_NO_VOICE"):
