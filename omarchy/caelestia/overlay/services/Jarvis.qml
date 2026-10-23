@@ -41,7 +41,7 @@ Singleton {
 
         function onPanelToggleRequested(summon: bool): void {
             if (summon || !panel.isOpen)
-                panel.open("{}");
+                panel.open(client.panelPayload || "{}");
             else
                 panel.close();
         }

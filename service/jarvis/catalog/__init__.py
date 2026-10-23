@@ -181,10 +181,10 @@ class Catalog:
     def snapshot(self) -> dict:
         caps = self.registry.list(include_duplicates=True)
         return {"summary": self.registry.summary(),
-                "skills": [c.public() for c in caps if c.kind in ("skill", "routine")],
-                "plugins": [c.public() for c in caps if c.kind == "plugin"],
-                "channels": [c.public() for c in caps if c.kind == "channel"],
-                "apps": [c.public() for c in caps if c.kind == "app"]}
+                "skills": [c.brief() for c in caps if c.kind in ("skill", "routine")],
+                "plugins": [c.brief() for c in caps if c.kind == "plugin"],
+                "channels": [c.brief() for c in caps if c.kind == "channel"],
+                "apps": [c.brief() for c in caps if c.kind == "app"]}
 
     # ------------------------------------------------------------ connections
     def channel_owner(self, channel: str) -> str:
@@ -360,11 +360,16 @@ class Catalog:
                 return {"ok": False, "message": "OpenClaw is not connected."}
             return {"ok": True, "updates": await self.lifecycle.check()}
         if action in self.UI_TOOL_ACTIONS:
+            # `target`, never `id`: `id` is the socket request's own number, matched with its reply.
             args = {"action": action}
-            for k in ("id", "ref", "version", "name", "request", "query", "sample"):
+            if req.get("target"):
+                args["id"] = str(req["target"])
+            for k in ("ref", "version", "name", "request", "query", "sample"):
                 if req.get(k):
                     args[k] = str(req[k])
             return await run_ui_tool("capability", args)
+        if action == "release":
+            return self.lifecycle.release(str(req.get("target") or ""), str(req.get("version") or ""))
         if action == "connect_plan":
             return {"ok": True, **await self.connect_plan(str(req.get("service") or ""))}
         if action == "connect_token":
@@ -381,7 +386,7 @@ class Catalog:
             oc = b.openclaw
             if oc is None or not oc.c.connected:
                 return {"ok": False, "message": "OpenClaw is not connected."}
-            job = str(req.get("id") or "")
+            job = str(req.get("target") or "")
             known = {a["id"]: a for a in await oc.automations()}
             if job not in known:
                 return {"ok": False, "message": "No such automation."}
@@ -423,7 +428,7 @@ class Catalog:
         snap = self.snapshot()
         return {"backends": b.snapshot(), **snap, "automations": automations, "runs": runs, "tasks": tasks,
                 "updates": self.lifecycle.available() if self.lifecycle else [],
-                "history": self.lifecycle.history(30) if self.lifecycle else [],
+                "update_history": self.lifecycle.history(30) if self.lifecycle else [],
                 "discover": self.clawhub.items(view="new", limit=20) if self.clawhub else [],
                 "recent": self.clawhub.items(view="recent", limit=20) if self.clawhub else [],
                 "events": self.clawhub.events(30) if self.clawhub else [],

@@ -280,6 +280,26 @@ class GatewayClient:
 
 # ---------------------------------------------------------------- adapter
 
+def _schedule(sched: dict) -> str:
+    """A schedule in words where it's a common shape; the raw expression otherwise."""
+    every = sched.get("everyMs")
+    if every:
+        mins = int(every / 60000)
+        return (f"every {mins // 1440} days" if mins % 1440 == 0 and mins > 1440 else "every day" if mins == 1440
+                else f"every {mins // 60} h" if mins % 60 == 0 and mins >= 120 else f"every {mins} min")
+    expr = str(sched.get("expr") or "")
+    parts = expr.split()
+    if len(parts) == 5 and parts[0].isdigit() and parts[1].isdigit() and parts[2:4] == ["*", "*"]:
+        at = f"{int(parts[1]):02d}:{int(parts[0]):02d}"
+        days = {"*": "every day", "1-5": "weekdays", "0,6": "weekends", "1": "Mondays", "2": "Tuesdays", "3": "Wednesdays",
+                "4": "Thursdays", "5": "Fridays", "6": "Saturdays", "0": "Sundays", "7": "Sundays"}.get(parts[4])
+        if days:
+            return f"{days} at {at}"
+    if sched.get("kind") == "at":
+        return f"once, {sched.get('at', '')}"
+    return expr or str(sched.get("kind", ""))
+
+
 def _channel_state(acc: dict) -> str:
     """One word for an account: connected, connecting, disconnected, error, not_configured, disabled."""
     if acc.get("enabled") is False:
@@ -351,7 +371,10 @@ class OpenClaw:
                         "disabled": bool(s.get("disabled")), "path": s.get("filePath", ""),
                         "homepage": s.get("homepage", ""), "missing": needs,
                         "requirements": s.get("requirements") or {}, "version": s.get("version", ""),
-                        "emoji": s.get("emoji", "")})
+                        "emoji": s.get("emoji", ""),
+                        # Installed from ClawHub (OpenClaw's origin record and lock agree), so Jarvis may manage it.
+                        "clawhub": (s.get("clawhub") or {}).get("status") == "linked",
+                        "installed_version": (s.get("clawhub") or {}).get("installedVersion", "")})
         return out
 
     async def plugins(self) -> list[dict]:
@@ -369,9 +392,8 @@ class OpenClaw:
         out = []
         for j in p.get("jobs") or []:
             sched = j.get("schedule") or {}
-            every = sched.get("everyMs")
             out.append({"id": j.get("id", ""), "name": j.get("displayName") or j.get("name", ""), "enabled": bool(j.get("enabled")),
-                        "schedule": sched.get("expr") or (f"every {int(every / 60000)} min" if every else sched.get("kind", "")),
+                        "schedule": _schedule(sched),
                         "next_run": ((j.get("state") or {}).get("nextRunAtMs") or 0) / 1000,
                         "last_run": ((j.get("state") or {}).get("lastRunAtMs") or 0) / 1000,
                         "last_status": (j.get("state") or {}).get("lastStatus", ""), "agent": j.get("agentId", ""),

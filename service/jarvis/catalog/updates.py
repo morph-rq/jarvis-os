@@ -125,6 +125,20 @@ class Lifecycle:
         self.hub.installed = {k: v["version"] for k, v in out.items()}
         return out
 
+    async def text(self, info: dict) -> str | None:
+        """An installed skill's SKILL.md: from disk, or through the gateway (skills.skillCard) when OpenClaw runs
+        where its files aren't visible to Jarvis. None when neither works."""
+        try:
+            if info.get("path"):
+                return Path(info["path"]).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            pass
+        try:
+            card = await self.oc.c.request("skills.skillCard", {"skillKey": info["key"]}, timeout=15)
+            return str(card.get("content") or "")
+        except Exception:
+            return None
+
     def history(self, limit: int = 50) -> list[dict]:
         return self.memory.query("SELECT * FROM update_history ORDER BY id DESC LIMIT ?", (limit,))
 
@@ -172,13 +186,21 @@ class Lifecycle:
         state = await self._wait_listed(slug, version)
         if state is None:
             raise UpdateError("OpenClaw reported the install but does not list the skill.")
-        text = Path(state["path"]).read_text(encoding="utf-8", errors="replace") if state.get("path") else ""
+        text = await self.text(state)
+        if review.get("card_sha") and text is None:
+            # Fail closed, but say what happened: unverifiable is not the same as different.
+            await self.oc.skill_enable(state["key"], False)
+            self._log(slug, "skill", "", version, "unverified", "installed SKILL.md unreadable")
+            raise UpdateError("Installed, but Jarvis couldn't read the installed SKILL.md to compare it with what you "
+                              "reviewed, so it was turned off. Turn it on from the hub once that is fixed.")
         if review.get("card_sha") and sha(text) != review["card_sha"]:
             await self.oc.skill_enable(state["key"], False)
             self._quarantine(slug, version, "installed SKILL.md differs from the reviewed card")
             raise UpdateError("The installed SKILL.md is not the one you reviewed; it was disabled and quarantined.")
         self.hub.event("installed", slug, version)
         self._log(slug, "skill", "", version, "installed", result.get("warning") or "")
+        # A fresh install at the latest version supersedes any offer recorded for an older copy.
+        self.memory.execute("DELETE FROM update_available WHERE component = ?", (slug,))
         return {"ok": True, "slug": slug, "version": version, "key": state["key"], "eligible": state["eligible"],
                 "warning": result.get("warning") or "", "dir": state["dir"]}
 
@@ -233,8 +255,10 @@ class Lifecycle:
                 continue
             sec = (d.get("security") or {}).get("scanStatus") or (d.get("security") or {}).get("status") or "unknown"
             card = card_text(d)
-            current = Path(info["path"]).read_text(encoding="utf-8", errors="replace") if info.get("path") else ""
-            added = sorted(requirements(card) - requirements(current)) if card else ["unknown: no card"]
+            current = await self.text(info)
+            added = (["unknown: the new version's text isn't available"] if not card else
+                     ["unknown: the installed skill can't be read"] if current is None else
+                     sorted(requirements(card) - requirements(current)))
             reasons = []
             if added:
                 reasons.append("asks for more: " + ", ".join(added))
@@ -273,6 +297,9 @@ class Lifecycle:
         info = inst.get(slug)
         if info is None:
             raise UpdateError(f"{slug} is no longer installed.")
+        if not Path(info["dir"]).is_dir():
+            raise UpdateError(f"{slug}'s folder isn't on this computer (OpenClaw runs elsewhere), so Jarvis can't keep a "
+                              "copy to roll back to; update it where OpenClaw runs.")
         backup = self.backups / slug / f"{info['version']}-{int(time.time() * 1000)}"
         backup.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(info["dir"], backup, symlinks=True)
@@ -312,10 +339,9 @@ class Lifecycle:
             got = inst.get(slug, {}).get("version", "missing")
             return [f"OpenClaw lists {slug} at {got}, expected {version}"]
         problems = []
-        try:
-            text = Path(state["path"]).read_text(encoding="utf-8", errors="replace")
-        except OSError as exc:
-            return [f"SKILL.md unreadable: {exc}"]
+        text = await self.text(state)
+        if text is None:
+            return ["SKILL.md unreadable"]
         fm = parse_frontmatter(text)
         if not fm.get("name") or not fm.get("description"):
             problems.append("SKILL.md has no name/description frontmatter")
@@ -360,7 +386,24 @@ class Lifecycle:
     def _quarantine(self, component: str, version: str, reason: str) -> None:
         self.memory.execute("INSERT OR REPLACE INTO update_quarantine(component, version, reason, ts) VALUES (?, ?, ?, ?)",
                             (component, version, reason[:500], time.time()))
+        # The offer stays listed (so the user sees it), but never again as one that may run unattended.
+        for row in self.memory.query("SELECT reasons FROM update_available WHERE component = ? AND latest = ?",
+                                     (component, version)):
+            reasons = json.loads(row["reasons"] or "[]") + ["quarantined after a failed check"]
+            self.memory.execute("UPDATE update_available SET needs_approval = 1, reasons = ? WHERE component = ?",
+                                (json.dumps(sorted(set(reasons))), component))
         self.hub.event("quarantined", component, version, reason)
+
+    def release(self, component: str, version: str = "") -> dict:
+        """The user lets a quarantined release be tried again (it still goes through the normal approval)."""
+        if version:
+            n = self.memory.execute("DELETE FROM update_quarantine WHERE component = ? AND version = ?", (component, version))
+        else:
+            n = self.memory.execute("DELETE FROM update_quarantine WHERE component = ?", (component,))
+        if n:
+            self.hub.event("released", component, version, "quarantine lifted by the user")
+            self._log(component, "skill", "", version, "released", "quarantine lifted by the user")
+        return {"ok": bool(n), "message": f"{component} may be tried again." if n else f"{component} was not quarantined."}
 
     async def rollback(self, slug: str) -> dict:
         """Back to the newest saved copy of an installed skill (the version before the last update)."""
@@ -386,7 +429,11 @@ class Lifecycle:
             return []
         done = []
         for row in self.available():
-            if row["needs_approval"]:
+            if row["needs_approval"] or self.quarantined(row["component"], row["latest"]):
                 continue
-            done.append({"component": row["component"], **(await self.apply(row["component"], approved=False, auto=True))})
+            try:
+                done.append({"component": row["component"], **(await self.apply(row["component"], approved=False, auto=True))})
+            except Exception as exc:   # one failing update never stops the others
+                log.warning("unattended update of %s failed: %s", row["component"], exc)
+                done.append({"component": row["component"], "ok": False, "status": "failed", "message": str(exc)[:300]})
         return done

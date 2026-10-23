@@ -73,6 +73,16 @@ Item {
                                                   || root.call.state === "connecting"))
   // Coding agents on this desktop (Claude Code, Codex): [{id, label, project, state, activity, summary…}]
   property var agents: []
+  // OpenClaw and Hermes behind Jarvis: {openclaw: {state, healthy, version, error, manage}, hermes: {…}, lockdown}
+  property var backends: ({ lockdown: false })
+  property var catalogSummary: ({})   // the capability registry: {total, usable, duplicates, by_provider}
+  // The Capabilities Hub's view (op hub, action snapshot): skills, plugins, channels, apps, automations, updates,
+  // history, discover, recent, events, runs, tasks, channels_info. Asked for when the hub opens or something changes.
+  property var hub: ({})
+  property var hubResults: ({})       // the last find/search: {action, choice, alternatives, registry}
+  property var hubNote: ({})          // {action, ok, message} of the last hub button
+  property bool hubOpen: false        // set by the panel while the hub is showing
+  property var _hubPending: ({})      // request id -> action
   // The on-screen guide (navigate): the latest `guide` event while a ring is up, {} otherwise.
   property var guide: ({})
   property bool guideHidden: false   // hidden for a moment while jarvisd takes a screenshot
@@ -176,6 +186,21 @@ Item {
     return true
   }
   function refreshGateway() { return gatewayAction({ action: "status" }) }
+  // Capabilities Hub: every button is a request to jarvisd; installs, updates and builds come back as the
+  // ordinary approval card first.
+  function hubAction(req) {
+    req.op = "hub"
+    if (!send(req)) return false
+    root._hubPending[req.id] = req.action
+    if (req.action !== "snapshot" && req.action !== "find" && req.action !== "search" && req.action !== "discover")
+      root.hubNote = { action: req.action, ok: true, message: "…" }
+    return true
+  }
+  function refreshHub() { return hubAction({ action: "snapshot" }) }
+  // While the hub is open, task changes (a delegated run starting, a step, the end) refresh it, at most every 0.4 s.
+  Timer { id: hubRefresh; interval: 400; onTriggered: root.refreshHub() }
+  function stopAll() { return send({ op: "stop_all" }) }
+  function resumeAgents() { return send({ op: "resume_agents" }) }
   function hangup() { return gatewayAction({ action: "hangup" }) }
   function restartService() { Quickshell.execDetached(["systemctl", "--user", "restart", "jarvisd.service"]) }
   function togglePanel() {
@@ -187,6 +212,14 @@ Item {
     if (root.shell && root.manifest && typeof root.shell.summon === "function")
       root.shell.summon(root.manifest.id, "{}")
     else root.panelToggleRequested(true)
+  }
+  // Which view the panel opens on (e.g. {"view": "hub", "section": "updates"}), for hosts without a plugin panel.
+  property string panelPayload: "{}"
+  function openHub(section) {
+    var payload = JSON.stringify({ view: "hub", section: section || "" })
+    if (root.shell && root.manifest && typeof root.shell.summon === "function")
+      root.shell.summon(root.manifest.id, payload)
+    else { root.panelPayload = payload; root.panelToggleRequested(true); root.panelPayload = "{}" }
   }
   function toggleCommandBar() {
     // With the island on, its conversation view is the command bar (one place to ask, no duplicate UI).
@@ -335,6 +368,21 @@ Item {
   function _handle(line) {
     var msg
     try { msg = JSON.parse(line) } catch (e) { return }
+    // Hub replies first: their fields (history, tasks…) must never be taken for the subscribe snapshot.
+    if (msg.reply !== undefined && root._hubPending[msg.reply] !== undefined) {
+      var hubAct = root._hubPending[msg.reply]
+      delete root._hubPending[msg.reply]
+      if (hubAct === "snapshot" && msg.ok) root.hub = msg
+      else if (hubAct === "find" || hubAct === "search") root.hubResults = msg
+      else if (hubAct === "discover" && msg.ok) root.hub = Object.assign({}, root.hub, { discover: msg.items })
+      else {
+        root.hubNote = { action: hubAct, ok: msg.ok !== false, message: msg.message || (msg.ok === false ? "failed" : "done") }
+        if (hubAct === "automation_pause" || hubAct === "automation_resume" || hubAct === "automation_run")
+          root.hub = Object.assign({}, root.hub, { automations: msg.automations || root.hub.automations })
+        root.refreshHub()
+      }
+      return
+    }
     if (msg.reply !== undefined && msg.history !== undefined) {
       // Snapshot answering our subscribe.
       root.status = msg.status
@@ -345,6 +393,8 @@ Item {
       root.settings = msg.settings || {}
       root.approvals = msg.approvals || []
       root.agents = msg.agents || []
+      root.backends = msg.backends || ({ lockdown: false })
+      root.catalogSummary = msg.catalog || ({})
       root.protocolVersion = msg.protocol || 1
       var live = msg.activities || {}
       root.timers = live.reminders || []
@@ -411,7 +461,7 @@ Item {
       if (!chatChannels[msg.source]) root.lastReply = msg.text
       break
     case "reminder": _reminder(msg.reminder); break
-    case "task": _task(msg.task); break
+    case "task": _task(msg.task); if (root.hubOpen) hubRefresh.restart(); break
     case "dictation": root.dictation = msg; break
     case "live":
       if (msg.state === "unavailable") _append(_row("assistant", "Gemini Live: " + (msg.error || "unavailable"), true))
@@ -427,6 +477,8 @@ Item {
       root.approvals = root.approvals.filter(function(a) { return a.id !== msg.id })
       break
     case "agents": root.agents = msg.sessions || []; break
+    case "backends": root.backends = msg.status || ({}); if (root.hubOpen) root.refreshHub(); break
+    case "catalog": root.catalogSummary = msg.summary || ({}); if (root.hubOpen) root.refreshHub(); break
     case "vad": root.vad = !!msg.speaking; break
     case "barge": root.reaction("barge"); break
     case "wake": root.reaction("wake"); break
@@ -503,6 +555,10 @@ Item {
     function callState(): string { return JSON.stringify(root.call || {}) }
     function hangup(): void { root.hangup() }
     function workspace(): void { root.openWorkspace("") }
+    // Emergency stop for every agent run (Super+Alt+X cancels tasks; this also blocks new risky actions).
+    function stopAll(): void { root.stopAll() }
+    function resumeAgents(): void { root.resumeAgents() }
+    function hub(section: string): void { root.openHub(section) }
     function guideNext(): void { root.guideAction("next") }
     function guideStop(): void { root.guideAction("stop") }
     function guideState(): string { return JSON.stringify(root.guide || {}) }

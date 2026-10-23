@@ -8,6 +8,8 @@ dependencies = [
   "httpx>=0.27",
   # AT-SPI over D-Bus for on-screen navigation (jarvis/screen/atspi.py); pure Python, MIT.
   "jeepney>=0.8",
+  # The OpenClaw gateway client (jarvis/backends/openclaw.py); google-genai already brings it.
+  "websockets>=13",
 ]
 
 [project.optional-dependencies]

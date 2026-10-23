@@ -109,6 +109,7 @@ class Capability:
     state: str = "enabled"        # enabled | disabled | available | quarantined | testing
     version: str = ""
     source: str = ""
+    origin: str = ""              # bundled | clawhub | workspace | shared | dev | builtin
     requires: dict = field(default_factory=dict)
     fallbacks: list[str] = field(default_factory=list)
     providers: list[str] = field(default_factory=list)
@@ -132,6 +133,15 @@ class Capability:
     def reliability(self) -> float:
         n = self.ok + self.failed
         return (self.ok + 1) / (n + 2)   # Laplace: unknown = 0.5, never 0 or 1 from a single run
+
+    def brief(self) -> dict:
+        """What a list in the hub needs (no schemas, short descriptions)."""
+        return {"id": self.id, "name": self.name, "title": self.title, "description": self.description[:240],
+                "provider": self.provider, "providers": self.providers, "kind": self.kind, "method": self.method,
+                "state": self.state, "health": self.health, "auth": self.auth, "usable": self.usable,
+                "verified": self.verified, "trusted": self.trusted, "origin": self.origin, "version": self.version,
+                "requires": self.requires, "permissions": self.permissions[:8], "duplicate_of": self.duplicate_of,
+                "reliability": round(self.reliability, 2)}
 
     def public(self) -> dict:
         d = asdict(self)
@@ -393,7 +403,9 @@ async def openclaw_caps(oc, trusted: set[str]) -> list[Capability]:
             description=s["description"], provider="openclaw", kind="skill", method="skill",
             risk="confirm", side_effects="external", latency="slow", health=health,
             state="disabled" if s["disabled"] else ("enabled" if s["eligible"] else "available"),
-            version=s.get("version", ""), requires={"missing": s["missing"]} if s["missing"] else {},
+            version=s.get("installed_version") or s.get("version", ""),
+            origin="clawhub" if s.get("clawhub") else ("bundled" if bundled else "workspace"),
+            requires={"missing": s["missing"]} if s["missing"] else {},
             content_hash=skill_hash(text) if text else "", trusted=bool(bundled) or s["name"] in trusted,
             verified=bool(bundled), aliases=[s["key"]]))
     for p in await oc.plugins():
@@ -428,7 +440,9 @@ def hermes_caps(hermes) -> list[Capability]:
             id=f"hermes:skill:{s['name']}", name=s["name"], title=s["name"].replace("-", " "), description=s["description"],
             provider="hermes", kind="skill", method="skill", risk="confirm", side_effects="local", latency="slow",
             health="ok" if hermes.state == "connected" else "disconnected", version=s.get("version", ""),
-            content_hash=skill_hash(s["text"]), aliases=[s["category"]] if s["category"] else []))
+            content_hash=skill_hash(s["text"]), aliases=[s["category"]] if s["category"] else [],
+            origin="dev" if s["category"] == "jarvis-dev" else "hermes",
+            state="testing" if s["category"] == "jarvis-dev" else "enabled"))
     return out
 
 
@@ -452,6 +466,7 @@ def shared_caps(folder: Path) -> list[Capability]:
         out.append(Capability(
             id=f"shared:skill:{name}", name=name, title=name.replace("-", " "), description=fm.get("description", ""),
             provider="shared", kind="skill", method="skill", risk="confirm", side_effects="local", latency="slow",
+            origin="shared",
             version=fm.get("version", ""), content_hash=skill_hash(text), verified=bool(meta.get("verified")),
             trusted=bool(meta.get("trusted")), state=meta.get("state", "enabled"),
             requires={"executor": meta.get("executor", "hermes")}, aliases=meta.get("aliases", [])))

@@ -25,9 +25,9 @@ async def _connect():
     from jarvis.daemon import endpoint
     ep = endpoint()
     if "path" in ep:
-        reader, writer = await asyncio.open_unix_connection(ep["path"])
+        reader, writer = await asyncio.open_unix_connection(ep["path"], limit=16 << 20)
     elif ep:
-        reader, writer = await asyncio.open_connection(ep["host"], ep["port"])
+        reader, writer = await asyncio.open_connection(ep["host"], ep["port"], limit=16 << 20)
         writer.write((json.dumps({"op": "auth", "token": ep["token"]}) + "\n").encode())
     else:
         raise ConnectionError("jarvisd is not running")
@@ -220,7 +220,7 @@ def hub_cli(args) -> int:
     elif action in ("install",):
         fields["ref"] = target
     elif action in ("enable", "disable", "uninstall", "update", "rollback"):
-        fields["id"] = target
+        fields["target"] = target
     elif action == "restart":
         fields["name"] = target
     elif action == "status":
@@ -254,7 +254,7 @@ def hub_cli(args) -> int:
         result = {"backends": result.get("backends"), "summary": result.get("summary"),
                   "updates": result.get("updates"), "runs": result.get("runs")}
     elif action == "history":
-        result = {"history": result.get("history"), "events": result.get("events")}
+        result = {"history": result.get("update_history"), "events": result.get("events")}
     print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
     return 0 if result.get("ok", True) else 1
 

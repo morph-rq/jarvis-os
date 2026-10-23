@@ -1,10 +1,10 @@
 {
- "started": 1792724828.1457455,
+ "started": 1792726786.4429266,
  "scenarios": {
   "01": {
    "title": "both agents healthy",
    "passed": true,
-   "ready_s": 23.2,
+   "ready_s": 23.3,
    "openclaw": "2026.10.6",
    "hermes": "0.19.0",
    "manage": "child"
@@ -42,8 +42,8 @@
    "passed": true,
    "chosen": "openclaw:skill:csv-tools",
    "output": "csv-tools ran: the file has 3 rows and 2 columns.",
-   "ms": 7126,
-   "find_ms": 3.2
+   "ms": 9750,
+   "find_ms": 5.27
   },
   "06": {
    "title": "update detected and applied",
@@ -80,7 +80,7 @@
    "title": "Hermes authored and tested a skill; promoted after review",
    "passed": true,
    "test": "Tested word-counter on the sample: 4 words.",
-   "shared": "/tmp/pytest-of-root/pytest-51/test_acceptance0/home/.local/share/jarvis-workos/skills-shared/word-counter"
+   "shared": "/tmp/pytest-of-root/pytest-60/test_acceptance0/home/.local/share/jarvis-workos/skills-shared/word-counter"
   },
   "10": {
    "title": "tested skill used on a later request",
@@ -97,7 +97,7 @@
     "jarvis:tool:set_brightness",
     "jarvis:tool:home"
    ],
-   "dispatch_ms": 3.6
+   "dispatch_ms": 7.2
   },
   "12": {
    "title": "duplicate capability executed once",
@@ -167,7 +167,7 @@
    "update_refused": "csv-tools 1.4.0 needs your approval: asks for more: bin:curl, bin:ssh; not on your trusted list",
    "unscanned_refused": "ClawHub's security scan for this release is 'pending', not clean; not installed.",
    "stop_all_refused": "Agents are stopped (Stop all). Resume them first.",
-   "shared_skill": "/tmp/pytest-of-root/pytest-51/test_acceptance0/home/.local/share/jarvis-workos/skills-shared/word-counter/SKILL.md"
+   "shared_skill": "/tmp/pytest-of-root/pytest-60/test_acceptance0/home/.local/share/jarvis-workos/skills-shared/word-counter/SKILL.md"
   },
   "20": {
    "title": "inspectable record",
@@ -243,7 +243,7 @@
    "telemetry": {
     "ok": 1,
     "failed": 0,
-    "ms": 7126
+    "ms": 9750
    },
    "tasks_logged": 11
   }
@@ -252,15 +252,15 @@
   "openclaw gateway.mode = \"local\"",
   "openclaw gateway.auth.mode = \"token\"",
   "openclaw gateway.bind = \"loopback\"",
-  "openclaw gateway.port = 56593",
-  "openclaw skills.load.extraDirs = [\"/tmp/pytest-of-root/pytest-51/test_acceptance0/home/.local/share/jarvis-workos/skills-shared\"]",
+  "openclaw gateway.port = 40243",
+  "openclaw skills.load.extraDirs = [\"/tmp/pytest-of-root/pytest-60/test_acceptance0/home/.local/share/jarvis-workos/skills-shared\"]",
   "openclaw agents.defaults.model.primary = \"jarvis-test/fake-jarvis-model\"",
   "hermes platform_toolsets.api_server (toolsets ['web', 'file', 'skills', 'todo', 'memory', 'session_search'])",
   "hermes skills.external_dirs",
   "hermes model"
  ],
- "setup_s": 10.2,
- "finished": 1792724936.8137112,
+ "setup_s": 11.3,
+ "finished": 1792726899.587677,
  "approvals_shown": [
   {
    "tool": "capability",
@@ -270,7 +270,7 @@
   {
    "tool": "capability",
    "risk": "confirm",
-   "summary": "Run openclaw:skill:csv-tools for: count the rows in sales.csv"
+   "summary": "Csv tools (OpenClaw): count the rows in sales.csv"
   },
   {
    "tool": "specialist",
@@ -290,7 +290,7 @@
   {
    "tool": "capability",
    "risk": "confirm",
-   "summary": "Run shared:skill:word-counter for: count the words: the quick brown fox jumps"
+   "summary": "Word counter (Hermes): count the words: the quick brown fox jumps"
   },
   {
    "tool": "capability",

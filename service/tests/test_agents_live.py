@@ -248,12 +248,12 @@ async def _play(env: AgentsEnv, j, report: dict) -> None:
         "wakeMode": "now", "payload": {"kind": "agentTurn", "message": "Summarize the week's sales."}})
     autos = await j.backends.openclaw.automations()
     system = next(a for a in autos if a["system"])
-    refused = await cat.op({"action": "automation_pause", "id": system["id"]}, j.run_ui_tool)
+    refused = await cat.op({"action": "automation_pause", "target": system["id"]}, j.run_ui_tool)
     assert not refused["ok"]
     job = next(a for a in autos if not a["system"])
-    await cat.op({"action": "automation_pause", "id": job["id"]}, j.run_ui_tool)
+    await cat.op({"action": "automation_pause", "target": job["id"]}, j.run_ui_tool)
     paused = next(a for a in await j.backends.openclaw.automations() if a["id"] == job["id"])
-    await cat.op({"action": "automation_resume", "id": job["id"]}, j.run_ui_tool)
+    await cat.op({"action": "automation_resume", "target": job["id"]}, j.run_ui_tool)
     resumed = next(a for a in await j.backends.openclaw.automations() if a["id"] == job["id"])
     assert paused["enabled"] is False and resumed["enabled"] is True
     ok(report, 16, "long run cancelled; automation paused and resumed", hermes_run=status, automation=job["name"])

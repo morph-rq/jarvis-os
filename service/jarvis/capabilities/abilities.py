@@ -48,7 +48,7 @@ def _describe(args: dict) -> str:
     if action == "install":
         r = REVIEWS.get(str(args.get("ref", "")))
         if r is None:
-            return f"Install skill {args.get('ref')} from ClawHub (details could not be loaded)"
+            return f"Install the skill {args.get('ref')} from ClawHub"
         req = ", ".join(r["requirements"]) or "nothing extra"
         warn = f" Warnings: {'; '.join(r['warnings'])}." if r["warnings"] else ""
         return (f"Install the skill \"{r['title']}\" ({r['ref']}) {r['version']} by {r['owner'] or 'unknown'} from ClawHub into OpenClaw. "
@@ -60,7 +60,11 @@ def _describe(args: dict) -> str:
         flags = f" Review flags: {', '.join(b['flags'])}." if b["flags"] else " No review flags."
         return f"Share the tested skill {b['name']} with OpenClaw and Hermes.{flags}\n---\n{b['skill_md'][:3000]}"
     if action == "use":
-        return f"Run {args.get('id')} for: {str(args.get('request', ''))[:300]}"
+        from jarvis import catalog as catalog_mod
+        cap = catalog_mod.CURRENT.registry.find(str(args.get("id", ""))) if catalog_mod.CURRENT else None
+        who = {"openclaw": "OpenClaw", "hermes": "Hermes", "shared": "Hermes"}.get(cap.provider, "") if cap else ""
+        name = cap.title.capitalize() if cap else str(args.get("id"))
+        return f"{name}{' (' + who + ')' if who else ''}: {str(args.get('request', ''))[:300]}"
     if action == "build":
         return f"Have Hermes write and test a new skill for: {str(args.get('request', ''))[:300]}"
     if action == "update":

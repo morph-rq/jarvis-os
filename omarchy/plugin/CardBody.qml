@@ -33,7 +33,7 @@ Item {
     "diagnosis": textCard, "skill_draft": textCard, "comparison": compareCard, "chart": chartCard,
     "table": tableCard, "metrics": compareCard, "generated": textCard, "files": listCard, "apps": listCard,
     "calendar": listCard, "email": listCard, "quiz": quizCard, "scorecard": scoreCard, "flashcard": flashCard,
-    "progress": progressCard, "triage": triageCard
+    "progress": progressCard, "triage": triageCard, "connect": connectCard, "skill_review": reviewCard
   })
 
   implicitHeight: body.height
@@ -1127,6 +1127,93 @@ Item {
               onClicked: root.s.ask(d.saved === "gmail" ? "send the draft" : "send this reply to " + (m.to || "")) }
         Text { anchors.verticalCenter: parent.verticalCenter; text: root.t("send_asks", "Sending asks you first.")
                color: Util.alpha(root.fg, 0.5); font.family: Style.fontFamily; font.pixelSize: Style.font.caption }
+      }
+    }
+  }
+
+  // An account to connect through OpenClaw ("connect my Telegram"): what it needs, and the step itself.
+  // A token typed here goes to jarvisd over the owner-only socket (keyring), never into chat or a model.
+  Component {
+    id: connectCard
+    Column {
+      width: parent ? parent.width : 300
+      readonly property var d: parent && parent.d ? parent.d : ({})
+      spacing: 8
+      Text { width: parent.width; wrapMode: Text.Wrap; textFormat: Text.PlainText; color: root.fg
+             font.family: Style.fontFamily; font.pixelSize: Style.font.bodySmall
+             text: root.t("connect_needs", "Needs") + ": " + (d.needs || "") }
+      Rectangle {
+        visible: d.flow === "token"
+        width: parent.width; height: visible ? 36 : 0; radius: 18
+        color: Util.alpha(root.fg, 0.07)
+        TextInput {
+          id: tok
+          anchors { left: parent.left; right: tokBtn.left; verticalCenter: parent.verticalCenter; leftMargin: 14; rightMargin: 8 }
+          echoMode: TextInput.Password; clip: true; color: root.fg
+          font.family: Style.fontFamily; font.pixelSize: Style.font.bodySmall
+          Text { visible: !tok.text; text: root.t("hub_paste_token", "Paste the bot token from @BotFather")
+                 color: Util.alpha(root.fg, 0.4); font: tok.font }
+          onAccepted: tokBtn.clicked()
+        }
+        Btn { id: tokBtn; small: true; strong: true; anchors.right: parent.right; anchors.rightMargin: 6
+              anchors.verticalCenter: parent.verticalCenter; text: root.t("connect", "Connect")
+              onClicked: { if (tok.text) root.s.hubAction({ action: "connect_token", service: d.service, token: tok.text }); tok.text = "" } }
+      }
+      Row {
+        visible: !!d.command
+        spacing: 8
+        Text { anchors.verticalCenter: parent.verticalCenter; text: d.command || ""; textFormat: Text.PlainText; color: root.fg
+               font.family: "monospace"; font.pixelSize: Style.font.caption }
+        Btn { small: true; text: root.t("copy", "Copy"); onClicked: root.s.copyText(d.command) }
+      }
+      Text { width: parent.width; wrapMode: Text.Wrap; color: Util.alpha(root.fg, 0.5); font.family: Style.fontFamily
+             font.pixelSize: Style.font.caption
+             text: root.t("connect_honest", "Nothing is connected until this finishes; Jarvis checks the connection before saying so.") }
+    }
+  }
+
+  // A skill Hermes wrote and tested: the exact text, what the review flagged, the test, and Share (which
+  // asks again, with the same text on the approval card).
+  Component {
+    id: reviewCard
+    Column {
+      width: parent ? parent.width : 300
+      readonly property var d: parent && parent.d ? parent.d : ({})
+      spacing: 8
+      Flow {
+        width: parent.width; spacing: 6
+        Repeater {
+          model: (d.flags || []).concat(d.problems || [])
+          Rectangle { required property var modelData; height: 22; width: flagText.implicitWidth + 16; radius: 11
+                      color: Util.alpha((d.problems || []).indexOf(modelData) >= 0 ? root.red : root.amber, 0.2)
+                      Text { id: flagText; anchors.centerIn: parent; text: modelData; textFormat: Text.PlainText; color: root.fg
+                             font.family: Style.fontFamily; font.pixelSize: Style.font.caption } }
+        }
+        Text { visible: !(d.flags || []).length && !(d.problems || []).length; color: root.green
+               font.family: Style.fontFamily; font.pixelSize: Style.font.caption
+               text: "✓ " + root.t("review_clean", "Nothing flagged") }
+      }
+      Rectangle {
+        width: parent.width; height: Math.min(mdText.implicitHeight, 180) + 16; radius: 10
+        color: Util.alpha(root.fg, 0.05); clip: true
+        Flickable {
+          anchors.fill: parent; anchors.margins: 8
+          contentHeight: mdText.implicitHeight; clip: true
+          Text { id: mdText; width: parent.width; text: d.skill_md || ""; textFormat: Text.PlainText; wrapMode: Text.Wrap
+                 color: root.fg; font.family: "monospace"; font.pixelSize: Style.font.caption }
+        }
+      }
+      Text { width: parent.width; wrapMode: Text.Wrap; textFormat: Text.PlainText
+             color: d.test && d.test.ok ? Util.alpha(root.fg, 0.7) : root.amber
+             font.family: Style.fontFamily; font.pixelSize: Style.font.caption
+             text: root.t("review_test", "Test run") + ": " + (d.test ? (d.test.output || "—") : "—") }
+      Row {
+        spacing: 8
+        Btn { small: true; strong: true; visible: !(d.problems || []).length; text: root.t("hub_share", "Share…")
+              onClicked: root.s.hubAction({ action: "promote", name: d.name }) }
+        Text { anchors.verticalCenter: parent.verticalCenter; color: Util.alpha(root.fg, 0.5); font.family: Style.fontFamily
+               font.pixelSize: Style.font.caption
+               text: root.t("review_where", "Shared skills are read by OpenClaw and Hermes; you can turn them off any time.") }
       }
     }
   }

@@ -21,6 +21,7 @@ Item {
   onIsOpenChanged: if (service) service.panelOpen = isOpen
   onExpandedChanged: if (service) service.panelWidth = expanded ? 680 : 460
   property bool showSettings: false
+  property bool showHub: false            // the Capabilities Hub (OpenClaw, Hermes, skills, updates)
 
   readonly property var s: root.service
   readonly property color fg: Commons.Color.popups.text
@@ -52,6 +53,9 @@ Item {
     try { payload = JSON.parse(payloadJson || "{}"); view = payload.view || "" } catch (e) { view = "" }
     if (view === "messaging" && typeof payload.channel === "string") messagingSection.open = payload.channel
     root.showSettings = view === "settings" || view === "apps" || view === "messaging"
+    // {"view": "hub", "section": "updates"} opens the Capabilities Hub, optionally at one section.
+    root.showHub = view === "hub"
+    if (view === "hub" && typeof payload.section === "string" && payload.section) hub.section = payload.section
     root.isOpen = true
     if (view === "apps") {
       if (s) s.refreshApps()
@@ -148,7 +152,10 @@ Item {
           anchors.verticalCenter: parent.verticalCenter
           spacing: 4
           IconButton { glyph: "▣"; tip: t("workspace", "Workspace"); onClicked: if (s) s.openWorkspace("") }
-          IconButton { glyph: "⚙"; tip: t("settings"); active: root.showSettings; onClicked: root.showSettings = !root.showSettings }
+          IconButton { glyph: "◈"; tip: t("hub_title", "Capabilities"); active: root.showHub
+                       onClicked: { root.showHub = !root.showHub; if (root.showHub) root.showSettings = false } }
+          IconButton { glyph: "⚙"; tip: t("settings"); active: root.showSettings && !root.showHub
+                       onClicked: { root.showSettings = !(root.showSettings && !root.showHub); root.showHub = false } }
           IconButton { glyph: root.expanded ? "⤡" : "⤢"; tip: root.expanded ? t("compact") : t("expand"); onClicked: root.expanded = !root.expanded }
           IconButton { glyph: "✕"; tip: ""; onClicked: root.close() }
         }
@@ -272,9 +279,26 @@ Item {
       }
 
       // ------------------------------------------------------------ settings
+      // ------------------------------------------------------------ capabilities hub
+      Flickable {
+        id: hubView
+        visible: root.showHub
+        anchors { left: parent.left; right: parent.right; top: approvalsColumn.bottom; bottom: composer.top; margins: 12 }
+        contentHeight: hub.implicitHeight
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+        CapabilitiesHub {
+          id: hub
+          width: hubView.width
+          visible: root.showHub && root.isOpen
+          service: root.service
+        }
+      }
+
       Flickable {
         id: settingsView
-        visible: root.showSettings
+        visible: root.showSettings && !root.showHub
         anchors { left: parent.left; right: parent.right; top: approvalsColumn.bottom; bottom: composer.top; margins: 12 }
         contentHeight: settingsColumn.implicitHeight
         clip: true
@@ -453,7 +477,7 @@ Item {
       // ------------------------------------------------------------ conversation
       ListView {
         id: list
-        visible: !root.showSettings
+        visible: !root.showSettings && !root.showHub
         anchors { left: parent.left; right: parent.right; top: approvalsColumn.bottom; bottom: composer.top; margins: 12 }
         clip: true
         spacing: 8

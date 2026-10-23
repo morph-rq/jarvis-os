@@ -405,6 +405,11 @@ def test_broken_update_rolls_back_and_quarantines(tmp_path):
     assert r["status"] == "rolled_back" and "no name/description" in r["problems"][0]
     assert "name: csv-tools" in (oc.dir / "SKILL.md").read_text()          # the old copy is back
     assert lc.quarantined("csv-tools", "1.1.0")
+    row = lc.available()[0]
+    assert row["needs_approval"] and "quarantined after a failed check" in row["reasons"]
+    assert run(lc.auto_apply()) == [] and oc.updated == 1                     # never retried unattended
+    assert lc.release("csv-tools", "1.1.0")["ok"] and not lc.quarantined("csv-tools", "1.1.0")
+    assert lc.history()[0]["status"] == "released"
 
 
 # ---------------------------------------------------------------- self-extension review
