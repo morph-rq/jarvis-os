@@ -80,6 +80,11 @@ class Jarvis:
         from jarvis.gateway import Gateway
         # Chat apps (Telegram, Discord, Slack, Signal, WhatsApp) as transports into this same brain.
         self.gateway = Gateway(self)
+        from jarvis.backends import Backends
+        from jarvis.catalog import Catalog
+        # OpenClaw and Hermes behind Jarvis, and the one capability registry over everything (docs/AGENT-BACKENDS.md).
+        self.backends = Backends(self)
+        self.catalog = Catalog(self)
         self.voice = None
         # Results that finished after the conversation that asked for them had ended; the next Live
         # session is told about them, the panel shows them at once.
@@ -137,7 +142,8 @@ class Jarvis:
                 "provider": self.brain.provider, "lang": lang, "ui": i18n.UI[lang],
                 "voice": self.voice.public() if self.voice else {"mode": "unavailable"},
                 "settings": {k: self.config.get(k) for k in configmod.SCHEMA},
-                "history": self.memory.recent_turns(30), "activities": self.activities(), **self.tasks.snapshot()}
+                "history": self.memory.recent_turns(30), "activities": self.activities(),
+                "backends": self.backends.snapshot(), "catalog": self.catalog.registry.summary(), **self.tasks.snapshot()}
 
     def activities(self) -> dict:
         """What the island shows as live activities after a (re)connect: timers and reminders due within
@@ -183,7 +189,8 @@ class Jarvis:
     # ---------------------------------------------------------------- tools
     # Actions a click in Jarvis's own UI may run without a second approval card: the button itself
     # says what it does, and the request comes over the owner-only socket, never from a model.
-    UI_PREAPPROVED = {("apps", "connect"), ("apps", "reconnect"), ("apps", "disconnect"), ("apps", "prefer")}
+    UI_PREAPPROVED = {("apps", "connect"), ("apps", "reconnect"), ("apps", "disconnect"), ("apps", "prefer"),
+                      ("capability", "enable"), ("capability", "disable"), ("capability", "rollback")}
 
     async def run_tool(self, task: Task, name: str, args: dict, on_approval=None, origin: str = "",
                        preapproved: bool = False) -> dict:
@@ -218,6 +225,10 @@ class Jarvis:
             if remote.check(name, args):   # again, on the validated arguments
                 return {"ok": False, "refused": True, "message": remote.check(name, args)}
             risk = remote.risk(name, args, risk)
+        if risk != SAFE and self.backends.lockdown:
+            # Stop all: nothing above safe runs until the user resumes (panel, `jarvis-workos hub resume`).
+            self.tasks.step(task, "error", f"{name}: stopped by Stop all", tool=name, ok=False)
+            return {"ok": False, "refused": True, "message": "Agents are stopped (Stop all). Resume them first."}
         if preapproved and (name, str(args.get("action", ""))) not in self.UI_PREAPPROVED:
             preapproved = False
         key = ""
@@ -546,6 +557,14 @@ class Jarvis:
         if op == "gateway":
             # Pairing, credentials and revocation: only over this owner-only socket, never from a chat.
             return await self.gateway.op(req)
+        if op == "hub":
+            # The Capabilities Hub panel: catalog, connections, updates, agents, activity.
+            return await self.catalog.op(req, self.run_ui_tool)
+        if op == "stop_all":
+            return {"ok": True, **await self.backends.stop_all()}
+        if op == "resume_agents":
+            self.backends.lift()
+            return {"ok": True}
         if op == "tools":
             return {"ok": True, "tools": [{"name": t.name, "risk": t.risk if isinstance(t.risk, str) else "dynamic",
                                            "description": t.description} for t in REGISTRY.values()]}
@@ -739,12 +758,16 @@ async def serve(cfg: configmod.Config) -> None:
     await jarvis.start_voice()
     await jarvis.hub.start()
     await jarvis.gateway.start()
+    await jarvis.backends.start()
+    await jarvis.catalog.start()
     jarvis.bus.publish("status", status="idle")
     async with server:
         serving = asyncio.create_task(server.serve_forever())
         await stop.wait()
         log.info("shutting down")
         await jarvis.gateway.stop()
+        await jarvis.catalog.stop()
+        await jarvis.backends.stop()
         await jarvis.hub.stop()
         await jarvis.workspace.stop()
         from jarvis.capabilities import browser

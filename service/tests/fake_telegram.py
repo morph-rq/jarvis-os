@@ -192,4 +192,8 @@ class FakeTelegram:
             if p["file_id"] not in self.files:
                 return "error", {"ok": False, "error_code": 400, "description": "Bad Request: file not found"}
             return {"file_id": p["file_id"], "file_path": p["file_id"], "file_size": len(self.files[p["file_id"]])}
+        if method.startswith(("setMy", "deleteMy", "setChatMenu")):
+            return True      # bot profile settings other clients (OpenClaw) make at start-up
+        if method.startswith("getMy"):
+            return [] if method == "getMyCommands" else {}
         return "error", {"ok": False, "error_code": 400, "description": f"unknown method {method}"}

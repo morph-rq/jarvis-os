@@ -69,6 +69,9 @@ EVENTS: dict[str, tuple[dict, str]] = {
     "agents": ({"sessions": list}, "Coding agent sessions on this desktop (Claude Code, Codex): "
                "[{id, agent, label, project, cwd, state, activity, prompt, summary, updated…}]; "
                "state is idle, thinking, working, permission, question, waiting, done or error."),
+    "backends": ({"status": dict}, "OpenClaw and Hermes: {openclaw: {state, healthy, version, error, manage…}, "
+                 "hermes: {…}, lockdown} (lockdown: Stop all is in effect)."),
+    "catalog": ({"summary": dict}, "The capability registry changed: {total, usable, duplicates, by_provider, refreshed}."),
     "guide": ({"op": str, "run_id": str}, "On-screen guidance (navigate). op show: kind ring|ghost, rect {x,y,width,height} "
               "in Hyprland layout px, monitor, label, caption, step, total, mode guide|do|show, hold_s, task_id; "
               "op hide: for a capture, show again follows; op end: reason done|stopped|stuck|timeout|error, caption."),

@@ -1,0 +1,306 @@
+{
+ "started": 1792724828.1457455,
+ "scenarios": {
+  "01": {
+   "title": "both agents healthy",
+   "passed": true,
+   "ready_s": 23.2,
+   "openclaw": "2026.10.6",
+   "hermes": "0.19.0",
+   "manage": "child"
+  },
+  "02": {
+   "title": "real OpenClaw skills and plugins listed",
+   "passed": true,
+   "skills": 55,
+   "plugins": 66,
+   "eligible": 22,
+   "sample": [
+    "1password",
+    "add-model-provider",
+    "apple-notes",
+    "apple-reminders",
+    "bear-notes"
+   ]
+  },
+  "03": {
+   "title": "new ClawHub skill discovered",
+   "passed": true,
+   "baseline": 1,
+   "new": [
+    "csv-tools"
+   ]
+  },
+  "04": {
+   "title": "skill installed after approval",
+   "passed": true,
+   "version": "1.0.0",
+   "approval": "Install the skill \"Csv Tools\" (@acme/csv-tools) 1.0.0 by acme from ClawHub into OpenClaw. Security scan: clean. Needs: nothing extra. Inspect and convert CSV files."
+  },
+  "05": {
+   "title": "skill found and invoked",
+   "passed": true,
+   "chosen": "openclaw:skill:csv-tools",
+   "output": "csv-tools ran: the file has 3 rows and 2 columns.",
+   "ms": 7126,
+   "find_ms": 3.2
+  },
+  "06": {
+   "title": "update detected and applied",
+   "passed": true,
+   "check": {
+    "component": "csv-tools",
+    "kind": "skill",
+    "current": "1.0.0",
+    "latest": "1.1.0",
+    "changelog": "Excel export",
+    "verdict": "clean",
+    "new_requirements": [],
+    "needs_approval": true,
+    "reasons": [
+     "not on your trusted list"
+    ]
+   },
+   "applied": "applied"
+  },
+  "07": {
+   "title": "broken update rolled back, malicious one rejected",
+   "passed": true,
+   "broken": [
+    "SKILL.md has no name/description frontmatter"
+   ],
+   "malicious": "Update not applied (OpenClaw: ClawHub blocked this release; update was not started.). 1.1.0 stays."
+  },
+  "08": {
+   "title": "Hermes delegation",
+   "passed": true,
+   "output": "Summary: the team agreed to ship on Friday; Ann owns the release notes."
+  },
+  "09": {
+   "title": "Hermes authored and tested a skill; promoted after review",
+   "passed": true,
+   "test": "Tested word-counter on the sample: 4 words.",
+   "shared": "/tmp/pytest-of-root/pytest-51/test_acceptance0/home/.local/share/jarvis-workos/skills-shared/word-counter"
+  },
+  "10": {
+   "title": "tested skill used on a later request",
+   "passed": true,
+   "id": "shared:skill:word-counter",
+   "output": "word-counter says: 5 words."
+  },
+  "11": {
+   "title": "native tool for a desktop task",
+   "passed": true,
+   "route": "set_volume",
+   "ranked": [
+    "jarvis:tool:set_volume",
+    "jarvis:tool:set_brightness",
+    "jarvis:tool:home"
+   ],
+   "dispatch_ms": 3.6
+  },
+  "12": {
+   "title": "duplicate capability executed once",
+   "passed": true,
+   "variants": [
+    [
+     "openclaw:skill:word-counter",
+     "shared:skill:word-counter"
+    ],
+    [
+     "hermes:skill:word-counter",
+     "shared:skill:word-counter"
+    ],
+    [
+     "shared:skill:word-counter",
+     "kept"
+    ]
+   ],
+   "model_calls_for_both": 2
+  },
+  "13": {
+   "title": "disconnect shown, then recovered",
+   "passed": true,
+   "seen": "disconnected",
+   "restarts": 1,
+   "recovered": "connected"
+  },
+  "14": {
+   "title": "mocked Telegram account connected through OpenClaw",
+   "passed": true,
+   "before": "absent",
+   "after": "connected",
+   "bot_api_calls": [
+    "deleteMyCommands",
+    "deleteWebhook",
+    "getMe",
+    "getUpdates",
+    "setMyCommands"
+   ]
+  },
+  "15": {
+   "title": "real account connection",
+   "passed": null,
+   "note": "not run: no real credentials or authorization available here"
+  },
+  "16": {
+   "title": "long run cancelled; automation paused and resumed",
+   "passed": true,
+   "hermes_run": "cancelled",
+   "automation": "weekly-report"
+  },
+  "18": {
+   "title": "registered capabilities survive a restart",
+   "passed": true,
+   "before": 243,
+   "from_snapshot": 243,
+   "after_reconnect": 243
+  },
+  "17": {
+   "title": "existing tools and router unchanged (full suite runs separately)",
+   "passed": true,
+   "native": "Volume: 0.50"
+  },
+  "19": {
+   "title": "no silent privilege gain",
+   "passed": true,
+   "update_refused": "csv-tools 1.4.0 needs your approval: asks for more: bin:curl, bin:ssh; not on your trusted list",
+   "unscanned_refused": "ClawHub's security scan for this release is 'pending', not clean; not installed.",
+   "stop_all_refused": "Agents are stopped (Stop all). Resume them first.",
+   "shared_skill": "/tmp/pytest-of-root/pytest-51/test_acceptance0/home/.local/share/jarvis-workos/skills-shared/word-counter/SKILL.md"
+  },
+  "20": {
+   "title": "inspectable record",
+   "passed": true,
+   "history": [
+    [
+     "csv-tools",
+     "1.1.0",
+     "1.3.0",
+     "rejected"
+    ],
+    [
+     "csv-tools",
+     "1.1.0",
+     "1.2.0",
+     "rolled_back"
+    ],
+    [
+     "csv-tools",
+     "1.0.0",
+     "1.1.0",
+     "applied"
+    ],
+    [
+     "csv-tools",
+     "",
+     "1.0.0",
+     "installed"
+    ]
+   ],
+   "events": [
+    [
+     "blocked",
+     "risky-tool",
+     "1.0.0"
+    ],
+    [
+     "rejected",
+     "csv-tools",
+     "1.3.0"
+    ],
+    [
+     "quarantined",
+     "csv-tools",
+     "1.3.0"
+    ],
+    [
+     "rolled_back",
+     "csv-tools",
+     "1.2.0"
+    ],
+    [
+     "quarantined",
+     "csv-tools",
+     "1.2.0"
+    ],
+    [
+     "updated",
+     "csv-tools",
+     "1.1.0"
+    ],
+    [
+     "installed",
+     "csv-tools",
+     "1.0.0"
+    ],
+    [
+     "discovered",
+     "csv-tools",
+     "1.0.0"
+    ]
+   ],
+   "telemetry": {
+    "ok": 1,
+    "failed": 0,
+    "ms": 7126
+   },
+   "tasks_logged": 11
+  }
+ },
+ "setup_changes": [
+  "openclaw gateway.mode = \"local\"",
+  "openclaw gateway.auth.mode = \"token\"",
+  "openclaw gateway.bind = \"loopback\"",
+  "openclaw gateway.port = 56593",
+  "openclaw skills.load.extraDirs = [\"/tmp/pytest-of-root/pytest-51/test_acceptance0/home/.local/share/jarvis-workos/skills-shared\"]",
+  "openclaw agents.defaults.model.primary = \"jarvis-test/fake-jarvis-model\"",
+  "hermes platform_toolsets.api_server (toolsets ['web', 'file', 'skills', 'todo', 'memory', 'session_search'])",
+  "hermes skills.external_dirs",
+  "hermes model"
+ ],
+ "setup_s": 10.2,
+ "finished": 1792724936.8137112,
+ "approvals_shown": [
+  {
+   "tool": "capability",
+   "risk": "confirm",
+   "summary": "Install the skill \"Csv Tools\" (@acme/csv-tools) 1.0.0 by acme from ClawHub into OpenClaw. Security scan: clean. Needs: nothing extra. Inspect and convert CSV files."
+  },
+  {
+   "tool": "capability",
+   "risk": "confirm",
+   "summary": "Run openclaw:skill:csv-tools for: count the rows in sales.csv"
+  },
+  {
+   "tool": "specialist",
+   "risk": "confirm",
+   "summary": "Ask Hermes to: summarize these meeting notes: we ship Friday, Ann writes notes"
+  },
+  {
+   "tool": "capability",
+   "risk": "confirm",
+   "summary": "Have Hermes write and test a new skill for: "
+  },
+  {
+   "tool": "capability",
+   "risk": "confirm",
+   "summary": "Share the tested skill word-counter with OpenClaw and Hermes. No review flags.\n---\n---\nname: word-counter\ndescription: Count the words in a piece of text.\nversion: 0.1.0\nmetadata: {\"openclaw\": {\"requires\": {\"bins\": []}}}\n---\n\n# word-counter\n\nSplit the text on whitespace and count the pieces. Report the number. No network, no files.\n"
+  },
+  {
+   "tool": "capability",
+   "risk": "confirm",
+   "summary": "Run shared:skill:word-counter for: count the words: the quick brown fox jumps"
+  },
+  {
+   "tool": "capability",
+   "risk": "confirm",
+   "summary": "Connect telegram (shows the sign-in or token step; nothing is sent yet)"
+  },
+  {
+   "tool": "specialist",
+   "risk": "confirm",
+   "summary": "Ask Hermes to: research suppliers slowly"
+  }
+ ]
+}

@@ -259,6 +259,47 @@ DEFAULTS: dict = {
         # Run without a window (tests, servers); normally the window shows so you can watch and take over.
         "headless": False,
     },
+    # ---- OpenClaw and Hermes as Jarvis's backends (jarvis/backends, docs/AGENT-BACKENDS.md) ----
+    "openclaw": {
+        # Chat channels, plugins and ClawHub skills. Its gateway listens on loopback only, with a token.
+        "enabled": True,
+        "url": "ws://127.0.0.1:18789",
+        # auto: the installed user unit when there is one, else jarvisd runs it; systemd | child | external | off.
+        "manage": "auto",
+        "bin": "", "node": "",          # "" = the copies omarchy/install.sh --agents installed
+        "state_dir": "",                # "" = OpenClaw's own (~/.openclaw): existing sessions and skills are kept
+        "clawhub_url": "",              # "" = https://clawhub.ai
+        # Model for its agent when it has none of its own ("provider/model"), and which of Jarvis's keys it may use.
+        "model": "google/gemini-3.5-flash",
+        "model_keys": ["GEMINI_API_KEY"],
+    },
+    "hermes": {
+        # The specialist: multi-step work, writing and testing skills, MCP tools. API server on loopback, with a key.
+        "enabled": True,
+        "url": "http://127.0.0.1:18642",
+        "manage": "auto",
+        "bin": "",
+        "home": "",                     # "" = Hermes's own (~/.hermes): its memory and skills are kept
+        # What Hermes may use when Jarvis delegates. No terminal, process, code execution, cron or browser by
+        # default; add "terminal" only if you want it (every risky command still asks you, through Jarvis).
+        "toolsets": ["web", "file", "skills", "todo", "memory", "session_search"],
+        "model": "gemini/gemini-3.5-flash",
+        "model_keys": ["GEMINI_API_KEY"],
+        "timeout_s": 900,
+    },
+    "catalog": {
+        # Look at ClawHub for new and updated skills (read only; nothing is installed by this).
+        "sync_hours": 12,
+        "update_check_hours": 24,
+        # Updates applied without asking, per kind: "off" (always ask) or "trusted" (only for components you marked
+        # trusted, only when nothing new is asked for: no new permissions, keys, binaries, and a clean scan).
+        "auto_update_skills": "trusted",
+        "auto_update_plugins": "off",
+        "auto_update_core": "off",
+        "trusted": [],
+        # One notice per batch of updates at most this often.
+        "notify_hours": 24,
+    },
 }
 
 # Validation for `jarvis-workos config set` and the settings panel: (type, choices | (min, max) | None).
@@ -338,6 +379,13 @@ SCHEMA: dict[str, tuple] = {
     "gateway.whatsapp_phone_id": (str, None),
     "gateway.calls": (bool, None),
     "gateway.call_max_minutes": (int, (1, 120)),
+    "openclaw.enabled": (bool, None), "openclaw.manage": (str, ("auto", "systemd", "child", "external", "off")),
+    "openclaw.url": (str, None), "openclaw.model": (str, None), "openclaw.clawhub_url": (str, None),
+    "hermes.enabled": (bool, None), "hermes.manage": (str, ("auto", "systemd", "child", "external", "off")),
+    "hermes.url": (str, None), "hermes.model": (str, None), "hermes.timeout_s": (int, (30, 7200)),
+    "catalog.sync_hours": (int, (1, 168)), "catalog.update_check_hours": (int, (1, 336)),
+    "catalog.auto_update_skills": (str, ("off", "trusted")), "catalog.auto_update_plugins": (str, ("off", "trusted")),
+    "catalog.auto_update_core": (str, ("off", "trusted")), "catalog.notify_hours": (int, (1, 336)),
 }
 
 
@@ -347,7 +395,11 @@ SECRET_NAMES = ("GEMINI_API_KEY", "ANTHROPIC_API_KEY", "HOME_ASSISTANT_TOKEN", "
                 "GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_SECRET",
                 # Messaging gateway (jarvis/gateway): bot credentials, never in config.toml.
                 "DISCORD_BOT_TOKEN", "SLACK_BOT_TOKEN", "SLACK_APP_TOKEN", "WHATSAPP_ACCESS_TOKEN",
-                "WHATSAPP_APP_SECRET", "WHATSAPP_VERIFY_TOKEN")
+                "WHATSAPP_APP_SECRET", "WHATSAPP_VERIFY_TOKEN",
+                # Shared with the local OpenClaw gateway and Hermes API server (jarvis/backends); made by Jarvis.
+                "OPENCLAW_GATEWAY_TOKEN", "HERMES_API_KEY",
+                # A Telegram bot connected through OpenClaw (not Jarvis's own gateway, which uses TELEGRAM_BOT_TOKEN).
+                "OPENCLAW_TELEGRAM_BOT_TOKEN")
 
 
 def _deep_merge(base: dict, override: dict) -> dict:
