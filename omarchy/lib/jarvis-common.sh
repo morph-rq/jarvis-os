@@ -13,7 +13,10 @@ JW_GENERATIONS="$JW_STATE/generations"
 JW_BIN="$HOME/.local/bin"
 JW_BACKUPS="${JARVIS_BACKUP_DIR:-$HOME/JarvisBackups}"
 # Big or rebuildable data a backup leaves out (the installer brings it back); sign-in data only with secrets.
-JW_DATA_EXCLUDES=(venv venvs models voices quickshell caelestia caelestia-cli genoffice "*.sock" "__pycache__")
+# The OpenClaw, Hermes and Node runtimes (agents/*) come back with the installer; their migrations log, the shared
+# skills and the catalog are kept.
+JW_DATA_EXCLUDES=(venv venvs models voices quickshell caelestia caelestia-cli genoffice "*.sock" "__pycache__"
+                  agents/node agents/openclaw agents/hermes logs)
 JW_SECRET_DATA=(browser)
 JW_SECRET_NAMES=(GEMINI_API_KEY ANTHROPIC_API_KEY HOME_ASSISTANT_TOKEN MAIL_PASSWORD TELEGRAM_BOT_TOKEN
   SPOTIFY_CLIENT_ID SPOTIFY_CLIENT_SECRET CALENDAR_ICS_URLS COMPOSIO_API_KEY GOOGLE_OAUTH_CLIENT_ID

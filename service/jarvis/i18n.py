@@ -299,6 +299,9 @@ UI = {
 # The Capabilities Hub (omarchy/plugin/CapabilitiesHub.qml): OpenClaw, Hermes, skills, updates.
 HUB_UI = {
     "ru": {
+        "hub_unit_d": "дн.",
+        "hub_unit_h": "ч",
+        "hub_unit_min": "мин",
         "hub_w_applied": "обновлён",
         "hub_w_awaiting_approval": "ждёт разрешения",
         "hub_w_blocked": "заблокировано",
@@ -408,6 +411,9 @@ HUB_UI = {
         "review_where": "Общие навыки видят OpenClaw и Hermes; их можно выключить в любой момент.",
     },
     "en": {
+        "hub_unit_d": "d",
+        "hub_unit_h": "h",
+        "hub_unit_min": "min",
         "hub_w_applied": "updated",
         "hub_w_awaiting_approval": "needs approval",
         "hub_w_blocked": "blocked",
@@ -517,6 +523,9 @@ HUB_UI = {
         "review_where": "Shared skills are read by OpenClaw and Hermes; you can turn them off any time.",
     },
     "pt": {
+        "hub_unit_d": "d",
+        "hub_unit_h": "h",
+        "hub_unit_min": "min",
         "hub_w_applied": "atualizada",
         "hub_w_awaiting_approval": "aguarda aprovação",
         "hub_w_blocked": "bloqueada",

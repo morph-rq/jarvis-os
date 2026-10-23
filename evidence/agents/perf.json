@@ -1,0 +1,136 @@
+{
+ "measured": "2026-10-23T03:44:07",
+ "cpu_count": 4,
+ "openclaw": "2026.10.6",
+ "hermes": "0.19.0",
+ "agents_ready_s": 23.3,
+ "native_dispatch": {
+  "n": 60,
+  "median_ms": 2.01,
+  "p95_ms": 5.54,
+  "max_ms": 16.52,
+  "goal_ms": 300,
+  "what": "router + task + run_tool + platform call"
+ },
+ "capability_lookup": {
+  "n": 200,
+  "median_ms": 1.46,
+  "p95_ms": 3.16,
+  "max_ms": 4.05,
+  "goal_ms": 100,
+  "registry_size": 238
+ },
+ "capability_lookup_5000": {
+  "n": 80,
+  "median_ms": 7.06,
+  "p95_ms": 15.13,
+  "max_ms": 15.69
+ },
+ "model_tool_context": {
+  "all_tools": 90,
+  "all_bytes": 53306,
+  "per_request": {
+   "convert my CSV file and count its rows": {
+    "tools": 30,
+    "bytes": 19548
+   },
+   "edit a PDF file": {
+    "tools": 30,
+    "bytes": 18689
+   },
+   "count the words in this paragraph": {
+    "tools": 26,
+    "bytes": 20141
+   },
+   "set the volume to 30": {
+    "tools": 22,
+    "bytes": 13196
+   },
+   "send a telegram message to Ann": {
+    "tools": 23,
+    "bytes": 15568
+   },
+   "summarize my meeting notes": {
+    "tools": 18,
+    "bytes": 9464
+   },
+   "найди файлы с отчётом": {
+    "tools": 29,
+    "bytes": 18964
+   },
+   "generate a video of my cat": {
+    "tools": 17,
+    "bytes": 7811
+   }
+  },
+  "median_bytes": 17128.5
+ },
+ "openclaw_rpc": {
+  "health": {
+   "n": 20,
+   "median_ms": 7.7,
+   "p95_ms": 31.02,
+   "max_ms": 35.99
+  },
+  "skills.status": {
+   "n": 20,
+   "median_ms": 10.13,
+   "p95_ms": 11.96,
+   "max_ms": 13.8
+  },
+  "channels.status": {
+   "n": 20,
+   "median_ms": 2.75,
+   "p95_ms": 3.13,
+   "max_ms": 3.15
+  },
+  "cron.list": {
+   "n": 20,
+   "median_ms": 1.75,
+   "p95_ms": 6.18,
+   "max_ms": 18.68
+  }
+ },
+ "openclaw_cli_process_s": {
+  "seconds": 2.21,
+  "what": "`openclaw skills list --json`: what one CLI call per action would cost"
+ },
+ "hermes_delegation": {
+  "n": 5,
+  "median_ms": 336.03,
+  "p95_ms": 337.29,
+  "max_ms": 1986.56,
+  "what": "POST /v1/runs + SSE until run.completed, model time ~0"
+ },
+ "hermes_cli_process_s": 0.44,
+ "hub_snapshot": {
+  "n": 10,
+  "median_ms": 2.34,
+  "p95_ms": 2.88,
+  "max_ms": 5.88,
+  "bytes": 84946
+ },
+ "rss_mb": {
+  "jarvisd (this process, with tests)": {
+   "main": 68.6,
+   "processes": 1,
+   "tree_sum": 68.6
+  },
+  "openclaw": {
+   "main": 1136.0,
+   "processes": 4,
+   "tree_sum": 1427.4
+  },
+  "hermes": {
+   "main": 157.6,
+   "processes": 1,
+   "tree_sum": 157.6
+  }
+ },
+ "rss_note": "tree_sum adds each process's RSS, so shared pages are counted more than once",
+ "idle_cpu_percent_30s": {
+  "jarvisd (this process, with tests)": 0.6,
+  "openclaw": 3.87,
+  "hermes": 0.33
+ }
+}

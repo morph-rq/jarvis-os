@@ -25,8 +25,8 @@ Item {
   function rel(ts) {
     if (!ts) return ""
     var d = ts - root.now, a = Math.abs(d)
-    var txt = a < 90 ? t("hub_moment", "a moment") : a < 5400 ? Math.round(a / 60) + " min"
-            : a < 172800 ? Math.round(a / 3600) + " h" : Math.round(a / 86400) + " d"
+    var txt = a < 90 ? t("hub_moment", "a moment") : a < 5400 ? Math.round(a / 60) + " " + t("hub_unit_min", "min")
+            : a < 172800 ? Math.round(a / 3600) + " " + t("hub_unit_h", "h") : Math.round(a / 86400) + " " + t("hub_unit_d", "d")
     return d > 0 ? t("hub_in", "in") + " " + txt : txt + " " + t("hub_ago", "ago")
   }
   // A status or event word from jarvisd, in the interface's language.

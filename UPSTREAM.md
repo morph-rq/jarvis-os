@@ -120,6 +120,32 @@ Inspected for design; **no code copied**. `service/jarvis/gateway/` is an indepe
 
 External programs and APIs (not bundled): **signal-cli** (GPL-3.0) is run as a separate process when the user installs it, never linked or redistributed. **WhatsApp** uses Meta's official Cloud API, not Baileys/WhatsApp Web (which both projects use; unofficial, ban risk). Telegram Bot API, Discord Gateway v10 / REST, and Slack Socket Mode / Web API are the platforms' official interfaces.
 
+## OpenClaw and Hermes as Jarvis's backends (docs/AGENT-BACKENDS.md)
+
+Both run unmodified, as their own processes, behind Jarvis. Nothing from either is vendored into this
+repository. Jarvis talks to them only through their documented interfaces: OpenClaw's gateway protocol 4
+over a loopback websocket, and Hermes's API server run API.
+
+| Upstream | Version | License | How it is used | Pinned in |
+|---|---|---|---|---|
+| [openclaw/openclaw](https://github.com/openclaw/openclaw) (npm `openclaw`) | 2026.10.6, build `fe06181` | MIT, © 2026 OpenClaw Foundation | Gateway for chat channels, plugins, ClawHub skills and automations; `jarvis-openclaw.service` runs `openclaw gateway run --bind loopback --auth token` | `omarchy/locks/openclaw/package-lock.json` (564 entries: 415 with their own sha512, 148 bundled inside OpenClaw's tarball); `npm ci --ignore-scripts` |
+| [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) (PyPI `hermes-agent`) | 0.19.0 | MIT, © 2025 Nous Research | Specialist runs and skill authoring through `hermes gateway run` with only its API server; tool sets limited by Jarvis | `omarchy/locks/hermes.lock` (78 packages, hashes; `hermes-agent[mcp]`, plus `aiohttp==3.14.1` for the API server) |
+| [Node.js](https://nodejs.org) | 24.22.1 | MIT | OpenClaw's runtime (it needs `>=24.22.1 <25`), in Jarvis's data folder only | sha256 in `omarchy/install.sh` (x64 `6c172a9a…`, arm64 `dbabf7a1…`, from nodejs.org's SHASUMS256) |
+| [ClawHub](https://clawhub.ai) | API v1 | service | Read-only discovery (`/api/v1/skills`, `/search`). Installs only through OpenClaw's own `skills.install` / `skills.update` | — |
+| [pipecat-ai/pipecat](https://github.com/pipecat-ai/pipecat) `services/openclaw` 1.13.0 | — | BSD-2-Clause | Read for the gateway handshake (`gateway-client` in `backend` mode on loopback); Jarvis's client is its own (`jarvis/backends/openclaw.py`) | not used at runtime |
+
+What was checked in each upstream's own source before relying on it:
+- **OpenClaw:**
+  - the connect frame, scopes and method parameter schemas;
+  - ClawHub's request contract (`OPENCLAW_CLAWHUB_URL` is honoured; there is no https/loopback restriction);
+  - what blocks an install: only `malicious`/`blocked` verdicts. `pending` and `stale` install with a warning, so Jarvis requires `clean`.
+  - Its gateway install path checks no expected hash, so Jarvis compares the installed SKILL.md with the card the user approved.
+- **Hermes:**
+  - the run API, approval events and stop;
+  - `platform_toolsets.api_server`;
+  - the "fail-open" approval path outside interactive or gateway contexts (`tools/approval.py`). This is why Jarvis uses only the API server.
+  - Its pre-exec scanner `tirith` downloads itself on first start (SHA-256 verified, user folder); left as Hermes ships it.
+
 ## Try Omarchy for Windows (test VM only)
 
 | | |

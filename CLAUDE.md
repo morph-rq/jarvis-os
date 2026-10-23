@@ -11,10 +11,14 @@ service also supports Windows for development.
 - `docs/PROTOCOL.md`: daemon events and the shell contract.
 - `docs/INTEGRATION.md`, `docs/INTEGRATIONS.md`, `docs/MESSAGING.md`, and
   `docs/CALLING.md`: voice, connected apps, messaging, and calling.
+- `docs/AGENT-BACKENDS.md` and `docs/AGENTS-REPORT.md`: OpenClaw and Hermes behind Jarvis, the
+  capability registry and the Capabilities Hub.
 
 ## Repository map
 
 - `service/jarvis/`: daemon, tools, voice engines, gateway, and workspace.
+- `service/jarvis/backends/` (OpenClaw and Hermes clients, supervision) and `service/jarvis/catalog/`
+  (capability registry, selection, ClawHub, updates, self-extension).
 - `service/tests/`: unit and integration tests, including fake HTTP/chat servers.
 - `omarchy/plugin/`: QML interface, island UI, shaders, and UI helpers.
 - `omarchy/install.sh` and `omarchy/locks/`: installer and hashed dependencies.
@@ -35,6 +39,9 @@ node --test omarchy/dev/island.test.js
 ```
 
 Run Python tests from `service/` so their shared `tests.fake_*` helpers resolve.
+The OpenClaw/Hermes acceptance run needs both runtimes (see `service/tests/agents_env.py`):
+`JARVIS_AGENTS_LIVE=1 python -m pytest tests/test_agents_live.py -q -s`; benchmarks:
+`python -m tests.agents_bench`. Both use stand-ins for the model, ClawHub and Telegram.
 Optional voice/document tests may need the corresponding extras from
 `service/pyproject.toml`. Tests requiring optional packages or live services
 may skip. Do not run the desktop installer in a generic cloud container;

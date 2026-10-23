@@ -87,7 +87,14 @@ It asks before anything that needs `sudo`. Here is what it does, in order:
    - the `jarvisd` user service, which starts with your session;
    - the Omarchy shell plugin, linked to the checkout;
    - the Hyprland keybindings.
-7. **The `jarvis` command.** If another program already uses that name, it's `jarvis-os` instead.
+7. **OpenClaw and Hermes**, as two more user services behind Jarvis ([docs/AGENT-BACKENDS.md](docs/AGENT-BACKENDS.md)):
+   - Node 24 checked by sha256, then OpenClaw from its lock (install scripts off) and Hermes from its hash lock;
+   - each in its own versioned folder under `~/.local/share/jarvis-workos/agents`;
+   - both listening on 127.0.0.1 only, with a token and a key Jarvis keeps in the keyring;
+   - existing `~/.openclaw` and `~/.hermes` (sessions, memory, skills) are used as they are. Only the settings Jarvis
+     needs change, each written to `agents/migrations.log`.
+   - About 1.1 GB of disk. `--no-agents` skips them; Jarvis works without them.
+8. **The `jarvis` command.** If another program already uses that name, it's `jarvis-os` instead.
 
 Then set your keys. They're stored in the desktop keyring and never written to the repository:
 
@@ -108,6 +115,7 @@ Options:
 | `--yes` | Don't ask |
 | `--production` | Install a copy instead of running from the checkout |
 | `--agent-hooks` | Show Claude Code and Codex permission prompts on the island |
+| `--no-agents` | Skip OpenClaw and Hermes |
 | `-- --echo-cancel` | Passed to `omarchy/install.sh`; also `--no-local`, `--genoffice` |
 
 ## 4. Check it works
@@ -213,6 +221,13 @@ jarvis uninstall                # remove Jarvis; backups, memory files and the c
    - your memory and skills appear (`jarvis memory`);
    - any Windows paths in settings were reset to the defaults.
 6. `jarvis rollback` once, on purpose, to know it works before you need it.
+7. OpenClaw and Hermes with your real accounts (tested here only against stand-ins for the model, ClawHub
+   and Telegram):
+   - `jarvis hub status`: both healthy;
+   - ◈ in the panel opens the Capabilities Hub;
+   - "connect my Telegram" with a real bot token from @BotFather;
+   - installing one real ClawHub skill;
+   - a task handed to Hermes, with your Gemini key.
 
 ## Troubleshooting
 

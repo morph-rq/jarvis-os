@@ -95,3 +95,29 @@ generated_ui = true            # interactive views written by the model, run in 
 # Jarvis's own browser window for web tasks (its own profile, never your everyday one).
 # binary = "/usr/bin/chromium"   # default: chromium, google-chrome or brave, whichever is installed
 # headless = false
+
+# ---- OpenClaw and Hermes behind Jarvis (docs/AGENT-BACKENDS.md; installed by install-jarvis.sh) ----
+# Both listen on 127.0.0.1 only; their token/key live in the keyring (made by Jarvis, never in a config file).
+# manage: auto (the user service when installed, else jarvisd runs it), systemd, child, external, off.
+# [openclaw]
+# enabled = true
+# manage = "auto"
+# model = "google/gemini-3.5-flash"     # used only when OpenClaw has no model of its own
+# model_keys = ["GEMINI_API_KEY"]       # which of Jarvis's keys OpenClaw may use
+# state_dir = ""                        # "" = ~/.openclaw, its sessions and skills stay as they are
+#
+# [hermes]
+# enabled = true
+# manage = "auto"
+# model = "gemini/gemini-3.5-flash"
+# model_keys = ["GEMINI_API_KEY"]
+# home = ""                             # "" = ~/.hermes, its memory and skills stay as they are
+# # What Hermes may use when Jarvis delegates. Add "terminal" only if you want it; risky commands still ask you.
+# toolsets = ["web", "file", "skills", "todo", "memory", "session_search"]
+#
+# [catalog]
+# sync_hours = 12                       # look at ClawHub for new skills (nothing is installed by looking)
+# update_check_hours = 24
+# auto_update_skills = "trusted"        # "off": always ask; "trusted": only skills you trust, clean, asking for nothing new
+# auto_update_plugins = "off"
+# trusted = []                          # e.g. ["pdf-tools"]

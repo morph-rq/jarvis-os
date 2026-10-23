@@ -9,6 +9,7 @@ An executive AI companion built as native extensions to [Omarchy](https://github
 - WhatsApp voice calls through the official Business Calling API: call Jarvis from WhatsApp and talk (Gemini Live through Pipecat, the same tools and approvals), or let Jarvis call you with reminders: [docs/CALLING.md](docs/CALLING.md)
 - Connected apps (Google Workspace through its MCP server, Composio for Slack/Notion/GitHub/CRMs…), real Office files (Jarvis's engine + GenOffice) and the Living Workspace (interactive results, sandboxed generated interfaces, AG-UI): [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md)
 - The Jarvis Island and orb: states, design system, shortcuts, how to preview and check it without Omarchy, what is verified where: [docs/ISLAND.md](docs/ISLAND.md); the study of the UI reference projects: [docs/UI-REFERENCES.md](docs/UI-REFERENCES.md)
+- OpenClaw and Hermes behind Jarvis: one capability registry and the Capabilities Hub (discover and install ClawHub skills, connect chat apps, updates with rollback, Hermes as the specialist that writes and tests new skills, Stop all), with the 20 acceptance scenarios run against the real services: [docs/AGENT-BACKENDS.md](docs/AGENT-BACKENDS.md), [docs/AGENTS-REPORT.md](docs/AGENTS-REPORT.md)
 - Screenshots, test reports and benchmarks: [evidence/](evidence/)
 - Cloud development and bringing changes back locally: [CLAUDE.md](CLAUDE.md)
 
@@ -79,7 +80,9 @@ If Hey Jarvis is running, the installer leaves it alone and starts WorkOS with i
 | Approve risky actions | Allow/Deny in the panel or the workspace, say "да/нет", or `jarvis-workos approve|deny ID` |
 | Living Workspace | Super+Alt+W, ▣ in the panel or on a HUD card, or "открой рабочее пространство": conversation, interactive cards, approvals, tasks, connected apps (127.0.0.1 only, no internet) |
 | Connected apps | "подключи мой Gmail", Settings → Connected apps, or `jarvis-workos apps connect gmail`; keys via `jarvis-workos secret set NAME` (never in chat) |
-| CLI | `jarvis-workos ask|listen|stop|mute|pause|resume|wake|dictate|status|health|tasks|config|logs|restart|doctor` |
+| Capabilities Hub | ◈ in the panel, or `jarvis hub` over IPC: what Jarvis can do through its own tools, connected apps, OpenClaw and Hermes; Discover, Connected, Skills, Agents, Automations, Updates, Activity, **Stop all** |
+| New abilities | "добавь инструмент для PDF", "connect my Telegram", "I want you to use Higgsfield for videos": Jarvis finds what exists (installed, ClawHub, an official app), proposes it, and builds and tests a new skill with Hermes only if you approve |
+| CLI | `jarvis-workos ask|listen|stop|mute|pause|resume|wake|dictate|status|health|tasks|config|logs|restart|doctor`; `jarvis-workos hub status|find|search|install|updates|update|rollback|connect|stop-all|resume|logs` |
 
 Examples that run on the fast path without a model call:
 

@@ -13,6 +13,9 @@ take effect when the island reloads.
 - `jarvis logs`: follow the daemon's log. `jarvis logs ui` shows the shell's QML errors.
 - `jarvis restart`: restart the daemon. `jarvis reload-ui`: reload the island.
 - `jarvis doctor`: check what works and what doesn't.
+- `jarvis hub status`, `jarvis hub logs openclaw|hermes`, `jarvis hub restart openclaw|hermes`: OpenClaw and Hermes
+  behind Jarvis (docs/AGENT-BACKENDS.md). Their own state is `~/.openclaw` and `~/.hermes`. Change it only with
+  their own tools (`openclaw config …`, Hermes's `save_config`), as `jarvis hub setup` does.
 
 Rules:
 - Keep the daemon's typed protocol (`service/jarvis/protocol.py`; regenerate `docs/PROTOCOL.md`), the
