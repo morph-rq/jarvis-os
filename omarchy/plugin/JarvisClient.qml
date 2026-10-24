@@ -139,6 +139,7 @@ Item {
   // the screen that shows it reports what it decided (mode, activity), for the HUD and IPC.
   property string islandRequested: ""      // "", "peek", "expanded", "conversation"
   property string islandMode: "hidden"
+  property bool buddyOut: false          // the companion left the island to fly beside the pointer (Buddy.qml)
   property string islandKind: "idle"
   readonly property bool islandFeaturesCard: islandEnabled && islandKind === "result" && islandMode === "expanded"
   function requestIsland(m) { root.islandRequested = m || "" }

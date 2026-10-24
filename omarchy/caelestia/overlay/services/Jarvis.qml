@@ -28,6 +28,11 @@ Singleton {
         service: client
     }
 
+    // The small companion beside the pointer (ui.companion_follow).
+    J.Buddy {
+        service: client
+    }
+
     // Settings, connected apps and messaging (Super+Alt+J, `jarvis toggle`): the same panel as in
     // Omarchy's shell, coloured by Caelestia's palette through qs.Commons.
     J.Panel {

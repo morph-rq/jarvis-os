@@ -177,7 +177,7 @@ cmd_test() {
   [[ -x $py ]] || jw_die "no venv yet: ./install-jarvis.sh"
   "$py" -c 'import pytest' 2>/dev/null || "$py" -m pip install -q pytest
   (cd "$repo/service" && "$py" -m pytest tests -q "$@")
-  if command -v node >/dev/null; then (cd "$repo" && node --test omarchy/dev/island.test.js); fi
+  if command -v node >/dev/null; then (cd "$repo" && node --test omarchy/dev/*.test.js); fi
 }
 
 cmd_voice_test() {

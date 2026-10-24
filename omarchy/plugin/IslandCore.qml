@@ -99,7 +99,7 @@ Item {
     card: newestCard ? Object.assign({}, newestCard, { held: hovered }) : null,
     notice: newestNotice, media: player ? { playing: true } : null, now: now, request: requested,
     hovered: hovered, dnd: settings["ui.island_quiet"] === true, fullscreen: fullscreen,
-    autohide: settings["ui.island_autohide"] === true
+    autohide: settings["ui.island_autohide"] === true, buddy: settings["ui.companion_follow"] === true
   })
   readonly property var act: Logic.activity(input)
   readonly property string activityKind: act.kind

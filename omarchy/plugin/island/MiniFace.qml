@@ -18,11 +18,13 @@ FaceBase {
   readonly property bool useCoucou: style === "coucou" && coucou.status === Loader.Ready
   readonly property bool usePip: style === "pip" || (style === "coucou" && !useCoucou)
   readonly property var character: useCoucou ? coucou.item : pip
+  // One companion on screen: while it flies beside the pointer (Buddy.qml) the island keeps its nest.
+  readonly property bool out: !!face.s && face.s.buddyOut
 
   Loader {
     id: coucou
     active: face.style === "coucou"
-    visible: face.useCoucou && face.mode !== "hidden"
+    visible: face.useCoucou && face.mode !== "hidden" && !face.out
     width: 38; height: 32
     x: face.hint ? 0 : (face.width - width) / 2
     anchors.verticalCenter: parent.verticalCenter
@@ -41,7 +43,7 @@ FaceBase {
   Pip {
     id: pip
     size: 21
-    visible: face.usePip && face.mode !== "hidden"
+    visible: face.usePip && face.mode !== "hidden" && !face.out
     x: face.hint ? 4 : (face.width - width) / 2
     anchors.verticalCenter: parent.verticalCenter
     mood: face.s ? face.s.companionMood : "offline"
@@ -62,6 +64,15 @@ FaceBase {
     sleeping: face.mode === "hidden"
     visible: !face.usePip && !face.useCoucou && face.mode !== "hidden"
     Connections { target: face.s; function onReaction(kind) { orb.react(kind) } }
+  }
+
+  // The empty nest while the companion is out.
+  Rectangle {
+    visible: face.out && (face.useCoucou || face.usePip) && face.mode !== "hidden"
+    width: 14; height: 4; radius: 2
+    x: (face.useCoucou ? coucou.x + coucou.width / 2 : pip.x + pip.width / 2) - width / 2
+    anchors.verticalCenter: parent.verticalCenter
+    color: Tokens.alpha(Tokens.text, 0.25)
   }
 
   PrivacyDots {

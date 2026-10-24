@@ -44,14 +44,12 @@ FaceBase {
                        sweepAngle: 360 * face.fraction }
       }
     }
-    JarvisOrb {
+    Avatar {
       id: orb
+      s: face.s
       anchors.centerIn: parent
       size: 72
       status: face.orbStatus
-      level: face.s ? face.s.level : 0
-      bands: face.s ? face.s.bands : []
-      Connections { target: face.s; function onReaction(kind) { orb.react(kind) } }
     }
   }
 

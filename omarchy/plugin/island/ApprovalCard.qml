@@ -65,8 +65,9 @@ Item {
     Row {
       width: parent.width
       spacing: 10
-      JarvisOrb {
+      Avatar {
         id: orb
+        s: face.s
         size: 36
         status: "approval"
         anchors.verticalCenter: parent.verticalCenter

@@ -27,6 +27,10 @@
 var MODES = ["hidden", "mini", "peek", "expanded", "conversation"]
 
 var URGENT = { approval: true, call: true, question: true }
+// Results the companion beside the pointer shows itself (Buddy.qml, ui.companion_follow): pictures and
+// small visuals. The island stays a pill for them instead of opening the same card a second time.
+var BUDDY_KINDS = { image: true, weather: true, chart: true, media: true, gauges: true, radar: true, globe: true,
+                    comparison: true, metrics: true, scorecard: true, progress: true }
 // Background activities that put a live value (a clock) in the mini pill.
 var LIVE = { media: true, agent: true, recording: true, timer: true, focus: true }
 var MESSAGE_S = 9          // a chat message stays in view this long
@@ -110,7 +114,7 @@ function mode(s, act) {
   switch (act.kind) {
   case "voice": natural = "peek"; break
   case "task": natural = "peek"; break
-  case "result": natural = quiet ? "mini" : "expanded"; break
+  case "result": natural = quiet || (s.buddy && act.item && BUDDY_KINDS[act.item.kind]) ? "mini" : "expanded"; break
   case "notice": natural = quiet ? "mini" : "expanded"; break
   case "agent": natural = quiet ? "mini" : "peek"; break
   case "message": natural = quiet ? "mini" : "peek"; break
@@ -153,4 +157,5 @@ function collapseAfter(m, act) {
 }
 
 if (typeof module !== "undefined") module.exports = { activity: activity, mode: mode, size: size, rank: rank,
-                                                      collapseAfter: collapseAfter, remaining: remaining, MODES: MODES }
+                                                      collapseAfter: collapseAfter, remaining: remaining, MODES: MODES,
+                                                      BUDDY_KINDS: BUDDY_KINDS }

@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import "../ui"
 import "../ui/commands.js" as Commands
+import "../ui/markdown.js" as Md
 import ".."
 
 // The conversation view (Super+Alt+A, or ⌨ on any card): the transcript with tasks inline, the
@@ -47,15 +48,13 @@ FaceBase {
     id: header
     anchors { left: parent.left; right: parent.right; top: parent.top; margins: 14 }
     height: 44
-    JarvisOrb {
+    Avatar {
       id: orb
       size: 44
       anchors.verticalCenter: parent.verticalCenter
+      s: face.s
       status: face.orbStatus
-      level: face.s ? face.s.level : 0
-      bands: face.s ? face.s.bands : []
-      vad: !!face.s && face.s.vad
-      Connections { target: face.s; function onReaction(kind) { orb.react(kind) } }
+      MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: orb.poke() }
     }
     Column {
       anchors { left: orb.right; leftMargin: 10; right: tools.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
@@ -138,15 +137,22 @@ FaceBase {
         Text {
           id: body
           x: 11; y: 7
+          // Jarvis's replies are Markdown (headings, lists, citations): rendered, escaped (ui/markdown.js).
+          readonly property bool rich: !row.mine && row.kind !== "task" && Md.looksRich(row.text)
           width: Math.min(implicitWidth, row.width * 0.86 - 22)
-          text: (row.kind === "task" ? (row.taskState === "succeeded" ? "✓ " : row.taskState === "failed" ? "✕ "
+          text: rich ? Md.toHtml(row.text, { faint: Tokens.textFaint, code: Tokens.textDim })
+              : (row.kind === "task" ? (row.taskState === "succeeded" ? "✓ " : row.taskState === "failed" ? "✕ "
                                         : row.taskState === "cancelled" ? "⊘ " : "◌ ") : "") + row.text
-          textFormat: Text.PlainText
+          textFormat: rich ? Text.StyledText : Text.PlainText
           wrapMode: Text.Wrap
+          lineHeight: rich ? 1.15 : 1
+          linkColor: Tokens.cyan
+          onLinkActivated: function(link) { Qt.openUrlExternally(link) }
           color: row.done ? Tokens.text : Tokens.textDim
           font.family: Tokens.fontFamily
           font.pixelSize: Tokens.fontBody
           font.italic: !row.done
+          HoverHandler { enabled: body.rich; cursorShape: body.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }
         }
         Text {
           id: stepsText

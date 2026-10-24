@@ -1,6 +1,7 @@
 import QtQuick
 import "../ui"
 import "../ui/commands.js" as Commands
+import "../ui/markdown.js" as Md
 
 // The island opened with nothing urgent going on: Jarvis's face, a few things to ask with one click,
 // and the doors to the rest (talk, type, dictate, the workspace, the panel). Coding agents and music,
@@ -20,13 +21,12 @@ FaceBase {
     Row {
       width: parent.width
       spacing: 14
-      JarvisOrb {
+      Avatar {
         id: orb
         size: 64
+        s: face.s
         status: face.orbStatus
-        level: face.s ? face.s.level : 0
-        bands: face.s ? face.s.bands : []
-        Connections { target: face.s; function onReaction(kind) { orb.react(kind) } }
+        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: orb.poke() }
       }
       Column {
         width: parent.width - orb.width - 14
@@ -42,7 +42,7 @@ FaceBase {
         Text {
           width: parent.width
           visible: text !== ""
-          text: face.s && face.s.connected ? face.s.lastReply : ""
+          text: face.s && face.s.connected ? Md.plain(face.s.lastReply) : ""
           textFormat: Text.PlainText
           wrapMode: Text.Wrap
           maximumLineCount: 2

@@ -153,3 +153,11 @@ test("a research card shows while its task runs and during a spoken question", (
   assert.deepStrictEqual(show(st({ running: { id: "t1" }, card: { kind: "weather", born: NOW, ttl: 15 } }))[0], "task")
   assert.deepStrictEqual(show(st({ conversing: true, card: { kind: "weather", born: NOW, ttl: 15 } }))[0], "voice")
 })
+
+test("with the pointer companion on, pictures and visuals go to it; the island stays a pill", () => {
+  const fresh = (kind) => ({ kind, born: NOW - 2000, ttl: 15 })
+  assert.deepStrictEqual(show(st({ buddy: true, card: fresh("image") })), ["result", "mini"])
+  assert.deepStrictEqual(show(st({ buddy: true, card: fresh("weather") })), ["result", "mini"])
+  assert.deepStrictEqual(show(st({ buddy: true, card: fresh("research") })), ["result", "expanded"])
+  assert.deepStrictEqual(show(st({ card: fresh("image") })), ["result", "expanded"])
+})

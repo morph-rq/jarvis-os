@@ -9,14 +9,13 @@ FaceBase {
 
   readonly property var c: item || ({})
 
-  JarvisOrb {
+  Avatar {
     id: orb
+    s: face.s
     x: 16
     anchors.verticalCenter: parent.verticalCenter
     size: 64
     status: face.c.state === "connected" ? (face.s ? face.s.status : "speaking") : "connecting"
-    level: face.s ? face.s.level : 0
-    bands: face.s ? face.s.bands : []
   }
   Column {
     anchors { left: orb.right; leftMargin: 14; right: hang.left; rightMargin: 12; verticalCenter: parent.verticalCenter }

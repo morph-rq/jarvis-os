@@ -20,14 +20,11 @@ FaceBase {
     Row {
       width: parent.width
       spacing: 14
-      JarvisOrb {
+      Avatar {
         id: orb
+        s: face.s
         size: 92
         status: face.orbStatus
-        level: face.s ? face.s.level : 0
-        bands: face.s ? face.s.bands : []
-        vad: !!face.s && face.s.vad
-        Connections { target: face.s; function onReaction(kind) { orb.react(kind) } }
       }
       Column {
         width: parent.width - orb.width - 14

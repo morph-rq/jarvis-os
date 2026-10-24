@@ -425,6 +425,8 @@ Item {
               Chip { required property var modelData; text: modelData[1]; active: s && s.settings["ui.companion_style"] === modelData[0]
                      onClicked: s.setSetting("ui.companion_style", modelData[0]) }
             }
+            Chip { text: t("companion_follow", "Follows the pointer"); active: !!(s && s.settings["ui.companion_follow"])
+                   onClicked: s.setSetting("ui.companion_follow", !s.settings["ui.companion_follow"]) }
           }
           SettingRow {
             label: t("island")

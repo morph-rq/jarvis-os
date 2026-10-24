@@ -17,7 +17,7 @@ FaceBase {
     Row {
       width: parent.width
       spacing: 10
-      JarvisOrb { id: orb; size: 30; status: face.orbStatus; anchors.verticalCenter: parent.verticalCenter }
+      Avatar { id: orb; s: face.s; size: 30; status: face.orbStatus; anchors.verticalCenter: parent.verticalCenter }
       Text {
         width: parent.width - orb.width - close.width - 20
         anchors.verticalCenter: parent.verticalCenter

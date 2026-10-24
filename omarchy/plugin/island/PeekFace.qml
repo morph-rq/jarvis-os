@@ -43,16 +43,13 @@ FaceBase {
     return s.status === "idle" ? t("hint_short", "Super+Alt+A · “Hey Jarvis”") : ""
   }
 
-  JarvisOrb {
+  Avatar {
     id: orb
+    s: face.s
     size: 34
     x: 6
     anchors.verticalCenter: parent.verticalCenter
     status: face.orbStatus
-    level: face.s ? face.s.level : 0
-    bands: face.s ? face.s.bands : []
-    vad: !!face.s && face.s.vad
-    Connections { target: face.s; function onReaction(kind) { orb.react(kind) } }
   }
   PrivacyDots { s: face.s; x: orb.x + orb.width - 5; y: orb.y + 3 }
 

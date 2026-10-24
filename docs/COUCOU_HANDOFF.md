@@ -43,6 +43,8 @@ The timings follow Coucou's MIT engine; no Coucou code or artwork is copied. `Pi
 
 Coucou's actual Mochi remains an **opt-in** for personal use only. Run `JARVIS_COUCOU=1 ./install-jarvis.sh` or `bash omarchy/coucou/setup.sh`, then `config set ui.companion_style coucou`. It is never committed.
 
+The chosen character is Jarvis's face everywhere the island shows one (`ui/Avatar.qml`: the resting pill, peek, home, conversation, tasks, approvals, results, notices, calls). With `ui.companion_follow = true` it also flies beside the mouse pointer (`Buddy.qml`, a small layer window that never takes the keyboard). It uses `companion.js` `followPoint`/`flyStep`, and the pointer comes from `hyprctl cursorpos` about 8 times a second. It comes over when the pointer goes elsewhere and waits while the pointer approaches, so it can be clicked. A bubble says what Jarvis is doing and the start of its answer. Hover for Talk / What's on my screen / Type. During a guide it hovers beside the control. It fades out while the island is open.
+
 ## Architecture
 
 ```

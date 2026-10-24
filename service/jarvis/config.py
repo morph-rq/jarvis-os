@@ -149,6 +149,9 @@ DEFAULTS: dict = {
         "hud": True,
         # Bar/floating companion look: "jarvis" (the GPU orb with eyes), "pebble" (eyes) or "orb" (rings and glow).
         "companion_style": "pip",
+        # The small companion flies beside the mouse pointer (Caelestia/Omarchy shell): click it to talk
+        # in the island, right click to speak, middle click to ask about the screen.
+        "companion_follow": False,
         # The Jarvis Island: a pill at the top centre that grows into captions, approvals, results,
         # agent activity and the conversation view.
         "island": True,
@@ -429,6 +432,7 @@ SCHEMA: dict[str, tuple] = {
     "ui.companion_bottom": (int, (0, 8000)),
     "ui.hud": (bool, None),
     "ui.companion_style": (str, ("pip", "coucou", "jarvis", "pebble", "orb")),
+    "ui.companion_follow": (bool, None),
     "ui.island": (bool, None),
     "ui.island_autohide": (bool, None),
     "ui.island_screen": (str, ("focused", "primary")),

@@ -31,6 +31,11 @@ JarvisClient {
     service: root
   }
 
+  // The small companion beside the pointer (ui.companion_follow).
+  Buddy {
+    service: root
+  }
+
   // Command bar (Super+Alt+A, when the island is off): orb, live spectrum, ask anything, quick actions.
   CommandBar {
     service: root

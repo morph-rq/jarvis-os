@@ -17,12 +17,12 @@ FaceBase {
     Row {
       width: parent.width
       spacing: 10
-      JarvisOrb {
+      Avatar {
         id: orb
+        s: face.s
         size: 30
         status: face.orbStatus
         anchors.verticalCenter: parent.verticalCenter
-        Connections { target: face.s; function onReaction(kind) { orb.react(kind) } }
       }
       Text {
         anchors.verticalCenter: parent.verticalCenter
