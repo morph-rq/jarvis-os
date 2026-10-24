@@ -14,10 +14,10 @@ import time
 from collections import deque
 from pathlib import Path
 
-from jarvis import __version__, config as configmod, i18n, protocol, router
+from jarvis import __version__, config as configmod, i18n, protocol, router, speech
 from jarvis.agents import AgentMonitor
 from jarvis.audio import devices as audio_devices
-from jarvis.brain import Brain
+from jarvis.brain import Brain, system_prompt
 from jarvis.capabilities import Hub
 from jarvis.memory import Memory
 from jarvis.platforms import detect
@@ -100,6 +100,7 @@ class Jarvis:
         self.imports = Imports(self)
         self.brain.selector = self._tools_for
         self.voice = None
+        self._spoken: dict[str, str] = {}   # task id -> the reply as it should be voiced (audio tags kept)
         # Results that finished after the conversation that asked for them had ended; the next Live
         # session is told about them, the panel shows them at once.
         self.notes: deque[str] = deque(maxlen=8)
@@ -380,7 +381,15 @@ class Jarvis:
             await task.handle
         except asyncio.CancelledError:
             return ""
-        return task.result or (i18n.say("problem", self.lang()) if task.state.value == "failed" else "")
+        finally:
+            spoken = self._spoken.pop(task.id, None)
+        return spoken or task.result or (i18n.say("problem", self.lang()) if task.state.value == "failed" else "")
+
+    def _expressive_voice(self) -> bool:
+        """Spoken replies go to Eleven v4 (local engine), which performs audio tags."""
+        from jarvis.engine.eleven import choice
+        return (self.config["voice"]["engine"] == "local" and self.config["elevenlabs"]["expressive"]
+                and choice(self.config, self.config.secret("ELEVENLABS_API_KEY")) == "elevenlabs")
 
     async def _work(self, task: Task, text: str, route: router.Route | None, lang: str) -> str:
         started = time.perf_counter()
@@ -394,15 +403,22 @@ class Jarvis:
             self.tasks.step(task, "route", f"model → {self.brain.provider}")
             history = self.memory.recent_turns(self.config["memory"]["history_turns"])[:-1]
             facts = self.memory.recall(text)
+            system = None
+            if task.source == "voice":   # spoken: talk like a person, keep code and payloads on screen
+                system = (system_prompt(self.brain.platform_name, facts)
+                          + speech.voice_style(self._expressive_voice()))
             try:
                 reply = await asyncio.wait_for(
-                    self.brain.respond(text, history, facts, lambda n, a: self.run_tool(task, n, a)),
+                    self.brain.respond(text, history, facts, lambda n, a: self.run_tool(task, n, a), system=system),
                     self.config["brain"]["timeout_s"] * 2)
             except RuntimeError as exc:
                 if "all model providers failed" not in str(exc):
                     raise
                 reply = i18n.say("no_model", lang)
                 self.tasks.step(task, "error", str(exc)[:300], ok=False)
+        if task.source == "voice":
+            self._spoken[task.id] = reply
+        reply = speech.visible(reply)   # audio tags are for the voice, not the panel or memory
         self.tasks.step(task, "reply", reply, ms=int((time.perf_counter() - started) * 1000))
         self.memory.add_turn("assistant", reply)
         self.bus.publish("reply", text=reply, task_id=task.id)

@@ -48,7 +48,7 @@ EVENTS: dict[str, tuple[dict, str]] = {
                           "An approval was answered, timed out, was withdrawn or was never shown."),
     "dictation": ({"state": str}, "Dictation: recording, transcribing, inserted, cancelled, error…"),
     "pipeline": ({"engine": str, "state": str}, "A Pipecat conversation pipeline: connecting, connected, "
-                 "reconnecting, fallback, error, closed."),
+                 "reconnecting, fallback, error, closed; tts_fallback / tts_restored (tts: the voice now speaking)."),
     "tool_call": ({"state": str}, "A model function call started / finished inside a conversation."),
     "live": ({"state": str}, "Gemini Live connection: connected (model, connect_ms) or unavailable (error)."),
     "screen": ({"state": str}, "Screen sharing into a Live conversation: sharing, frame, stopped."),

@@ -127,6 +127,9 @@ All 28 registry tools are offered to Gemini with generated schemas (`test_every_
 | `search_files`, `open_path`, `open_project`, `focus_window`, `window_state`, `set_brightness`, `media`, `lock_screen`, `remember`, `recall`, `forget` | as before | generic path MOCK; tool behaviour VERIFIED VM earlier via router/text |
 | `active_window`, `list_workspaces`, `system_status`, `file_info`, `recent_files`, `omarchy_action`, `list_tasks` | new | Linux implementations exercised in the VM (`vm_new_tools.json`); not yet called by Gemini in a recorded run |
 
+The local engine's voice (Eleven v4 Turbo with Piper behind it) and the spoken/visual channel split:
+[VOICE.md](VOICE.md).
+
 ## Measured (Pipecat runtime)
 
 | | Windows host, real Gemini (scripted mic) | Omarchy VM, real Gemini + PipeWire |

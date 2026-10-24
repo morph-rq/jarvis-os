@@ -1,4 +1,4 @@
-"""Russian, English and Portuguese: spoken phrases, assistant instructions and UI labels.
+"""Russian, English, French and Portuguese: spoken phrases, assistant instructions and UI labels.
 
 Portuguese phrasing follows Hey Jarvis's jarvis_i18n.py (MIT), which shipped pt-BR and en.
 """
@@ -9,16 +9,24 @@ import locale
 import os
 import re
 
-LANGS = ("ru", "en", "pt")          # spoken and written replies
+LANGS = ("ru", "en", "fr", "pt")    # spoken and written replies
 UI_LANGS = ("ru", "en", "fr", "pt")   # the interface (French: labels, setup and accounts; replies follow the user)
 _CYR = re.compile(r"[а-яё]", re.I)
-_PT = re.compile(r"[ãõçáéíóúâêô]|\b(você|voce|não|nao|abra|abrir|obrigad[oa]|pasta|arquivo)\b", re.I)
+_PT_ONLY = re.compile(r"[ãõ]|\b(você|voce|não|nao|abra|abrir|obrigad[oa]|pasta|arquivo|isso|tudo)\b", re.I)
+_FR = re.compile(r"[èàùœëïîûÿ]|\b(je|j'|tu|vous|nous|est|c'est|ça|merci|bonjour|bonsoir|salut|ouvre|ouvrir|"
+                 r"s'il|qu'est|quoi|pourquoi|comment|avec|pour|dans|mon|ma|mes|le|la|les|une|des|du|oui|non|pas)\b", re.I)
+_PT = re.compile(r"[ãõçáéíóúâêô]", re.I)
 
 
 def detect(text: str, default: str = "en") -> str:
     """Language of one utterance. Mixed Russian/English counts as Russian (filenames stay as typed)."""
     if _CYR.search(text):
         return "ru"
+    if _PT_ONLY.search(text):
+        return "pt"
+    strong = re.search(r"[èàùœëïîûÿ]|\b(je|j'|vous|nous|c'est|ça|merci|bonjour|bonsoir|s'il|qu'est|est-ce)\b", text, re.I)
+    if strong or len({w.lower() for w in _FR.findall(text)}) >= 2:
+        return "fr"
     if _PT.search(text):
         return "pt"
     if re.search(r"[a-z]{2,}", text, re.I):
@@ -34,7 +42,7 @@ def system_language() -> str:
     else:
         value = (locale.getlocale()[0] or "")
     value = value.lower()
-    return "ru" if value.startswith("ru") else "pt" if value.startswith("pt") else "en"
+    return "ru" if value.startswith("ru") else "pt" if value.startswith("pt") else "fr" if value.startswith("fr") else "en"
 
 
 def resolve(setting: str) -> str:
@@ -52,18 +60,18 @@ def ui_language(setting: str, fallback: str) -> str:
 
 
 # Whisper language codes and Piper voice setting per language.
-WHISPER = {"ru": "ru", "en": "en", "pt": "pt"}
+WHISPER = {"ru": "ru", "en": "en", "fr": "fr", "pt": "pt"}
 
 PHRASES = {
-    "listening": {"ru": "Слушаю.", "en": "Yes?", "pt": "Pois não?"},
-    "cancelled": {"ru": "Отменено.", "en": "Cancelled.", "pt": "Cancelado."},
-    "stopped": {"ru": "Хорошо, молчу.", "en": "Okay.", "pt": "Tudo bem."},
-    "goodbye": {"ru": "Хорошо. Если что, я рядом.", "en": "All right, I'm here if you need me.", "pt": "Certo, estou por aqui."},
-    "problem": {"ru": "Что-то пошло не так.", "en": "Something went wrong.", "pt": "Algo deu errado."},
-    "approval": {"ru": "Нужно ваше подтверждение: {summary}. Скажите «да» или «нет».",
+    "listening": {"fr": "Oui ?", "ru": "Слушаю.", "en": "Yes?", "pt": "Pois não?"},
+    "cancelled": {"fr": "Annulé.", "ru": "Отменено.", "en": "Cancelled.", "pt": "Cancelado."},
+    "stopped": {"fr": "D'accord.", "ru": "Хорошо, молчу.", "en": "Okay.", "pt": "Tudo bem."},
+    "goodbye": {"fr": "D'accord, je suis là si besoin.", "ru": "Хорошо. Если что, я рядом.", "en": "All right, I'm here if you need me.", "pt": "Certo, estou por aqui."},
+    "problem": {"fr": "Quelque chose s'est mal passé.", "ru": "Что-то пошло не так.", "en": "Something went wrong.", "pt": "Algo deu errado."},
+    "approval": {"fr": "J'ai besoin de votre accord : {summary}. Dites oui ou non.", "ru": "Нужно ваше подтверждение: {summary}. Скажите «да» или «нет».",
                  "en": "I need your approval: {summary}. Say yes or no.",
                  "pt": "Preciso da sua confirmação: {summary}. Diga sim ou não."},
-    "denied": {"ru": "Не выполняю.", "en": "Not doing that.", "pt": "Não vou fazer isso."},
+    "denied": {"fr": "Je ne le fais pas.", "ru": "Не выполняю.", "en": "Not doing that.", "pt": "Não vou fazer isso."},
     "which_approval": {"ru": "Ждут подтверждения несколько действий: {items}. Скажите, например, «да, первое».",
                        "en": "Several actions are waiting: {items}. Say, for example, “yes, the first”.",
                        "pt": "Várias ações aguardam: {items}. Diga, por exemplo, “sim, a primeira”."},
@@ -76,7 +84,7 @@ PHRASES = {
     "no_model": {"ru": "Без подключения к модели я умею только команды компьютера.",
                  "en": "Without a model I can only run computer commands.",
                  "pt": "Sem um modelo, só consigo executar comandos do computador."},
-    "didnt_hear": {"ru": "Не расслышал.", "en": "I didn't catch that.", "pt": "Não entendi."},
+    "didnt_hear": {"fr": "Je n'ai pas compris.", "ru": "Не расслышал.", "en": "I didn't catch that.", "pt": "Não entendi."},
     "nothing_to_continue": {"ru": "Нет незавершённой задачи.", "en": "There is no unfinished task.",
                             "pt": "Não há tarefa pendente."},
     "dictation_pasted": {"ru": "Вставлено.", "en": "Inserted.", "pt": "Inserido."},
@@ -103,6 +111,10 @@ VOICE_SYSTEM = {
           "they switch. Keep file names, app names and technical terms exactly as spoken when calling tools. Act through the "
           "tools and say in a few words what you did. If the user interrupts, stop and listen. Only call analyze_screen when "
           "asked about the screen. Never claim an action succeeded unless the tool result says so.",
+    "fr": "Tu es Jarvis, un assistant vocal calme, chaleureux et vif d'esprit sur le bureau Omarchy Linux de l'utilisateur. "
+          "Parle naturellement et brièvement, comme une personne, dans la langue de l'utilisateur ; change de langue avec lui. "
+          "Agis avec les outils et dis en quelques mots ce que tu as fait. Si l'utilisateur t'interrompt, arrête-toi et écoute. "
+          "N'affirme jamais qu'une action a réussi si le résultat de l'outil ne le confirme pas.",
     "pt": "Você é o Jarvis, um assistente de voz calmo e simpático no Omarchy Linux do usuário. Fale de forma natural e breve, "
           "no idioma do usuário. Use as ferramentas para agir e diga em poucas palavras o que fez. Se o usuário interromper, "
           "pare e escute. Nunca diga que uma ação deu certo sem o resultado da ferramenta confirmar.",

@@ -67,6 +67,19 @@ DEFAULTS: dict = {
         "first_speech_wait_seconds": 6.0,
         "max_utterance_seconds": 45.0,
         "chimes": True,
+        # The local engine's speech: "elevenlabs" (Eleven v4 Turbo, streamed; Piper takes over if it fails),
+        # "piper" (offline), or "auto" (ElevenLabs when ELEVENLABS_API_KEY is set, else Piper).
+        "tts": "auto",
+    },
+    "elevenlabs": {
+        # Text-to-Dialogue WebSocket model: eleven_v4_turbo is the realtime one (eleven_v4 is slower).
+        "model": "eleven_v4_turbo",
+        # A premade voice ("George": warm, calm, speaks Russian, English and French well).
+        "voice_id": "JBFqnCBsd6RMkjVDRZzb",
+        # The only voice setting Text-to-Dialogue reads: 0 most expressive, 0.5 natural, 1 steady but deaf to tags.
+        "stability": 0.5,
+        # Let the model add sparse audio tags ([laughs], [sighs], [whispers]…) to spoken replies.
+        "expressive": True,
     },
     "wake": {
         "enabled": True,
@@ -385,6 +398,11 @@ SCHEMA: dict[str, tuple] = {
     "voice.end_silence_seconds": (float, (0.4, 5)),
     "voice.first_speech_wait_seconds": (float, (2, 30)),
     "voice.chimes": (bool, None),
+    "voice.tts": (str, ("auto", "elevenlabs", "piper")),
+    "elevenlabs.model": (str, ("eleven_v4_turbo", "eleven_v4", "eleven_v3")),
+    "elevenlabs.voice_id": (str, None),
+    "elevenlabs.stability": (float, (0.0, 1.0)),
+    "elevenlabs.expressive": (bool, None),
     "wake.enabled": (bool, None),
     "wake.threshold": (float, (0.1, 0.95)),
     "local.whisper_model": (str, ("auto", "tiny", "base", "small", "medium", "large-v3", "large-v3-turbo")),
@@ -482,7 +500,9 @@ SECRET_NAMES = ("GEMINI_API_KEY", "ANTHROPIC_API_KEY", "HOME_ASSISTANT_TOKEN", "
                 "SEARXNG_SECRET", "OPENAI_COMPATIBLE_API_KEY", "TAVILY_API_KEY", "BRAVE_SEARCH_API_KEY",
                 # Accounts (jarvis/accounts): Telegram's my.telegram.org app for a personal account, and the
                 # passphrase for scheduled encrypted backups (keyring only).
-                "TELEGRAM_API_ID", "TELEGRAM_API_HASH", "BACKUP_PASSPHRASE")
+                "TELEGRAM_API_ID", "TELEGRAM_API_HASH", "BACKUP_PASSPHRASE",
+                # Voice (jarvis/engine/eleven.py): ElevenLabs speech for the local engine; needs only text-to-speech access.
+                "ELEVENLABS_API_KEY")
 
 
 def _deep_merge(base: dict, override: dict) -> dict:

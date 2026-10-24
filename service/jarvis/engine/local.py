@@ -1,7 +1,9 @@
 """The offline conversation as a Pipecat pipeline, built from the models Jarvis already loads.
 
     JarvisInput ─▶ LocalWhisperSTT ─▶ user aggregator (Silero VAD + Smart Turn v3) ─▶ RouterBrain
-               ─▶ LocalPiperTTS ─▶ JarvisOutput ─▶ assistant aggregator
+               ─▶ TTS ─▶ JarvisOutput ─▶ assistant aggregator
+
+  TTS is Eleven v4 Turbo with Piper behind it (engine/eleven.py, voice.tts = auto/elevenlabs), or Piper alone.
 
 - Turn detection is Pipecat's: Silero VAD (model bundled with Pipecat) finds speech, and the
   bundled Smart Turn v3 model decides whether a pause ends the utterance, so a thinking pause
@@ -12,6 +14,8 @@
 - RouterBrain hands each finished utterance to `Jarvis.ask_and_wait`: the deterministic router
   first, the Gemini/Claude brain only when the router has no answer and a provider is reachable.
   With no network the router still runs every desktop command.
+- Only `jarvis.speech.for_speech(reply)` is spoken: code, commands, JSON, logs and paths stay on screen.
+  An answer that takes longer than ACK_AFTER_S gets a short spoken acknowledgement while the work goes on.
 """
 
 from __future__ import annotations
@@ -33,12 +37,15 @@ from pipecat.services.stt_service import SegmentedSTTService
 from pipecat.services.tts_service import TTSService
 from pipecat.utils.time import time_now_iso8601
 
-from jarvis import i18n, router
+from jarvis import i18n, router, speech
 from jarvis.audio import MIC_RATE
+from jarvis.engine import eleven
 from jarvis.engine.session import EngineSession
 from jarvis.engine.transport import JarvisTransport
 
 log = logging.getLogger("jarvis.engine")
+
+ACK_AFTER_S = 1.5   # the router answers well within this; the model path, tools and agents often don't
 
 
 class LocalWhisperSTT(SegmentedSTTService):
@@ -155,9 +162,11 @@ class RouterBrain(FrameProcessor):
             return
         s.thinking += 1
         s.voice._publish("thinking")
+        ack = self.create_task(self._acknowledge(lang))
         try:
             reply = await s.j.ask_and_wait(text, source="voice")
         finally:
+            await self.cancel_task(ack)
             s.thinking -= 1
             s.activity()
         if reply:
@@ -165,10 +174,20 @@ class RouterBrain(FrameProcessor):
         else:
             s.voice._publish("listening")
 
+    async def _acknowledge(self, lang: str) -> None:
+        """Let the user know they were heard when the answer needs a while (tools, agents, the model)."""
+        await asyncio.sleep(ACK_AFTER_S)
+        if not self.s.bot_speaking:
+            await self.speak(self.s.acks.pick(lang))
+
     async def speak(self, text: str) -> None:
         """LLM-shaped output, so the TTS, interruptions and the assistant aggregator treat it as a reply."""
+        spoken = self.s.spoken(text)
+        if not spoken:
+            return
+        self.s.unspoken = spoken
         await self.push_frame(LLMFullResponseStartFrame())
-        await self.push_frame(LLMTextFrame(text[:1200]))
+        await self.push_frame(LLMTextFrame(spoken))
         await self.push_frame(LLMFullResponseEndFrame())
 
 
@@ -183,6 +202,21 @@ class LocalSession(EngineSession):
         self.stt_ms: int | None = None
         self.speech_started_at = 0.0
         self.turn_open = False     # the user is mid-utterance (Smart Turn may wait out a pause)
+        self.tts = "piper"         # what is speaking: "elevenlabs", or "piper" (chosen, or after a failover)
+        self.retry_tts: asyncio.TimerHandle | None = None
+        self.tags = speech.TagBudget()
+        self.acks = speech.Acks()
+        self.unspoken = ""         # the last reply handed to the TTS until its audio starts (re-said after a failover)
+
+    def set_bot_speaking(self, speaking: bool) -> None:
+        if speaking:
+            self.unspoken = ""
+        super().set_bot_speaking(speaking)
+
+    def spoken(self, text: str) -> str:
+        """What to say for `text`: the speech-safe part, with audio tags only where they are performed."""
+        expressive = self.tts == "elevenlabs" and self.cfg["elevenlabs"]["expressive"]
+        return speech.for_speech(text, self.lang, tags=self.tags if expressive else None)
 
     def phase(self) -> str:
         if self.transcribing:
@@ -192,7 +226,7 @@ class LocalSession(EngineSession):
         return super().phase()
 
     def transcript_extra(self) -> dict:
-        return {"engine": "whisper", "stt_ms": self.stt_ms}
+        return {"engine": "whisper", "stt_ms": self.stt_ms, "tts": self.tts}
 
     async def start(self) -> bool:
         v = self.voice
@@ -204,7 +238,9 @@ class LocalSession(EngineSession):
         from pipecat.turns.user_stop.speech_timeout_user_turn_stop_strategy import SpeechTimeoutUserTurnStopStrategy
         from pipecat.turns.user_turn_strategies import UserTurnStrategies
         loc = self.cfg["local"]
-        self.model = "whisper+piper"
+        key = self.cfg.secret("ELEVENLABS_API_KEY")
+        self.tts = eleven.choice(self.cfg, key)
+        self.model = f"whisper+{self.tts}"
         self.pipeline_event("connecting")
         started = time.monotonic()
         self.transport = JarvisTransport(v.speaker, owner="piper", gate=v.gate,
@@ -234,8 +270,12 @@ class LocalSession(EngineSession):
                                            if self.speech_started_at else None)
 
         self.brain = RouterBrain(self)
+        tts = LocalPiperTTS(v.piper, lambda: self.lang,
+                            text_filters=[eleven.SpeechTextFilter(lambda: self.lang, keep_tags=False)])
+        if self.tts == "elevenlabs":
+            tts, _ = eleven.build(self, tts, key)
         pipeline = Pipeline([self.transport.input(), LocalWhisperSTT(self), user, self.brain,
-                             LocalPiperTTS(v.piper, lambda: self.lang), self.transport.output(), assistant])
+                             tts, self.transport.output(), assistant])
         await self._run(pipeline)
         # Load Whisper now (a few seconds, once per daemon), not when the user's first words arrive.
         asyncio.get_running_loop().run_in_executor(None, v._whisper)
@@ -246,5 +286,12 @@ class LocalSession(EngineSession):
 
     async def say(self, text: str) -> None:
         """Speak outside a turn (offline notice, approval prompt, a late result)."""
-        if self.worker is not None and not self.closed.is_set() and text:
-            await self.worker.queue_frames([TTSSpeakFrame(text[:600])])
+        spoken = self.spoken(text)
+        if self.worker is not None and not self.closed.is_set() and spoken:
+            self.unspoken = spoken
+            await self.worker.queue_frames([TTSSpeakFrame(spoken)])
+
+    async def close(self) -> None:
+        if self.retry_tts is not None:
+            self.retry_tts.cancel()
+        await super().close()

@@ -27,7 +27,7 @@ import time
 from collections import deque
 from enum import Enum
 
-from jarvis import config as configmod, dictation, i18n, router
+from jarvis import config as configmod, dictation, i18n, router, speech
 from jarvis.audio import FRAME_BYTES, MIC_RATE, SPEAKER_RATE, Mic, Speaker, meter, spectrum
 from jarvis.live import LiveAdapter
 
@@ -702,10 +702,11 @@ class VoiceController:
 
     async def _say(self, text: str, lang: str, barge: bool = False) -> list[bytes] | None:
         """Speak with Piper (local path only). With barge=True, returns the frames of the user's interruption."""
+        text = speech.for_speech(text, lang)   # code, payloads and logs stay on screen
         if not self.piper or not text:
             return None
         self.engine_in_use = self.engine_in_use or "local"
-        pcm, rate = await asyncio.to_thread(self.piper.synthesize, text[:600], lang)
+        pcm, rate = await asyncio.to_thread(self.piper.synthesize, text, lang)
         await self.speaker.clear()   # never on top of anything else
         self.speaker.play(pcm, rate, owner="piper")
         self._publish("speaking")

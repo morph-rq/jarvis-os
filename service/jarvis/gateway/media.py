@@ -19,6 +19,8 @@ from pathlib import Path
 
 import httpx
 
+from jarvis import speech
+
 SAFE_NAME = re.compile(r"[^\w.\- ()]+", re.U)
 
 
@@ -101,9 +103,10 @@ async def voice_reply(jarvis, text: str, lang: str, folder: Path) -> Path | None
     """An Ogg/Opus voice note of `text`, or None when Piper or ffmpeg is missing."""
     voice = getattr(jarvis, "voice", None)
     piper = getattr(voice, "piper", None) if voice is not None else None
-    if piper is None or not shutil.which("ffmpeg"):
+    text = speech.for_speech(text, lang, max_chars=1500)   # a voice note never reads out code or links
+    if piper is None or not shutil.which("ffmpeg") or not text:
         return None
-    pcm, rate = await asyncio.to_thread(piper.synthesize, text[:1500], lang)
+    pcm, rate = await asyncio.to_thread(piper.synthesize, text, lang)
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / time.strftime("reply-%Y%m%d-%H%M%S.ogg")
     await asyncio.to_thread(lambda: subprocess.run(

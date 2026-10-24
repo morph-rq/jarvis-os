@@ -6,6 +6,13 @@ engine = "live"                # "live" (Gemini Live) or "local" (Whisper + Pipe
 runtime = "pipecat"            # pipecat (both engines as Pipecat pipelines) | legacy (previous implementation)
 voice = "Charon"
 barge_in = "gated"             # gated | open (with --echo-cancel or headphones) | off
+tts = "auto"                   # local engine's speech: auto (ElevenLabs if its key is set) | elevenlabs | piper
+
+[elevenlabs]                   # docs/VOICE.md
+model = "eleven_v4_turbo"
+voice_id = "JBFqnCBsd6RMkjVDRZzb"
+stability = 0.5                # lower = more expressive, higher = steadier
+expressive = true              # sparse audio tags: [laughs], [sighs], [whispers]…
 
 [local]
 turn_detection = "smart"       # smart (Silero VAD + Smart Turn v3) | silence (fixed pause)

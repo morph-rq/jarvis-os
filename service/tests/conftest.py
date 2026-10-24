@@ -12,6 +12,18 @@ from jarvis.tools import Context, Session
 # Every event any test publishes must match the typed contract in jarvis.protocol.
 protocol.STRICT = True
 
+# Paid speech must never run from a test: the developer's ElevenLabs key in the keyring would otherwise make
+# every local-engine test speak through it (voice.tts = auto). Tests that cover ElevenLabs set the variable
+# themselves and point jarvis.engine.eleven.URL at tests/fake_elevenlabs.py.
+_keyring_lookup = configmod._keyring_lookup
+
+
+@pytest.fixture(autouse=True)
+def _no_paid_speech(monkeypatch):
+    monkeypatch.delenv("ELEVENLABS_API_KEY", raising=False)
+    monkeypatch.setattr(configmod, "_keyring_lookup",
+                        lambda name: None if name == "ELEVENLABS_API_KEY" else _keyring_lookup(name))
+
 
 class FakePlatform(Platform):
     name = "fake"
