@@ -30,13 +30,13 @@ Make the Jarvis island a living companion, driven by Coucou's MIT animation engi
 ## Pip: our own character, with the full set of Coucou-style animations (default)
 
 The user wanted every Coucou animation in the project, as our own, cuter character that is fine to publish. That is `omarchy/plugin/ui/pip-engine.js`, Jarvis's own engine and artwork, about 700 lines of plain JS:
-- **Character:** a gumdrop with a springy sprout, glossy eyes with highlights, rosy cheeks, a cat ω mouth, nub hands and a ground shadow.
+- **Character:** a clean, minimal soft mochi blob with glossy eyes (one glint), faint cheeks, nub hands and a ground shadow. It has no mouth and no sprout, at the user's request. It speaks by pulsing with the voice, chews with little squishes, and swallowed files sink into the body.
 - **States (16):** idle, listening, speaking, thinking, working, searching, browsing, reading, approval, question, error, finished, ratelimit, sleeping, dizzy, offline. Each has its own colour tint, eyes, badge and idle motion: breathing, bouncing, scanning, sweat drops or z's.
 - **Eyes (14):** pill, wide, dot, line, flat, happy, cup, closed, tired, spiral, heart, star, wink, plus blinking with occasional double blinks.
 - **Emotes:** love, surprised, proud, wink, yawn, happy, annoyed, content. Permanent moods repeat a small behaviour: hop, head shake, wink or hearts.
 - **Particles:** hearts, stars, sparks, sweat drops, z's.
 - **Badges:** dots, !, ?, dot, an update arrow, with pop-in.
-- **Motion:** the greeting hop with a hand wave; the 112 BPM dance; gulp and chew; squash; poke ×3 → dizzy, with roll and orbiting stars; the sprout on a spring; the mouth on a spring following the voice.
+- **Motion:** the greeting hop with a hand wave; the 112 BPM dance; gulp and chew; squash; poke ×3 → dizzy, with roll and orbiting stars; a jelly wobble on a spring, and a body pulse following the voice.
 - **The file swallow:** dragEnter/dragMove/dragLeave/drop, then accepted() or rejected(). The mouth is ajar while the file hovers; the file is sucked in, then a squeeze and chews, and Pip waits for the *real* result. Accepted: content eyes and sparks. Rejected: the file is spat back out.
 
 The timings follow Coucou's MIT engine; no Coucou code or artwork is copied. `Pip.qml` hosts the engine in a Canvas. It ticks at 60 fps while moving, 20 fps while only breathing, and stops when hidden. Tests: `node --test omarchy/dev/pip-engine.test.js`. These drive every state, emote and choreography through a canvas that rejects any method QML's Canvas lacks. Renders: `evidence/coucou/pip-moods.png` and `pip-actions.png`. Preview: `omarchy/dev/pip-preview.qml`.

@@ -4,8 +4,8 @@
 // No QML and no wall clock: the host calls update(dt) and draw(ctx, w, h), and the engine keeps its
 // own clock, so the same file runs in Quickshell and under Node (omarchy/dev/pip-engine.test.js).
 //
-// Pip is Jarvis's own character: a little gumdrop with a springy sprout, glossy eyes, rosy cheeks,
-// a cat mouth and nub hands. Its behaviours follow the ones Coucou made popular (states, emotes,
+// Pip is Jarvis's own character: a clean, minimal soft blob with glossy eyes, faint cheeks and nub
+// hands, and no mouth: it speaks by pulsing with the voice and swallows files into its body. Its behaviours follow the ones Coucou made popular (states, emotes,
 // particles, greeting wave, dance, gulp and chew, poke-to-dizzy, the file swallow), written anew
 // here; the timing ideas come from Coucou's MIT engine (github.com/louis-cfm/coucou, (c) 2026 Louis
 // Raillé). None of Coucou's artwork, character, name or sounds is used.
@@ -33,33 +33,33 @@ function rgba(c, a) {
 function mix(a, b, t) { return [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)] }
 
 // ── Palette ──
-var BODY_TOP = hex("#fff8f0"), BODY_BOTTOM = hex("#f6dccb"), INK = hex("#2a2233"), CHEEK = hex("#ff9eb3")
-var LEAF = hex("#7ed99a"), LEAF_DARK = hex("#46b26c"), MOUTH = hex("#5b2a3a"), TONGUE = hex("#ff7f9a")
+var BODY_TOP = hex("#fbfbfd"), BODY_BOTTOM = hex("#d9dbe3"), INK = hex("#2a2233"), CHEEK = hex("#ff9eb3")
+var MOUTH = hex("#5b2a3a"), TONGUE = hex("#ff7f9a")
 
 // ── States: colour, how much it tints the body, eyes, badge, and the idle motion of each ──
 function S(color, tint, eye, badge, extra) {
   var o = { color: hex(color), tint: tint, eye: eye, badge: badge, bounces: false, scans: false, breathes: false,
-            zz: false, sweat: false, look: null, tilt: 0, sprout: 0 }
+            zz: false, sweat: false, look: null, tilt: 0 }
   for (var k in extra) o[k] = extra[k]
   return o
 }
 var STATES = {
   idle:      S("#ffe9dc", 0, "pill", null, { breathes: true }),
-  listening: S("#5fd4ff", 0.45, "wide", null, { look: [0, -0.25], sprout: 1 }),
+  listening: S("#5fd4ff", 0.45, "wide", null, { look: [0, -0.25] }),
   speaking:  S("#8fd8ff", 0.35, "pill", null, {}),
   thinking:  S("#a98bff", 0.6, "pill", "dots", { look: [0.55, -0.6], tilt: -0.06 }),
   working:   S("#5aa8ff", 0.6, "pill", "dots", {}),
   searching: S("#7c83ff", 0.6, "pill", "dots", { scans: true }),
   browsing:  S("#4cc3ff", 0.55, "pill", "dots", { scans: true }),
   reading:   S("#b49cff", 0.55, "pill", "dots", { look: [0, 0.5] }),
-  approval:  S("#ffb53d", 0.7, "wide", "bang", { bounces: true, sprout: 1 }),
+  approval:  S("#ffb53d", 0.7, "wide", "bang", { bounces: true }),
   question:  S("#3fe0f0", 0.62, "pill", "question", { tilt: 0.17 }),
   error:     S("#ff5d6c", 0.7, "flat", "dot", {}),
   finished:  S("#3fdc9c", 0.4, "happy", "dot", {}),
   ratelimit: S("#ff9a4a", 0.6, "tired", "dot", { sweat: true }),
-  sleeping:  S("#9aa8c2", 0.3, "closed", null, { breathes: true, zz: true, sprout: -1 }),
+  sleeping:  S("#9aa8c2", 0.3, "closed", null, { breathes: true, zz: true }),
   dizzy:     S("#ff7fc4", 0.6, "spiral", null, {}),
-  offline:   S("#8a93a6", 0.4, "closed", null, { breathes: true, sprout: -1 })
+  offline:   S("#8a93a6", 0.4, "closed", null, { breathes: true })
 }
 var EMOTE_EYE = { love: "heart", surprised: "dot", proud: "star", wink: "wink", yawn: "tired", happy: "happy",
                   annoyed: "line", content: "cup" }
@@ -71,8 +71,8 @@ function danceTransform(seconds, level, R) {
            rotate: 0.1 * Math.sin(Math.PI * beat) * level, sx: 1 + 0.045 * land * level, sy: 1 - 0.06 * land * level }
 }
 
-// The swallow choreography (seconds after the drop): the mouth opens, the file is sucked in, the
-// mouth closes, a squeeze, two chews, then Pip waits for the real result (accepted / rejected).
+// The swallow choreography (seconds after the drop): the file is drawn into the body, a squeeze,
+// two chews (little squishes), then Pip waits for the real result (accepted / rejected).
 var SW = { SUCK_END: 0.3, CLOSE_END: 0.39, SQUEEZE_END: 0.65, CHEW1: 0.65, CHEW_END: 0.93, MOUTH_AJAR: 0.2,
            MOUTH_OPEN: 0.44 }
 function squeeze(t) {
@@ -98,7 +98,7 @@ function Engine(seed) {
   this.tgYaw = 0; this.tgPitch = 0; this.tgTilt = 0; this.tgSx = 1; this.tgSy = 1; this.tgEs = 1
   // inputs
   this.lookX = 0; this.lookY = 0; this.level = 0; this.speaking = false
-  // the sprout (soft part on a spring) and the mouth spring
+  // the jelly spring (soft wobble) and the mouth spring
   this.physDx = 0; this.physDy = 0; this.physVx = 0; this.physVy = 0
   this.prevYaw = 0; this.prevOy = 0; this.prevRoll = 0
   this.slotH = 0; this.slotHTarget = 0; this.slotHVel = 0; this.chewing = false
@@ -379,7 +379,7 @@ E._stepSwallow = function(dt) {
     var t = s.t
     this.slotHTarget = t < SW.SUCK_END ? SW.MOUTH_OPEN : 0
     var k = Ease.in(seg(t, 0, SW.SUCK_END))
-    s.fx = lerp(s.sx0, 0, k); s.fy = lerp(s.sy0, 0.42, k)
+    s.fx = lerp(s.sx0, 0, k); s.fy = lerp(s.sy0, 0.1, k)
     s.scale = 1 - k
     this.lookX = s.fx * 0.4; this.lookY = 0.3
     if (t > SW.SUCK_END && t <= SW.SQUEEZE_END) { var q = squeeze(t); this.sx = q[0]; this.sy = q[1] }
@@ -441,7 +441,7 @@ E.update = function(dt) {
   } else if (this.permanentEmote) {
     this.tgSy = 1 + Math.sin(t * 2.2) * 0.04; this.tgSx = 1 - Math.sin(t * 2.2) * 0.02
   } else {
-    this.tgSy = 1 + Math.sin(t * 1.6) * 0.012 + talk * 0.05; this.tgSx = 1 - talk * 0.025
+    this.tgSy = 1 + Math.sin(t * 1.6) * 0.012 + talk * 0.09; this.tgSx = 1 + talk * 0.04
   }
   if (this.permanentEmote && n > this.miniNext) this._miniBehaviour()
 
@@ -494,12 +494,12 @@ E.update = function(dt) {
   if (this.dancing) this.danceLevel = Math.min(1, this.danceLevel + dt / 0.3)
   else this.danceLevel = Math.max(0, this.danceLevel - dt / 0.5)
 
-  // the sprout lags behind turns, hops and rolls on a spring (k 60, c 9), and perks up or droops
+  // the jelly spring lags behind turns, hops and rolls (k 60, c 9)
   if (dt > 0) {
     var yawVel = (this.yaw - this.prevYaw) / dt, oyVel = (this.oy - this.prevOy) / dt
     var dRoll = this.roll - this.prevRoll, rollVel = Math.abs(dRoll) > Math.PI ? 0 : dRoll / dt
     var tDx = clamp(-yawVel * 0.35 - this.tilt * 2 + rollVel * 0.12 + (this.state === "listening" ? Math.sin(t * 7) * this.level * 0.6 : 0), -1, 1)
-    var tDy = clamp(oyVel * 0.5 - c.sprout * 0.25, -1, 1)
+    var tDy = clamp(oyVel * 0.5, -1, 1)
     this.physVx += (60 * (tDx - this.physDx) - 9 * this.physVx) * dt
     this.physVy += (60 * (tDy - this.physDy) - 9 * this.physVy) * dt
     this.physDx += this.physVx * dt
@@ -520,7 +520,7 @@ E.eye = function() { return this.eyeOverride || this.cfg.eye }
 
 // ── drawing ──
 // Draws Pip centred in a w×h box (the body radius R is 0.3 of the smaller side, leaving room for the
-// sprout, the badge and particles).
+// badge and particles).
 E.draw = function(x, W, H) {
   var R = Math.min(W, H) * 0.3
   var rx = R * 1.06, ry = R * 0.96
@@ -543,14 +543,16 @@ E.draw = function(x, W, H) {
   x.translate(cx, cy)
   x.rotate(this.tilt + this.roll)
   // squash and stretch around the feet
-  x.translate(0, ry); x.scale(this.sx, this.sy); x.translate(0, -ry)
+  // plus a soft jelly wobble from the spring (turns, hops, pokes)
+  var j = clamp(this.physDy, -1, 1) * 0.05
+  if (this.chewing) j += Math.sin(this.clock * 16) * 0.035   // chewing: little squishes
+  x.translate(0, ry); x.scale(this.sx * (1 + j), this.sy * (1 - j)); x.translate(0, -ry)
+  x.rotate(clamp(this.physDx, -1, 1) * 0.04)
 
-  this._drawSprout(x, R, ry)
   this._drawHands(x, R, rx, ry, false)
   this._drawBody(x, R, rx, ry)
   this._drawCheeks(x, R, rx)
   this._drawEyes(x, R, rx)
-  this._drawMouth(x, R)
   this._drawHands(x, R, rx, ry, true)
   if (this.state === "dizzy") this._drawDizzyStars(x, R, ry)
   x.restore()
@@ -578,9 +580,8 @@ E._bodyPath = function(x, rx, ry) {
   x.beginPath()
   for (var i = 0; i <= 64; i++) {
     var a = i / 64 * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a)
-    var px = rx * (ca >= 0 ? Math.pow(ca, 0.8) : -Math.pow(-ca, 0.8))
-    var py = ry * (sa >= 0 ? Math.pow(sa, 0.85) : -Math.pow(-sa, 0.95))
-    if (sa < 0) px *= 1 - 0.1 * Math.pow(-sa, 1.5)         // a softer, narrower crown
+    var px = rx * (ca >= 0 ? Math.pow(ca, 0.9) : -Math.pow(-ca, 0.9))
+    var py = ry * (sa >= 0 ? Math.pow(sa, 0.82) : -Math.pow(-sa, 0.95))
     if (i === 0) x.moveTo(px, py); else x.lineTo(px, py)
   }
   x.closePath()
@@ -594,46 +595,17 @@ E._drawBody = function(x, R, rx, ry) {
   this._bodyPath(x, rx, ry)
   x.fillStyle = g
   x.fill()
-  // a soft rim and a glossy highlight
-  x.lineWidth = Math.max(1, R * 0.04)
-  x.strokeStyle = rgba(mix(bottom, INK, 0.12), 0.5)
-  this._bodyPath(x, rx, ry); x.stroke()
-  x.save(); x.globalAlpha = 0.75; x.fillStyle = "rgba(255,255,255,1)"
-  _ellipse(x, -rx * 0.42, -ry * 0.55, R * 0.2, R * 0.11); x.fill()
-  _ellipse(x, -rx * 0.14, -ry * 0.74, R * 0.06, R * 0.045); x.fill()
+  // one soft highlight
+  x.save(); x.globalAlpha = 0.55; x.fillStyle = "rgba(255,255,255,1)"
+  _ellipse(x, -rx * 0.38, -ry * 0.58, R * 0.22, R * 0.1); x.fill()
   x.restore()
 }
 E._drawCheeks = function(x, R, rx) {
-  var b = 0.35 + this.blush * 0.65
-  x.save(); x.globalAlpha = b * 0.75; x.fillStyle = rgba(CHEEK)
+  var b = 0.12 + this.blush * 0.88
+  x.save(); x.globalAlpha = b * 0.7; x.fillStyle = rgba(CHEEK)
   var off = this.yaw * R * 0.18
   _ellipse(x, -rx * 0.6 + off, R * 0.2, R * 0.16, R * 0.09); x.fill()
   _ellipse(x, rx * 0.6 + off, R * 0.2, R * 0.16, R * 0.09); x.fill()
-  x.restore()
-}
-E._drawSprout = function(x, R, ry) {
-  var bx = this.yaw * R * 0.12, by = -ry * 0.98
-  var lean = this.physDx * 0.7 + this.tilt * -0.5, droop = this.physDy
-  var tipX = bx + Math.sin(lean) * R * 0.38, tipY = by - Math.cos(lean) * R * (0.38 - droop * 0.12)
-  x.save()
-  x.lineCap = "round"
-  x.strokeStyle = rgba(LEAF_DARK); x.lineWidth = Math.max(1.2, R * 0.07)
-  x.beginPath(); x.moveTo(bx, by + R * 0.04)
-  x.quadraticCurveTo(bx + Math.sin(lean) * R * 0.05, by - R * 0.2, tipX, tipY); x.stroke()
-  // two leaves, the left one a bit smaller
-  var leaves = [[-1, 0.85], [1, 1]]
-  for (var i = 0; i < 2; i++) {
-    var s = leaves[i][0], size = leaves[i][1] * R * 0.26
-    var ang = lean + s * (0.95 - droop * 0.5)
-    x.save(); x.translate(tipX, tipY); x.rotate(ang)
-    x.beginPath(); x.moveTo(0, 0)
-    x.quadraticCurveTo(-size * 0.55, -size * 0.55, 0, -size * 1.15)
-    x.quadraticCurveTo(size * 0.55, -size * 0.55, 0, 0)
-    x.fillStyle = rgba(LEAF); x.fill()
-    x.strokeStyle = rgba(LEAF_DARK, 0.6); x.lineWidth = Math.max(0.8, R * 0.025)
-    x.beginPath(); x.moveTo(0, -size * 0.1); x.lineTo(0, -size * 0.9); x.stroke()
-    x.restore()
-  }
   x.restore()
 }
 E._drawHands = function(x, R, rx, ry, front) {
@@ -677,8 +649,7 @@ function _eye(x, s, ex, ey, w, h, open, R, side, clock) {
     _ellipse(x, ex, ey, w / 2, oh / 2); x.fill()
     if (open > 0.5) {   // glossy highlights
       x.fillStyle = "rgba(255,255,255,0.95)"
-      _ellipse(x, ex - w * 0.16, ey - oh * 0.2, w * 0.17, w * 0.17); x.fill()
-      _ellipse(x, ex + w * 0.18, ey + oh * 0.18, w * 0.08, w * 0.08); x.fill()
+      _ellipse(x, ex - w * 0.14, ey - oh * 0.22, w * 0.14, w * 0.14); x.fill()
     }
   } else if (s === "dot") {
     _ellipse(x, ex, ey, w * 0.32, w * 0.32); x.fill()
@@ -723,36 +694,6 @@ function _star(x, cx, cy, ro, ri, n) {
     else x.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r)
   }
   x.closePath()
-}
-E._drawMouth = function(x, R) {
-  var mx = this.yaw * R * 0.2, my = R * 0.3 + this.pitch * R * 0.08
-  x.save()
-  x.lineCap = "round"; x.lineJoin = "round"
-  var open = this.slotH
-  if (this.chewing) open = 0.06 + Math.abs(Math.sin(this.clock * 16)) * 0.08
-  if (open > 0.03) {
-    var w = R * (0.2 + open * 0.45), h = R * open * 0.62
-    _ellipse(x, mx, my + h * 0.2, w / 2, h / 2)
-    x.fillStyle = rgba(MOUTH); x.fill()
-    if (h > R * 0.1) { x.save(); _ellipse(x, mx, my + h * 0.2, w / 2, h / 2); x.clip()
-      x.fillStyle = rgba(TONGUE); _ellipse(x, mx, my + h * 0.62, w * 0.32, h * 0.32); x.fill(); x.restore() }
-  } else {
-    // the cat mouth: ω, or a little smile / frown for some states
-    x.strokeStyle = rgba(INK); x.lineWidth = Math.max(1, R * 0.05)
-    var s = R * 0.07
-    x.beginPath()
-    if (this.state === "error" || this.state === "ratelimit") {
-      x.arc(mx, my + s * 1.3, s * 1.3, Math.PI * 1.2, Math.PI * 1.8, false)
-    } else if (this.state === "finished" || this.eye() === "happy" || this.eye() === "heart") {
-      x.arc(mx, my - s * 0.4, s * 1.5, Math.PI * 0.15, Math.PI * 0.85, false)
-    } else {
-      x.arc(mx - s, my, s, Math.PI * 0.1, Math.PI * 0.95, false)
-      x.moveTo(mx + s * 2 * Math.cos(Math.PI * 0.05), my + s * Math.sin(Math.PI * 0.05))
-      x.arc(mx + s, my, s, Math.PI * 0.05, Math.PI * 0.9, false)
-    }
-    x.stroke()
-  }
-  x.restore()
 }
 E._drawDizzyStars = function(x, R, ry) {
   for (var i = 0; i < 3; i++) {
