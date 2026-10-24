@@ -313,21 +313,7 @@ class Backups:
             checks["files"] = len(manifest.get("files") or {})
             db = root / "memory" / "memory.db"
             if db.exists():
-                from jarvis.memory import Memory
-                con = sqlite3.connect(db)
-                try:
-                    ok = con.execute("PRAGMA integrity_check").fetchone()[0]
-                finally:
-                    con.close()
-                if ok != "ok":
-                    problems.append(f"database: {ok}")
-                mem = Memory(db)   # Jarvis's own code opens it (and would migrate it) like on a new computer
-                try:
-                    checks["facts"] = len(mem.query("SELECT id FROM facts"))
-                    if checks["facts"] != manifest.get("counts", {}).get("facts", checks["facts"]):
-                        problems.append("facts count differs")
-                finally:
-                    mem.db.close()
+                problems += self._check_db(db, manifest, checks)
             cfgfile = root / "config" / "config.toml"
             if cfgfile.exists():
                 try:
@@ -345,6 +331,28 @@ class Backups:
             self.last["verified"] = not problems
         return result
 
+    @staticmethod
+    def _check_db(db: Path, manifest: dict, checks: dict) -> list[str]:
+        from jarvis.memory import Memory
+        try:
+            con = sqlite3.connect(db)
+            try:
+                ok = con.execute("PRAGMA integrity_check").fetchone()[0]
+            finally:
+                con.close()
+            if ok != "ok":
+                return [f"database: {str(ok)[:120]}"]
+            mem = Memory(db)   # Jarvis's own code opens it (and would migrate it), like on a new computer
+            try:
+                checks["facts"] = len(mem.query("SELECT id FROM facts"))
+            finally:
+                mem.db.close()
+        except sqlite3.DatabaseError as exc:
+            return [f"database: {exc}"]
+        if checks["facts"] != manifest.get("counts", {}).get("facts", checks["facts"]):
+            return ["facts count differs"]
+        return []
+
     # ------------------------------------------------------------ restore
     def apply(self, path: Path, passphrase: str, categories: list[str] | None = None) -> dict:
         _, manifest, tar = self._open(path, passphrase)
@@ -354,6 +362,10 @@ class Backups:
         done: list[tuple[Path, Path | None]] = []   # (live path, its set-aside copy or None)
         with tempfile.TemporaryDirectory(prefix="jarvis-restore-") as tmp:
             root = self._extract(tar, Path(tmp))
+            if "memory" in cats and (root / "memory" / "memory.db").exists():
+                bad = self._check_db(root / "memory" / "memory.db", manifest, {})
+                if bad:   # never swap a damaged database in for a working one
+                    raise BackupError("The backup's database is damaged: " + "; ".join(bad))
             moves = []
             if "config" in cats and (root / "config" / "config.toml").exists():
                 moves.append((root / "config" / "config.toml", self.config_dir / "config.toml"))
