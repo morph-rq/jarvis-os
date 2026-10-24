@@ -16,6 +16,7 @@ Item {
   property bool receiving: false
   property bool reducedMotion: false
   property bool interactive: true
+  property bool dancing: false              // music is playing: Coucou's dance
 
   signal clicked()
   signal rightClicked()
@@ -41,6 +42,7 @@ Item {
     engine = new Coucou.Coucou.BotEngine()
     engine.onDizzy = function() { engine.setState("dizzy"); dizzyTimer.restart(); host.dizzy() }
     engine.setState(stateFor[mood] || "idle", true)
+    engine.setDancing(dancing)
   }
   onMoodChanged: {
     if (!engine) return
@@ -61,6 +63,9 @@ Item {
   function gulp() { if (engine) engine.gulp() }
   function squash() { if (engine) engine.squash() }
   function poke() { if (engine) engine.slap() }
+  // Coucou's emotes: love, surprised, proud, wink, yawn, happy, annoyed.
+  function emote(name, seconds) { if (engine) engine.triggerEmote(name, seconds || 1.8) }
+  onDancingChanged: if (engine) engine.setDancing(dancing)
 
   Canvas {
     id: canvas

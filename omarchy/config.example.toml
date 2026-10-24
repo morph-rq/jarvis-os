@@ -10,8 +10,8 @@ tts = "auto"                   # local engine's speech: auto (ElevenLabs if its 
 
 [elevenlabs]                   # docs/VOICE.md
 model = "eleven_v4_turbo"
-voice_id = "JBFqnCBsd6RMkjVDRZzb"
-stability = 0.5                # lower = more expressive, higher = steadier
+voice_id = "cgSgspJ2msm6clMCkdW9"
+stability = 0.4                # lower = more expressive, higher = steadier
 expressive = true              # sparse audio tags: [laughs], [sighs], [whispers]…
 
 [local]

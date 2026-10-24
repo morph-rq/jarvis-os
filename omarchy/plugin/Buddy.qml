@@ -15,10 +15,12 @@ import "ui/island.js" as Logic
 // pointer approaches, so it can be clicked. It looks at the pointer, says in a bubble what Jarvis is doing
 // and the start of its answer, shows the newest visual result (a screenshot, an image, a chart, the
 // weather, what's playing… the island's own cards) and points at the control during a guide.
-//   click         the conversation in the island
+//   click         a poke (Coucou's slap), and its buttons for a moment
+//   double click  happy, a buzz, and home to the island, where it lands with a heart and rests a minute
 //   right click   talk (or stop the conversation)
 //   middle click  "what's on my screen" (Jarvis takes a screenshot and explains it)
-// Hovering shows the same as buttons, plus "back to the island". It never takes the keyboard (no focus
+// Hovering shows the buttons: talk, the screen, type, home. Before an alert takes it home it looks
+// surprised first (Coucou's retract). It never takes the keyboard (no focus
 // stealing); only what it shows takes the mouse. The flight is companion.js (followPoint, flyStep,
 // shouldLand), tested there. The pointer comes from Hyprland (`hyprctl cursorpos`, ~8 times a second,
 // only while it is on).
@@ -41,6 +43,8 @@ Item {
   property bool returning: false
   property bool hovered: false
   property real movedAt: Date.now()
+  property real restUntil: 0                   // sent home with a double click: stays there until then
+  property bool showActions: false
 
   onOutChanged: if (s) s.buddyOut = out
   Component.onDestruction: if (s) s.buddyOut = false
@@ -76,10 +80,20 @@ Item {
     body = { x: h.x, y: h.y, vx: 0, vy: 0 }
     returning = false
     out = true
+    Qt.callLater(function() { face.vibrate(420, 2.5) })   // taken from its place
   }
+  // The double click: a happy wiggle, then home for a rest (Coucou's desktop "home").
+  function sendHome() {
+    restUntil = Date.now() + 60000
+    face.emote("happy", 1.2)
+    showActions = false
+    retract.restart()
+  }
+  Timer { id: retract; interval: 450; onTriggered: root.goHome() }
   function goHome() {
     if (!out || returning) return
     returning = true
+    face.vibrate(300, 2)                                  // going back
     flyTo(home(screenNow || screenAt(cursor.x, cursor.y)))
   }
 
@@ -91,7 +105,7 @@ Item {
     var sc = screenAt(x, y)
     if (!out) {
       var h = home(sc), hx = x - h.x, hy = y - h.y
-      if (!moved || hx * hx + hy * hy < 220 * 220) return   // the pointer is at the island: stay in it
+      if (!moved || hx * hx + hy * hy < 220 * 220 || Date.now() < restUntil) return   // at the island, or resting
       launch(sc)
     } else if (returning) {
       if (!moved) return
@@ -114,7 +128,11 @@ Item {
     screenNow = sc
     flyTo(guidePoint)
   }
-  onAwayChanged: if (away) goHome()
+  // The island needs the user: surprised, then home (Coucou: 0.45 s).
+  onAwayChanged: if (away && out && !returning) {
+    if (s.approvals && s.approvals.length > 0) { face.emote("surprised", 0.6); retract.restart() }
+    else goHome()
+  }
   onOnChanged: if (!on) { out = false; returning = false; flight.stop() }
 
   Process {
@@ -153,6 +171,7 @@ Item {
         stop()
         root.returning = false
         root.out = false
+        root.s.reaction("home")    // the island's character lands with a heart
         return
       }
       if (Math.abs(b.x - root.target.x) < 0.5 && Math.abs(b.y - root.target.y) < 0.5 && Math.abs(b.vx) + Math.abs(b.vy) < 5) {
@@ -264,9 +283,21 @@ Item {
         onClicked: function(e) {
           if (e.button === Qt.RightButton) root.s.listen()
           else if (e.button === Qt.MiddleButton) root.askScreen()
-          else { face.poke(); root.s.requestIsland("conversation") }
+          else click.restart()
+        }
+        onDoubleClicked: function(e) { if (e.button === Qt.LeftButton) { click.stop(); root.sendHome() } }
+      }
+      // A single click is a poke once it is clear it isn't a double click (Coucou: 300 ms).
+      Timer {
+        id: click
+        interval: 300
+        onTriggered: {
+          face.poke()
+          root.showActions = true
+          actionsTimer.restart()
         }
       }
+      Timer { id: actionsTimer; interval: 5000; onTriggered: root.showActions = false }
     }
 
     // Beside the face: the bubble, the newest visual result, and on hover the actions.
@@ -351,7 +382,7 @@ Item {
 
       Row {
         id: actions
-        visible: root.hovered
+        visible: root.hovered || root.showActions
         spacing: 4
         x: win.sideLeft ? side.width - width : 0
         JIconButton {
@@ -365,7 +396,7 @@ Item {
         JIconButton { glyph: "🖥"; size: 28; label: root.s ? root.s.t("buddy_screen", "What's on my screen?") : ""; onClicked: root.askScreen() }
         JIconButton { glyph: "⌨"; size: 28; label: root.s ? root.s.t("type", "Type") : ""; onClicked: root.s.requestIsland("conversation") }
         JIconButton { glyph: "⌂"; size: 28; label: root.s ? root.s.t("buddy_home", "Back to the island") : ""
-                      onClicked: { root.hovered = false; root.goHome() } }
+                      onClicked: { root.hovered = false; root.sendHome() } }
       }
     }
   }

@@ -1,16 +1,15 @@
 import QtQuick
 import "../ui"
-import "../ui/commands.js" as Commands
 import "../ui/markdown.js" as Md
 
-// The island opened with nothing urgent going on: Jarvis's face, a few things to ask with one click,
-// and the doors to the rest (talk, type, dictate, the workspace, the panel). Coding agents and music,
+// The island opened with nothing urgent going on: Jarvis's face, what it is doing (with the room's level
+// while it waits for the wake word, so you can see it hears), the start of the last answer, and the doors
+// to the rest (talk, type, dictate, the workspace, the panel). Coding agents and music,
 // when present, get a line each.
 FaceBase {
   id: face
   implicitHeight: column.implicitHeight + 30
 
-  readonly property var quick: Commands.list(s ? s.lang : "en").slice(0, 6)
   readonly property var agentsNow: s ? s.agents.filter(function(a) { return a.state !== "done" && a.state !== "idle" }) : []
 
   Column {
@@ -32,12 +31,30 @@ FaceBase {
         width: parent.width - orb.width - 14
         anchors.verticalCenter: parent.verticalCenter
         spacing: 3
-        Text {
-          text: face.statusLabel(face.orbStatus)
-          color: Tokens.text
-          font.family: Tokens.fontFamily
-          font.pixelSize: Tokens.fontTitle
-          font.weight: Font.DemiBold
+        Row {
+          spacing: 10
+          Text {
+            id: title
+            text: face.statusLabel(face.orbStatus)
+            color: Tokens.text
+            font.family: Tokens.fontFamily
+            font.pixelSize: Tokens.fontTitle
+            font.weight: Font.DemiBold
+          }
+          // The microphone as Jarvis hears it: still bars in a quiet room, alive when someone talks.
+          JWave {
+            id: ears
+            readonly property bool hearing: !!face.s && face.s.micOpen && face.s.levelSource === "mic"
+            anchors.verticalCenter: title.verticalCenter
+            visible: !!face.s && face.s.micOpen
+            live: hearing && face.s.level > 0.02
+            level: hearing ? Math.min(1, face.s.level * 3) : 0
+            bands: face.s ? face.s.bands : []
+            count: 5
+            maxHeight: 16
+            barWidth: 3
+            color: face.s && (face.s.status === "listening" || face.s.status === "dictating") ? Tokens.cyan : Tokens.alpha(Tokens.cyan, 0.7)
+          }
         }
         Text {
           width: parent.width
@@ -50,21 +67,6 @@ FaceBase {
           color: Tokens.textDim
           font.family: Tokens.fontFamily
           font.pixelSize: Tokens.fontSmall
-        }
-      }
-    }
-
-    Flow {
-      width: parent.width
-      spacing: 6
-      visible: !!face.s && face.s.connected
-      Repeater {
-        model: face.quick
-        JButton {
-          required property var modelData
-          small: true
-          text: modelData[0]
-          onClicked: { face.s.ask(modelData[1]); face.island.fold() }
         }
       }
     }

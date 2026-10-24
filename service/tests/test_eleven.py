@@ -78,7 +78,7 @@ def test_only_the_spoken_part_reaches_elevenlabs(jarvis, el):
     assert server.keys[0] == "test-key" and server.queries[0]["model_id"] == "eleven_v4_turbo"
     assert server.queries[0]["output_format"] == "pcm_24000"
     assert server.voices[0] == [jarvis.config["elevenlabs"]["voice_id"]]
-    assert server.settings[-1] == {"stability": 0.5}
+    assert server.settings[-1] == {"stability": jarvis.config["elevenlabs"]["stability"]}
     # The model was told it is speaking, and allowed tags; the panel and memory get no tags.
     assert "spoken aloud" in script["systems"][0] and "[laughs]" in script["systems"][0]
     shown = [m["text"] for m in seen if m["event"] == "reply"][-1]

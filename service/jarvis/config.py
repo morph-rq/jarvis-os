@@ -74,10 +74,10 @@ DEFAULTS: dict = {
     "elevenlabs": {
         # Text-to-Dialogue WebSocket model: eleven_v4_turbo is the realtime one (eleven_v4 is slower).
         "model": "eleven_v4_turbo",
-        # A premade voice ("George": warm, calm, speaks Russian, English and French well).
-        "voice_id": "JBFqnCBsd6RMkjVDRZzb",
+        # A premade female voice ("Jessica": playful, bright, warm; Russian, English and French via v4).
+        "voice_id": "cgSgspJ2msm6clMCkdW9",
         # The only voice setting Text-to-Dialogue reads: 0 most expressive, 0.5 natural, 1 steady but deaf to tags.
-        "stability": 0.5,
+        "stability": 0.4,
         # Let the model add sparse audio tags ([laughs], [sighs], [whispers]…) to spoken replies.
         "expressive": True,
     },

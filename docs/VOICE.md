@@ -21,8 +21,8 @@ jarvis restart
 |---|---|---|
 | `voice.tts` | `auto` | ElevenLabs when the key is set, else Piper. `piper` turns ElevenLabs off. |
 | `elevenlabs.model` | `eleven_v4_turbo` | The realtime v4 model (`eleven_v4` is slower, `eleven_v3` older). |
-| `elevenlabs.voice_id` | `JBFqnCBsd6RMkjVDRZzb` | A premade voice ("George"); any voice ID from your ElevenLabs library works. |
-| `elevenlabs.stability` | `0.5` | The only voice setting Text-to-Dialogue reads: lower = more expressive (can wander), higher = steadier but ignores tags. |
+| `elevenlabs.voice_id` | `cgSgspJ2msm6clMCkdW9` | "Jessica", a premade female voice (playful, bright, warm, conversational) that performs v4 tags well; any voice ID from your ElevenLabs library works (George: `JBFqnCBsd6RMkjVDRZzb`). |
+| `elevenlabs.stability` | `0.4` | The only voice setting Text-to-Dialogue reads: lower = more expressive (can wander), higher = steadier but ignores tags. |
 | `elevenlabs.expressive` | `true` | The brain may add sparse audio tags; `false` keeps delivery neutral. |
 
 ## Three channels

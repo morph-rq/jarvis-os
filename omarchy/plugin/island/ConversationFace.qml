@@ -264,7 +264,7 @@ FaceBase {
   ListView {
     id: chips
     anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 14 }
-    readonly property var options: input.text.trim() ? face.matches : Commands.list(face.s ? face.s.lang : "en").slice(0, 6)
+    readonly property var options: input.text.trim() ? face.matches : []   // suggestions only while typing
     height: options.length > 0 ? 26 : 0   // not `visible ? …`: that is the effective visibility, which
     visible: height > 0                   // changes with the face loader's own while it is measured
     orientation: ListView.Horizontal

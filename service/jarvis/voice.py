@@ -33,6 +33,9 @@ from jarvis.live import LiveAdapter
 
 log = logging.getLogger("jarvis.voice")
 
+WAKE_ROOM_MARGIN = 1.4   # waiting for the wake word, sound counts as heard above this × the room's noise
+WAKE_LEVEL_FLOOR = 0.01  # … plus this
+
 
 def _release_memory() -> None:
     """After a conversation: collect its pipeline and hand freed heap back to the OS (glibc keeps
@@ -87,6 +90,8 @@ class VoiceController:
         self._session: asyncio.Task | None = None
         self._ptt = asyncio.Event()
         self._last_level = 0.0
+        self._wake_level = False
+        self._room_noise: float | None = None
         self._last_frame = 0.0
         self._frames = 0
         # Other readers of the one microphone stream (meeting notes): they never open a second capture.
@@ -182,6 +187,13 @@ class VoiceController:
             self.phase = phase
         self.bus.publish("voice", **self.public())
 
+    def _above_room(self, value: float) -> float:
+        """The part of a frame's level above the room's noise floor, which follows quiet quickly and
+        loud slowly (speech barely moves it)."""
+        noise = value if self._room_noise is None else self._room_noise
+        self._room_noise = noise + (value - noise) * (0.05 if value < noise else 0.003)
+        return max(0.0, value - noise * WAKE_ROOM_MARGIN - WAKE_LEVEL_FLOOR)
+
     def _level(self, source: str, value: float, chunk: bytes | None = None, rate: int = 16000) -> None:
         now = time.monotonic()
         if now - self._last_level >= 0.066 or value == 0.0:
@@ -230,6 +242,13 @@ class VoiceController:
             self._frames += 1
             if self.mode in (Mode.CONVERSATION, Mode.DICTATION):
                 self._level("mic", meter(frame), frame)
+            elif self.mode == Mode.WAKE:
+                # Waiting for the wake word: how far a voice rises above the room's own noise (never audio,
+                # no spectrum), so the island shows it hears; a steady room sends nothing.
+                heard = self._above_room(meter(frame))
+                if heard > 0 or self._wake_level:
+                    self._wake_level = heard > 0
+                    self._level("mic", min(1.0, heard * 3))
             consumer = self._consumer
             if consumer is not None:
                 try:

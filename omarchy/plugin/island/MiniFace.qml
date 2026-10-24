@@ -12,65 +12,42 @@ FaceBase {
   readonly property bool hint: live || kind === "media" || kind === "agent" || kind === "result" || kind === "notice"
                                || kind === "message"
 
-  readonly property string style: face.s && face.s.settings["ui.companion_style"] ? face.s.settings["ui.companion_style"] : "pip"
-  // Pip by default. ui.companion_style = coucou shows Coucou's Mochi when it was built on this machine
-  // (omarchy/coucou/setup.sh, personal use only); Pip otherwise.
-  readonly property bool useCoucou: style === "coucou" && coucou.status === Loader.Ready
-  readonly property bool usePip: style === "pip" || (style === "coucou" && !useCoucou)
-  readonly property var character: useCoucou ? coucou.item : pip
   // One companion on screen: while it flies beside the pointer (Buddy.qml) the island keeps its nest.
   readonly property bool out: !!face.s && face.s.buddyOut
+  readonly property var character: avatar.character
 
-  Loader {
-    id: coucou
-    active: face.style === "coucou"
-    visible: face.useCoucou && face.mode !== "hidden" && !face.out
-    width: 38; height: 32
-    x: face.hint ? 0 : (face.width - width) / 2
-    anchors.verticalCenter: parent.verticalCenter
-    source: "../ui/coucou/CoucouCanvas.qml"
-    onLoaded: {
-      item.interactive = false
-      item.mood = Qt.binding(function() { return face.s ? face.s.companionMood : "offline" })
-      item.level = Qt.binding(function() { return face.s ? face.s.level : 0 })
-      item.reducedMotion = Qt.binding(function() { return Tokens.reducedMotion })
-    }
-  }
-  Connections { target: face.useCoucou ? face.s : null; function onReaction(kind) { coucou.item.react(kind) } }
-
-  // Pip, the living companion (ui.companion_style = pip, the default): rests in the island, reacts to
-  // what Jarvis is really doing, and is poked, dragged files into and released from here.
-  Pip {
-    id: pip
-    size: 21
-    visible: face.usePip && face.mode !== "hidden" && !face.out
-    x: face.hint ? 4 : (face.width - width) / 2
-    anchors.verticalCenter: parent.verticalCenter
-    mood: face.s ? face.s.companionMood : "offline"
-    level: face.s ? face.s.level : 0
-    interactive: false            // the face's own MouseArea below handles clicks (poke + open)
-    Connections { target: face.s; function onReaction(kind) { pip.react(kind) } }
+  // Coucou's desktop rule: after two quiet minutes (nothing happening, the pointer elsewhere) it dozes
+  // off; anything Jarvis does, or the pointer coming over, wakes it.
+  property real activeAt: Date.now()
+  property bool dozing: false
+  Connections { target: face.s; function onCompanionMoodChanged() { face.activeAt = Date.now(); face.dozing = false } }
+  Timer {
+    interval: 5000
+    repeat: true
+    running: face.mode !== "hidden"
+    onTriggered: face.dozing = !!face.s && face.s.companionMood === "idle" && !mouse.containsMouse
+                               && Date.now() - face.activeAt > 120000
   }
 
-  JarvisOrb {
-    id: orb
-    size: 26
-    x: face.hint ? 10 : (face.width - width) / 2
-    anchors.verticalCenter: parent.verticalCenter
+  // The character in the chosen style (ui/Avatar.qml): Coucou, Pip or the orb; it dances to music.
+  Avatar {
+    id: avatar
+    size: 32
+    s: face.s
     status: face.orbStatus
-    level: face.s ? face.s.level : 0
-    bands: face.s ? face.s.bands : []
-    vad: !!face.s && face.s.vad
     sleeping: face.mode === "hidden"
-    visible: !face.usePip && !face.useCoucou && face.mode !== "hidden"
-    Connections { target: face.s; function onReaction(kind) { orb.react(kind) } }
+    dozing: face.dozing
+    dancing: face.kind === "media"
+    visible: face.mode !== "hidden" && !(face.out && (avatar.useCoucou || avatar.usePip))
+    x: face.hint ? 2 : (face.width - width) / 2
+    anchors.verticalCenter: parent.verticalCenter
   }
 
   // The empty nest while the companion is out.
   Rectangle {
-    visible: face.out && (face.useCoucou || face.usePip) && face.mode !== "hidden"
+    visible: face.out && (avatar.useCoucou || avatar.usePip) && face.mode !== "hidden"
     width: 14; height: 4; radius: 2
-    x: (face.useCoucou ? coucou.x + coucou.width / 2 : pip.x + pip.width / 2) - width / 2
+    x: avatar.x + avatar.width / 2 - width / 2
     anchors.verticalCenter: parent.verticalCenter
     color: Tokens.alpha(Tokens.text, 0.25)
   }
@@ -78,8 +55,8 @@ FaceBase {
   PrivacyDots {
     s: face.s
     visible: face.mode !== "hidden"
-    x: face.useCoucou ? coucou.x + coucou.width - 6 : face.usePip ? pip.x + pip.width - 6 : orb.x + orb.width - 3
-    y: face.useCoucou ? coucou.y + 3 : face.usePip ? pip.y + 3 : orb.y + 1
+    x: avatar.x + avatar.width - 6
+    y: avatar.y + 3
   }
 
   Row {
@@ -127,7 +104,10 @@ FaceBase {
   }
 
   MouseArea {
+    id: mouse
     anchors.fill: parent
+    hoverEnabled: true
+    onEntered: { face.activeAt = Date.now(); face.dozing = false }
     acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
     cursorShape: Qt.PointingHandCursor
     // Click opens; right click talks; middle click dictates (the bar companion's mapping).
@@ -135,7 +115,7 @@ FaceBase {
       if (!face.s) return
       if (e.button === Qt.RightButton) face.s.listen()
       else if (e.button === Qt.MiddleButton) face.s.dictate("toggle")
-      else { if (face.useCoucou || face.usePip) face.character.poke(); face.island.request("expanded") }
+      else { avatar.poke(); face.island.request("expanded") }
     }
   }
 }
