@@ -53,7 +53,7 @@ function toolState(tool) {
 }
 
 // The one character state for what jarvisd reports right now. s: {connected, status, running,
-// activeTools, approvals, agents, research, paused, flash}. flash is a short-lived reaction state
+// activeTools, approvals, agents, research, paused, flash, jobs (the scheduler's summary)}. flash is a short-lived reaction state
 // (finished / error / dizzy) that the caller holds for a moment after the event.
 function characterState(s) {
   if (!s || !s.connected) return "offline"
@@ -75,6 +75,8 @@ function characterState(s) {
   for (var i = 0; i < ag.length; i++) {
     if (ag[i].state === "waiting" || ag[i].state === "question") return "question"
   }
+  // Background jobs at work: the character keeps busy quietly (it never interrupts the conversation).
+  if (s.jobs && s.jobs.running > 0) return "working"
   return "idle"
 }
 

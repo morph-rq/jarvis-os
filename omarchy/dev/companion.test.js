@@ -108,3 +108,10 @@ test("dropped files: kinds and file URLs", () => {
   assert.deepStrictEqual(Array.from(P.dropPaths(["file:///home/u/My%20File.pdf", "https://x.y/z", "file://localhost/tmp/a"])),
                          ["/home/u/My File.pdf", "/tmp/a"])
 })
+
+test("background jobs keep the character quietly working, below everything in the foreground", () => {
+  assert.strictEqual(P.characterState(on({ jobs: { running: 2 } })), "working")
+  assert.strictEqual(P.characterState(on({ jobs: { running: 0 } })), "idle")
+  assert.strictEqual(P.characterState(on({ jobs: { running: 2 }, status: "speaking" })), "speaking")
+  assert.strictEqual(P.characterState(on({ jobs: { running: 2 }, approvals: [{ id: "a" }] })), "approval")
+})

@@ -161,3 +161,27 @@ test("with the pointer companion on, pictures and visuals go to it; the island s
   assert.deepStrictEqual(show(st({ buddy: true, card: fresh("research") })), ["result", "expanded"])
   assert.deepStrictEqual(show(st({ card: fresh("image") })), ["result", "expanded"])
 })
+
+test("background jobs: a peek while running, a small pill when only queued or paused, voice wins", () => {
+  const job = (id, state, extra) => Object.assign({ id, state, title: id, finished: 0 }, extra || {})
+  const running = st({ jobs: [job("a", "running"), job("b", "running"), job("c", "queued")],
+                       jobsSummary: { running: 2, queued: 1 } })
+  const [kind, m] = show(running)
+  assert.deepStrictEqual([kind, m], ["jobs", "peek"])
+  const item = I.activity(running).item
+  assert.strictEqual(item.count, 3)
+  assert.strictEqual(item.running, 2)
+  assert.strictEqual(item.lead.id, "b")                             // the newest running one
+  assert.deepStrictEqual(show(st({ jobs: [job("p", "paused")], jobsSummary: { paused: 1 } })), ["jobs", "mini"])
+  assert.deepStrictEqual(show(Object.assign({}, running, { dnd: true })), ["jobs", "mini"])
+  // The conversation and Jarvis's own tasks come first; the jobs keep running underneath.
+  assert.deepStrictEqual(show(Object.assign({}, running, { status: "listening", conversing: true })), ["voice", "peek"])
+  assert.deepStrictEqual(show(Object.assign({}, running, { running: { id: "t1" } })), ["task", "peek"])
+  assert.deepStrictEqual(show(Object.assign({}, running, { approvals: [{ id: "x" }] })), ["approval", "expanded"])
+  // One that just finished stays a moment, then the island is idle again.
+  const done = (ago) => st({ jobs: [job("d", "succeeded", { finished: NOW / 1000 - ago })], jobsSummary: {} })
+  assert.deepStrictEqual(show(done(2)), ["jobs", "peek"])
+  assert.strictEqual(I.activity(done(2)).item.justFinished, true)
+  assert.deepStrictEqual(show(done(30)), ["idle", "mini"])
+  assert.strictEqual(I.size("mini", { kind: "jobs" }).w, 156)
+})

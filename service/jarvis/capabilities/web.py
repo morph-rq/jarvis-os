@@ -90,7 +90,7 @@ def home_city(ctx: Context) -> str:
     configured = ctx.config["web"].get("city", "")
     if configured:
         return configured
-    for fact in ctx.memory.recall("live city город живу moro cidade", 20):
+    for fact in ctx.memory.query("SELECT text FROM facts ORDER BY id DESC"):
         text = fact["text"]
         for marker in ("live in ", "живу в ", "город ", "moro em ", "city is "):
             if marker in text.lower():

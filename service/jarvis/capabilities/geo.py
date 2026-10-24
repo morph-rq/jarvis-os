@@ -76,6 +76,12 @@ AMENITY_NAMES = {
 }
 
 PHRASES = {
+    "approximate_location": {
+        "en": "Approximate city from the device timezone; not a GPS location.",
+        "ru": "Примерный город по часовому поясу устройства; это не GPS-местоположение.",
+        "pt": "Cidade aproximada pelo fuso horário do dispositivo; não é uma localização GPS.",
+        "fr": "Ville approximative selon le fuseau horaire de l’appareil ; pas une position GPS.",
+    },
     "not_found": {"en": "I couldn't find a place called '{name}'.", "ru": "Не нашёл место «{name}».",
                   "pt": "Não encontrei um lugar chamado '{name}'."},
     "which_place": {"en": "Which place? Name a city (or set web.city).", "ru": "Какое место? Назовите город (или задайте web.city).",
@@ -301,15 +307,25 @@ def _place_arg(ctx: Context, args: dict) -> str:
 
 async def _locate(ctx: Context, args: dict, lang: str) -> dict:
     name = _place_arg(ctx, args)
+    approximate = not name
+    if approximate:
+        from jarvis.user_context import timezone_city
+        name = timezone_city()
     if not name:
         return {"ok": False, "message": _say("which_place", lang)}
     p = await _resolve(name, lang)
     lat, lon = p["latitude"], p["longitude"]
     where = _label(p)
-    return {"ok": True, "message": _say("locate", lang, place=where, coords=_coords(lat, lon)),
+    message = _say("locate", lang, place=where, coords=_coords(lat, lon))
+    if approximate:
+        message += " (" + _say("approximate_location", lang) + ")"
+    return {"ok": True, "message": message,
+            "location_source": "device_timezone" if approximate else "provided_or_home_city",
+            "approximate": approximate,
             "place": {"name": where, "lat": lat, "lon": lon, "timezone": p.get("timezone", "")},
             "card": _card(where, (lat, lon), [_point(lat, lon, where, "place")],
-                          stats={"timezone": p.get("timezone", "")})}
+                          stats={"timezone": p.get("timezone", ""),
+                                 **({"location": _say("approximate_location", lang)} if approximate else {})})}
 
 
 async def _osrm(a: dict, b: dict) -> dict | None:

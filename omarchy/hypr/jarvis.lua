@@ -37,3 +37,10 @@ o.bind("SUPER + ALT + W", "Jarvis workspace", jw .. " workspace")
 
 -- Caelestia mode (jarvis-shell-mode caelestia writes this file: Caelestia's autostart and drawer keys).
 pcall(require, "hypr.jarvis-shell")
+
+-- Cua's two agent seats (Cua-Agent, Cua-Agent-2) for background computer use (docs/COMPUTER-USE.md).
+-- Only takes effect while Jarvis has loaded the cua-hyprland-plugin (computer.cua_seats on); without
+-- the plugin the key is unknown and pcall leaves the config untouched.
+if hl and hl.config then
+  pcall(hl.config, { plugin = { cua = { enabled = true } } })
+end

@@ -94,6 +94,7 @@ class Task:
     error: str | None = None
     handle: asyncio.Task | None = field(default=None, repr=False)
     remote: Any = field(default=None, repr=False)   # the RemoteCall it was started for, if any
+    strict: bool = False    # every non-safe tool asks, whatever approval.auto says (communication jobs)
 
     def public(self) -> dict:
         return {"id": self.id, "title": self.title, "text": self.text, "source": self.source,

@@ -44,6 +44,7 @@ jarvisd pushes one JSON object per line over `$XDG_RUNTIME_DIR/jarvis-workos/jar
 | `auth` | `flow` dict | One sign-in in progress: {id, connector, step starting|qr|qr_expired|browser|form|verifying|done|error|cancelled, message, qr {size, rows[] of '0'/'1'} (modules only, never the payload), qr_expires, url, fields [{name, label, kind}], error, identity {label}}. |
 | `onboarding` | `state` dict | First-run setup: {stage welcome|language|personal|connect|verify|ready|done, index, open, name, mode, voice, language, ui_lang, suggestions [{label, ask, available}]}. |
 | `backup` | `status` dict | Backups: {location, schedule, last {path, created, verified, reauth[]}, running, backups[]}. |
+| `jobs` | `jobs` list, `summary` dict | Background agents (jobs.Scheduler): [{id, kind, label, icon, title, state queued|waiting|running|paused|awaiting_approval|succeeded|failed|cancelled|interrupted, doing, progress {done,total} (the plan's real steps) or null, seat, target {app, window_id, title}, elapsed_s, attempts, error, result, files[], can_retry}]; summary {running, queued, paused, approval, failed, seats, halted}. At most ~4 events a second. |
 | `guide` | `op` str, `run_id` str | On-screen guidance (navigate). op show: kind ring|ghost, rect {x,y,width,height} in Hyprland layout px, monitor, label, caption, step, total, mode guide|do|show, hold_s, task_id; op hide: for a capture, show again follows; op end: reason done|stopped|stuck|timeout|error, caption. |
 
 ## Requests the island and agents use

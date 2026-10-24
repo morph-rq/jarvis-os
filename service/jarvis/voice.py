@@ -59,6 +59,10 @@ class Mode(str, Enum):
 
 
 class VoiceController:
+    def _owner_facts(self) -> list[dict]:
+        from jarvis.user_context import owner_facts
+        return owner_facts(self.cfg, self.j.memory)
+
     def __init__(self, jarvis) -> None:
         self.j = jarvis
         self.cfg = jarvis.config
@@ -442,7 +446,7 @@ class VoiceController:
         the local pipeline should take over."""
         from jarvis.engine.live import LiveSession
         session = LiveSession(self, lang, key, self.j.memory.context_messages(self.cfg["voice"]["context_turns"]),
-                              self.j.memory.recall("", 12), list(self.j.notes))
+                              self._owner_facts(), list(self.j.notes))
         self.session = session
         self.engine_in_use = "live"
         prebuffer: deque[bytes] = deque(self._handoff, maxlen=100)  # 8 s spoken while connecting is not lost
@@ -566,7 +570,7 @@ class VoiceController:
 
         self.engine_in_use = "live"
         self.live = LiveAdapter(self.cfg, self.bus, key, self.speaker, self.j.voice_tool, heard, activity,
-                                lang, self.j.memory.recall("", 12))
+                                lang, self._owner_facts())
         prebuffer: deque[bytes] = deque(self._handoff, maxlen=100)  # 8 s spoken while connecting is not lost
         self._handoff.clear()
         self._consumer = prebuffer.append

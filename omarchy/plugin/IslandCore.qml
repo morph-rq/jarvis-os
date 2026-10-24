@@ -57,7 +57,7 @@ Item {
   }
 
   // Activities whose view depends on the clock (countdowns, elapsed times, a result's fuse).
-  readonly property var ticking: ({ result: true, agent: true, task: true, call: true, approval: true, timer: true,
+  readonly property var ticking: ({ result: true, agent: true, jobs: true, task: true, call: true, approval: true, timer: true,
                                     focus: true, recording: true, message: true })
 
   property var newestCard: null
@@ -93,6 +93,7 @@ Item {
   readonly property var input: ({
     connected: !!s && s.connected, status: s ? s.status : "offline",
     approvals: s ? s.approvals : [], call: s ? s.call : ({}), agents: s ? s.agents : [],
+    jobs: s ? s.jobs : [], jobsSummary: s ? s.jobsSummary : ({}),
     running: s ? s.running : ({}), conversing: !!s && s.conversing, dictating: !!s && s.dictating,
     timers: s ? s.timers : [], meeting: s ? s.meeting : ({}), inbound: s ? s.inbound : null,
     focus: s && s.focusUntil > 0 ? { active: true, until: s.focusUntil, minutes: s.focusMinutes } : ({}),
@@ -197,7 +198,7 @@ Item {
     return ({ "approval": approvalFace, "result": resultFace, "notice": noticeFace, "voice": voiceFace,
               "task": taskFace, "agent": agentsFace, "question": agentsFace, "media": mediaFace,
               "call": callFace, "timer": liveFace, "focus": liveFace, "recording": liveFace,
-              "message": messageFace })[k] || homeFace
+              "message": messageFace, "jobs": jobsFace })[k] || homeFace
   }
   function swapFaces(key, oldItem) {
     var out = face, next = outgoing
@@ -316,6 +317,7 @@ Item {
   Component { id: voiceFace; VoiceFace {} }
   Component { id: taskFace; TaskFace {} }
   Component { id: agentsFace; AgentsFace {} }
+  Component { id: jobsFace; JobsFace {} }
   Component { id: mediaFace; MediaFace {} }
   Component { id: callFace; CallFace {} }
   Component { id: homeFace; HomeFace {} }

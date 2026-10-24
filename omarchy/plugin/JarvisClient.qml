@@ -74,6 +74,12 @@ Item {
                                                   || root.call.state === "connecting"))
   // Coding agents on this desktop (Claude Code, Codex): [{id, label, project, state, activity, summary…}]
   property var agents: []
+  // Background agents (jarvisd's scheduler, jarvis/jobs.py): [{id, kind, label, icon, title, state, doing,
+  // progress: {done, total} | null, elapsed_s, seat, target…}] and its summary {running, queued, paused…}.
+  property var jobs: []
+  property var jobsSummary: ({})
+  property var jobDetail: ({})        // one job with its plan and timeline, for the detail view
+  property int _jobDetailRequest: -1
   // OpenClaw and Hermes behind Jarvis: {openclaw: {state, healthy, version, error, manage}, hermes: {…}, lockdown}
   property var backends: ({ lockdown: false })
   property var research: ({ enabled: false, ready: false })   // web research services (jarvis/research)
@@ -118,7 +124,8 @@ Item {
   property string companionFlash: ""
   readonly property string companionMood: CompanionLogic.characterState({
     connected: root.connected, status: root.status, running: root.running, activeTools: root.activeTools,
-    approvals: root.approvals, agents: root.agents, research: root.research, flash: root.companionFlash })
+    approvals: root.approvals, agents: root.agents, research: root.research, flash: root.companionFlash,
+    jobs: root.jobsSummary })
   function flashCompanion(kind, ms) { companionFlash = kind; flashTimer.interval = ms; flashTimer.restart() }
   Timer { id: flashTimer; onTriggered: root.companionFlash = "" }
   onReaction: function(kind) {
@@ -187,6 +194,14 @@ Item {
       send({ op: "approval_seen", approval_id: a.id })
   }
   function refreshAgents() { return send({ op: "agents" }) }
+  // The Agent Activity panel: pause / resume / cancel / retry one job ("" cancels all), and its details.
+  function jobAction(action, jobId) { return send({ op: "jobs", action: action, job_id: jobId || "" }) }
+  function jobDetails(jobId) {
+    var req = { op: "jobs", action: "details", job_id: jobId }
+    if (!send(req)) return false
+    root._jobDetailRequest = req.id
+    return true
+  }
   function refreshDevices() {
     var req = { op: "devices" }
     if (!send(req)) return false
@@ -361,6 +376,9 @@ Item {
     var steps = task.steps.filter(function(s) { return s.kind !== "reply" })
       .map(function(s) { return (s.ok === false ? "✕ " : "· ") + s.text + (s.ms !== undefined ? "  " + s.ms + " ms" : "") })
       .join("\n")
+    // Background jobs have their own activity (the island's jobs face); they never take the
+    // foreground task strip or the conversation, only the orb's reaction to their outcome.
+    if (String(task.source || "").indexOf("job:") === 0) return
     // The HUD's operation strip follows the newest running task.
     if (task.state === "running" || task.state === "awaiting_approval") {
       var last = task.steps.length ? task.steps[task.steps.length - 1] : null
@@ -471,6 +489,8 @@ Item {
       root.settings = msg.settings || {}
       root.approvals = msg.approvals || []
       root.agents = msg.agents || []
+      root.jobs = msg.jobs || []
+      root.jobsSummary = msg.jobs_summary || ({})
       root.backends = msg.backends || ({ lockdown: false })
       root.research = msg.research || ({ enabled: false, ready: false })
       root.catalogSummary = msg.catalog || ({})
@@ -504,6 +524,11 @@ Item {
       root.devices = msg.ok ? { inputs: msg.inputs || [], outputs: msg.outputs || [], input: msg.input || "",
                                 output: msg.output || "", error: "" }
                             : { inputs: [], outputs: [], input: "", output: "", error: msg.message || "unavailable" }
+      return
+    }
+    if (msg.reply !== undefined && msg.reply === root._jobDetailRequest) {
+      root._jobDetailRequest = -1
+      root.jobDetail = msg.ok && msg.job ? msg.job : ({})
       return
     }
     if (msg.reply !== undefined && msg.sessions !== undefined) {
@@ -566,6 +591,14 @@ Item {
       root.approvals = root.approvals.filter(function(a) { return a.id !== msg.id })
       break
     case "agents": root.agents = msg.sessions || []; break
+    case "jobs":
+      root.jobs = msg.jobs || []
+      root.jobsSummary = msg.summary || ({})
+      if (root.jobDetail.id) {   // keep an open detail view current
+        for (var ji = 0; ji < root.jobs.length; ji++)
+          if (root.jobs[ji].id === root.jobDetail.id && root.jobs[ji].updated !== root.jobDetail.updated) { jobDetails(root.jobDetail.id); break }
+      }
+      break
     case "backends": root.backends = msg.status || ({}); if (root.hubOpen) root.refreshHub(); break
     case "research": root.research = msg.status || ({}); break
     case "catalog": root.catalogSummary = msg.summary || ({}); if (root.hubOpen) root.refreshHub(); break

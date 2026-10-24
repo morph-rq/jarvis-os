@@ -23,7 +23,7 @@ PLAN_SCHEMA = {"type": "object", "properties": {
         "required": ["title", "instructions"]}}},
     "required": ["steps"]}
 
-EXCLUDED = ("delegate", "skills", "control_session")   # no recursion, no self-granted input control
+EXCLUDED = ("delegate", "background", "skills", "control_session")   # no recursion, no self-granted input control
 
 PLANNER = """You plan work for Jarvis, a desktop assistant on Arch Linux (Hyprland) with these tools:
 {tools}
@@ -43,9 +43,19 @@ attachment only if the tool result lists it. Sending happens only when the user 
 Finish with a short factual summary, then a final line exactly: STATUS: done  or  STATUS: failed - <reason>"""
 
 
-def _tools_text() -> str:
+def _tools_text(allowed: frozenset | None = None) -> str:
     from jarvis.tools import REGISTRY
-    return "\n".join(f"- {t.name}: {t.description[:120]}" for t in REGISTRY.values() if t.name not in EXCLUDED)
+    return "\n".join(f"- {t.name}: {t.description[:120]}" for t in REGISTRY.values()
+                     if t.name not in EXCLUDED and (allowed is None or t.name in allowed))
+
+
+def excluded(allowed: frozenset | None = None) -> tuple:
+    """The tools a run may not call: always EXCLUDED, and everything outside `allowed` when it is given
+    (a background job gets only the tools its kind needs)."""
+    from jarvis.tools import REGISTRY
+    if allowed is None:
+        return EXCLUDED
+    return tuple(set(EXCLUDED) | {name for name in REGISTRY if name not in allowed})
 
 
 def _status(reply: str) -> tuple[bool, str]:
@@ -59,7 +69,8 @@ def _clean(reply: str) -> str:
     return re.sub(r"\n?STATUS:.*$", "", reply.strip(), flags=re.I | re.S).strip()
 
 
-async def make_plan(ctx: Context, goal: str, context: str = "", done: list[dict] | None = None, failure: str = "") -> list[dict]:
+async def make_plan(ctx: Context, goal: str, context: str = "", done: list[dict] | None = None, failure: str = "",
+                    allowed: frozenset | None = None) -> list[dict]:
     max_steps = int(ctx.config["agent"]["max_steps"])
     prompt = f"<goal>{goal}</goal>"
     if context:
@@ -68,7 +79,7 @@ async def make_plan(ctx: Context, goal: str, context: str = "", done: list[dict]
         prompt += "\nAlready completed (do not repeat):\n" + "\n".join(f"- {d['title']}: {d['summary'][:200]}" for d in done)
     if failure:
         prompt += f"\nThe last step failed: {failure[:400]}. Plan only the remaining steps, working around it."
-    plan = await ctx.brain.complete(prompt, PLANNER.format(tools=_tools_text(), max_steps=max_steps),
+    plan = await ctx.brain.complete(prompt, PLANNER.format(tools=_tools_text(allowed), max_steps=max_steps),
                                     schema=PLAN_SCHEMA, max_tokens=2000, temperature=0.2)
     steps = [{"title": str(s.get("title", ""))[:120], "instructions": str(s.get("instructions", ""))[:800],
               "critical": bool(s.get("critical")), "state": "pending", "summary": ""}
@@ -77,12 +88,19 @@ async def make_plan(ctx: Context, goal: str, context: str = "", done: list[dict]
 
 
 class Run:
-    def __init__(self, ctx: Context, goal: str, steps: list[dict], lang: str) -> None:
+    def __init__(self, ctx: Context, goal: str, steps: list[dict], lang: str, allowed: frozenset | None = None,
+                 run_tool=None, on_change=None, card: bool = True) -> None:
         self.ctx, self.goal, self.steps, self.lang = ctx, goal, steps, lang
+        self.allowed = allowed       # None: every tool but EXCLUDED
+        self.run_tool = run_tool     # (task, name, args) -> result; default Jarvis.run_tool
+        self.on_change = on_change   # called whenever a step starts or ends (background jobs' progress)
+        self.card = card
         self.card_id = ""
 
     def show(self, state: str = "running") -> None:
-        if self.ctx.hub:
+        if self.on_change:
+            self.on_change(self, state)
+        if self.ctx.hub and self.card:
             self.ctx.hub.card("plan", {"goal": self.goal, "state": state,
                                        "steps": [{"title": s["title"], "state": s["state"], "summary": s["summary"][:160]}
                                                  for s in self.steps]},
@@ -105,8 +123,8 @@ class Run:
                       + f"Now do step {i + 1}: {step['title']}. {step['instructions']}")
             try:
                 reply = await asyncio.wait_for(self.ctx.brain.respond(
-                    prompt, [], j.memory.recall(self.goal), lambda n, a: j.run_tool(task, n, a),
-                    exclude=EXCLUDED, system=EXECUTOR), self.ctx.config["brain"]["timeout_s"] * 4)
+                    prompt, [], j.memory.recall(self.goal), lambda n, a: (self.run_tool or j.run_tool)(task, n, a),
+                    exclude=excluded(self.allowed), system=EXECUTOR), self.ctx.config["brain"]["timeout_s"] * 4)
                 ok, problem = _status(reply)
             except ApprovalDenied as exc:
                 reply, ok, problem = "", False, str(exc)
@@ -122,7 +140,7 @@ class Run:
                 replans += 1
                 j.tasks.step(task, "plan", f"re-planning ({replans}): {problem[:120]}")
                 remaining = await make_plan(self.ctx, self.goal, done=[s for s in self.steps if s["state"] == "done"],
-                                            failure=f"{step['title']}: {problem}")
+                                            failure=f"{step['title']}: {problem}", allowed=self.allowed)
                 self.steps = self.steps[:i + 1] + remaining
             i += 1
         succeeded = [s for s in self.steps if s["state"] == "done"]

@@ -204,6 +204,15 @@ DEFAULTS: dict = {
         # Python skills run only inside a bubblewrap sandbox, after the user approves their code.
         "code_skills": True,
     },
+    "jobs": {
+        "max_parallel": 4,    # background agents running at once (more wait in the queue)
+    },
+    "computer": {
+        # Cua agent seats: the Hyprland plugin is loaded on the first app job, only when its ABI matches.
+        "cua_seats": True,
+        # Hermes's own computer_use toolset (same cua-driver, Hermes's own approvals, outside Jarvis's gate).
+        "share_with_hermes": False,
+    },
     "agent": {
         "max_steps": 8,
         "max_replans": 2,
@@ -451,6 +460,8 @@ SCHEMA: dict[str, tuple] = {
     "proactive.clipboard": (bool, None),
     "skills.code_skills": (bool, None),
     "agent.max_steps": (int, (2, 20)), "agent.max_replans": (int, (0, 5)),
+    "jobs.max_parallel": (int, (1, 8)),
+    "computer.cua_seats": (bool, None), "computer.share_with_hermes": (bool, None),
     "integrations.auto_drafts": (bool, None), "integrations.google_fallback_composio": (bool, None),
     "integrations.download_dir": (str, None),
     "workspace.enabled": (bool, None), "workspace.offline": (bool, None), "workspace.generated_ui": (bool, None),

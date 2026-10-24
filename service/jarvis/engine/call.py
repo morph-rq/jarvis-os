@@ -114,7 +114,8 @@ class CallSession:
     # ------------------------------------------------------------ pipeline
     def _system(self) -> str:
         base = i18n.VOICE_SYSTEM.get(self.lang, i18n.VOICE_SYSTEM["en"])
-        facts = self.j.memory.recall(self.purpose or "") if self.ident.owner else []
+        from jarvis.user_context import owner_facts
+        facts = owner_facts(self.j.config, self.j.memory) if self.ident.owner else []
         system = base + "\n" + CALL_RULES
         if facts:
             system += "\nKnown facts about the user:\n" + "\n".join(f"- {f['text']}" for f in facts)

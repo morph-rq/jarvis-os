@@ -217,6 +217,8 @@ def setup(name: str, cfg, *, run=subprocess.run) -> list[str]:
         share = bool(cfg["research"].get("share_with_hermes")) and bool(cfg["research"].get("enabled"))
         if share and "jarvis_research" not in toolsets:
             toolsets.append("jarvis_research")   # the MCP server's toolset (Hermes names it after the server)
+        if cfg["computer"].get("share_with_hermes") and shutil.which("cua-driver") and "computer_use" not in toolsets:
+            toolsets.append("computer_use")      # Hermes's built-in Cua toolset; never a second Cua MCP server
         model = cfg["hermes"].get("model", "")
         # Hermes's own config module writes its YAML (hermes_cli/config.py save_config, merging).
         script = (

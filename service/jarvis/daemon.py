@@ -89,6 +89,9 @@ class Jarvis:
         from jarvis.research import Research
         # Web research: Morphic's pipeline on a local SearXNG, behind web_search (docs/RESEARCH.md).
         self.research = Research(self)
+        from jarvis.jobs import Scheduler
+        # Background agents: several jobs at once, each with only its kind's tools (docs/COMPUTER-USE.md).
+        self.jobs = Scheduler(self, int(cfg["jobs"]["max_parallel"]))
         from jarvis.accounts import Accounts
         from jarvis.accounts.onboarding import Onboarding
         from jarvis.backup import Backups
@@ -174,7 +177,8 @@ class Jarvis:
                 "history": self.memory.recent_turns(30), "activities": self.activities(),
                 "backends": self.backends.snapshot(), "catalog": self.catalog.registry.summary(),
                 "research": self.research.snapshot(), "onboarding": self.onboarding.public(),
-                "accounts": self.accounts.status(), **self.tasks.snapshot()}
+                "accounts": self.accounts.status(), "jobs": self.jobs.public(), "jobs_summary": self.jobs.summary(),
+                **self.tasks.snapshot()}
 
     def publish_settings(self) -> None:
         self.bus.publish("settings", settings={k: self.config.get(k) for k in configmod.SCHEMA}, lang=self.lang(),
@@ -201,6 +205,42 @@ class Jarvis:
     ACTIVITY_ACTIONS = {"cancel_reminder": "reminders", "end_focus": "focus_mode", "stop_meeting": "meeting_notes",
                     "cancel_meeting": "meeting_notes"}
 
+    async def stop_all(self) -> dict:
+        """The emergency stop: agents, jobs, research, live input and the Cua driver, all at once.
+        Nothing above safe (and no live input at all) runs again until the user resumes."""
+        from jarvis.capabilities import automation, computer
+        automation.CONTROL["until"] = 0.0          # a granted control session ends too
+        self.bus.publish("control", until=0.0)
+        out = await self.backends.stop_all()       # sets lockdown, cancels Jarvis tasks and backend runs
+        out["jobs"] = self.jobs.stop_all()
+        out["research_runs"] = await self.research.cancel_all()
+        out.update(await computer.stop_all())
+        return out
+
+    def jobs_op(self, req: dict) -> dict:
+        """The Agent Activity panel: list, details, start, pause, resume, cancel, retry."""
+        action = str(req.get("action", "list"))
+        job_id = str(req.get("job_id", ""))
+        if action == "list":
+            return {"ok": True, "jobs": self.jobs.public(), "summary": self.jobs.summary()}
+        if action == "details":
+            job = self.jobs.jobs.get(job_id)
+            return {"ok": bool(job), "job": job.public(full=True) if job else None}
+        if action == "start":
+            try:
+                job = self.jobs.submit(str(req.get("kind", "")), str(req.get("goal", "")), source="ui", lang=self.lang())
+            except ValueError as exc:
+                return {"ok": False, "message": str(exc)}
+            return {"ok": True, "job": job.public()}
+        if action == "retry":
+            job = self.jobs.retry(job_id)
+            return {"ok": bool(job), "job": job.public() if job else None}
+        if action in ("pause", "resume"):
+            return {"ok": getattr(self.jobs, action)(job_id)}
+        if action == "cancel":
+            return {"ok": True, "cancelled": self.jobs.cancel(job_id or None)}
+        return {"ok": False, "message": f"unknown jobs action {action!r}"}
+
     def activity_action(self, req: dict) -> dict:
         action = str(req.get("action", ""))
         name = self.ACTIVITY_ACTIONS.get(action)
@@ -226,6 +266,10 @@ class Jarvis:
     # says what it does, and the request comes over the owner-only socket, never from a model.
     UI_PREAPPROVED = {("apps", "connect"), ("apps", "reconnect"), ("apps", "disconnect"), ("apps", "prefer"),
                       ("capability", "enable"), ("capability", "disable"), ("capability", "rollback")}
+
+    # Tools that move the user's pointer or act in apps: Stop all refuses them even when a control
+    # session rates them safe.
+    LIVE_INPUT = {"computer_input", "click_on_screen", "navigate", "computer_use", "browser"}
 
     async def run_tool(self, task: Task, name: str, args: dict, on_approval=None, origin: str = "",
                        preapproved: bool = False) -> dict:
@@ -260,7 +304,7 @@ class Jarvis:
             if remote.check(name, args):   # again, on the validated arguments
                 return {"ok": False, "refused": True, "message": remote.check(name, args)}
             risk = remote.risk(name, args, risk)
-        if risk != SAFE and self.backends.lockdown:
+        if self.backends.lockdown and (risk != SAFE or name in self.LIVE_INPUT):
             # Stop all: nothing above safe runs until the user resumes (panel, `jarvis-workos hub resume`).
             self.tasks.step(task, "error", f"{name}: stopped by Stop all", tool=name, ok=False)
             return {"ok": False, "refused": True, "message": "Agents are stopped (Stop all). Resume them first."}
@@ -273,7 +317,7 @@ class Jarvis:
             if key in self._executed:
                 return {**self._executed[key], "note": "already done in this task; not repeated"}
         # From a chat app nothing above "safe" runs unasked, whatever approval.auto says.
-        auto = ("safe",) if remote is not None else self.config["approval"]["auto"]
+        auto = ("safe",) if remote is not None or task.strict else self.config["approval"]["auto"]
         if risk not in auto and not preapproved:
             if self.voice and task.source == "voice" and remote is None:   # a phone call is never voiced at the desk
                 # Spoken prompt where Jarvis itself speaks (local engine); Gemini Live is told through
@@ -402,7 +446,8 @@ class Jarvis:
         else:
             self.tasks.step(task, "route", f"model → {self.brain.provider}")
             history = self.memory.recent_turns(self.config["memory"]["history_turns"])[:-1]
-            facts = self.memory.recall(text)
+            from jarvis.user_context import owner_facts
+            facts = owner_facts(self.config, self.memory)
             system = None
             if task.source == "voice":   # spoken: talk like a person, keep code and payloads on screen
                 system = (system_prompt(self.brain.platform_name, facts)
@@ -674,6 +719,8 @@ class Jarvis:
                     "output": self.config["voice"]["output_target"]}
         if op == "tasks":
             return {"ok": True, "tasks": self.memory.recent_tasks(int(req.get("limit", 20)))}
+        if op == "jobs":
+            return self.jobs_op(req)
         if op == "memory":
             if req.get("action") == "forget":
                 return {"ok": self.memory.forget(int(req["fact_id"]))}
@@ -693,7 +740,7 @@ class Jarvis:
             # The Capabilities Hub panel: catalog, connections, updates, agents, activity.
             return await self.catalog.op(req, self.run_ui_tool)
         if op == "stop_all":
-            return {"ok": True, **await self.backends.stop_all(), "research_runs": await self.research.cancel_all()}
+            return {"ok": True, **await self.stop_all()}
         if op == "research":
             return await self.research_op(req)
         if op == "accounts":
@@ -709,6 +756,7 @@ class Jarvis:
             return await self.imports.op(req)
         if op == "resume_agents":
             self.backends.lift()
+            self.jobs.lift()
             return {"ok": True}
         if op == "tools":
             return {"ok": True, "tools": [{"name": t.name, "risk": t.risk if isinstance(t.risk, str) else "dynamic",
@@ -907,6 +955,9 @@ async def serve(cfg: configmod.Config) -> None:
     await jarvis.research.start()
     await jarvis.accounts.start()
     backup_scheduler = asyncio.create_task(jarvis.backups.scheduler(), name="backup-scheduler")
+    requeued = jarvis.jobs.recover()
+    if requeued:
+        log.info("%d background job(s) queued again after the restart", requeued)
     jarvis.bus.publish("status", status="idle")
     async with server:
         serving = asyncio.create_task(server.serve_forever())
@@ -922,6 +973,9 @@ async def serve(cfg: configmod.Config) -> None:
         await jarvis.workspace.stop()
         from jarvis.capabilities import browser
         await browser.close_browser()
+        from jarvis.capabilities import computer
+        jarvis.jobs.stop_all()
+        await computer.stop_all()
         await jarvis.integrations.close()
         if jarvis.voice:
             await jarvis.voice.shutdown()

@@ -226,7 +226,11 @@ async def open_app(ctx: Context, args: dict) -> dict:
             return {"ok": False, "needs_choice": True, "message": "Several apps match.",
                     "choices": [a.public() for a in matches]}
         picked = matches[0]
-    return {"ok": True, "message": await _sync(ctx.platform.launch_app, picked), "app": picked.public()}
+    try:
+        message = await _sync(ctx.platform.launch_app, picked)
+    except RuntimeError as exc:
+        return {"ok": False, "message": str(exc), "app": picked.public()}
+    return {"ok": True, "message": message, "app": picked.public()}
 
 
 def _ambiguous(query: str, matches) -> bool:

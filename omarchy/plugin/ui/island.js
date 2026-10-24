@@ -12,6 +12,7 @@
 //   task      a Jarvis task is running                            -> peek with its current step
 //   result    a fresh rich result (weather, email, file, plan…)   -> expanded until its time is up
 //   notice    a proactive suggestion with actions                 -> expanded
+//   jobs      background agents are running / one just finished     -> peek "Jarvis · 3 tasks running"
 //   agent     a coding agent is working / just finished           -> peek
 //   recording meeting notes are recording                          -> mini with the elapsed time
 //   timer     a timer runs (or a reminder is due within 10 min)   -> mini with the countdown, peek at the end
@@ -32,10 +33,11 @@ var URGENT = { approval: true, call: true, question: true }
 var BUDDY_KINDS = { image: true, weather: true, chart: true, media: true, gauges: true, radar: true, globe: true,
                     comparison: true, metrics: true, scorecard: true, progress: true }
 // Background activities that put a live value (a clock) in the mini pill.
-var LIVE = { media: true, agent: true, recording: true, timer: true, focus: true }
+var LIVE = { media: true, agent: true, jobs: true, recording: true, timer: true, focus: true }
 var MESSAGE_S = 9          // a chat message stays in view this long
 var REMINDER_SOON_S = 600  // reminders count down in the pill this close to their time
 var TIMER_PEEK_S = 10      // a timer's last seconds open the pill a little
+var JOB_DONE_S = 6         // a background job that just finished stays in the pill this long
 
 // Seconds left until an epoch-seconds deadline (never negative).
 function remaining(dueS, now) { return Math.max(0, dueS - now / 1000) }
@@ -65,6 +67,27 @@ function _voiceLive(s) {
          || st === "dictating" || st === "connecting"
 }
 
+// Background agents (jarvisd's scheduler): {count, running, queued, paused, failed, lead, jobs} while any
+// is running, queued or paused, or one finished a moment ago; null otherwise. `lead` is the job the pill
+// talks about: the newest running one, else the one that just finished.
+function _jobsActivity(s) {
+  var all = s.jobs || []
+  var sum = s.jobsSummary || {}
+  var live = [], recent = null
+  for (var i = 0; i < all.length; i++) {
+    var j = all[i]
+    var st = j.state
+    if (st === "running" || st === "awaiting_approval" || st === "queued" || st === "waiting" || st === "paused") live.push(j)
+    else if (j.finished && s.now - j.finished * 1000 < JOB_DONE_S * 1000 && (!recent || j.finished > recent.finished)) recent = j
+  }
+  if (!live.length && !recent) return null
+  var lead = null
+  for (var k = live.length - 1; k >= 0; k--) if (live[k].state === "running" || live[k].state === "awaiting_approval") { lead = live[k]; break }
+  return { count: live.length, running: sum.running || 0, queued: sum.queued || 0, paused: sum.paused || 0,
+           failed: sum.failed || 0, lead: lead || recent || live[live.length - 1], justFinished: !live.length,
+           jobs: all }
+}
+
 // The single most important thing happening now: {kind, item}.
 function activity(s) {
   if (!s.connected) return { kind: "offline", item: null }
@@ -83,6 +106,8 @@ function activity(s) {
   if (s.running && s.running.id) return research ? { kind: "result", item: s.card } : { kind: "task", item: s.running }
   if (_fresh(s.card, s.now)) return { kind: "result", item: s.card }
   if (s.notice) return { kind: "notice", item: s.notice }
+  var jobs = _jobsActivity(s)
+  if (jobs) return { kind: "jobs", item: jobs }
   var newest = null
   for (var j = 0; j < agents.length; j++) {
     var a = agents[j]
@@ -117,6 +142,9 @@ function mode(s, act) {
   case "result": natural = quiet || (s.buddy && act.item && BUDDY_KINDS[act.item.kind]) ? "mini" : "expanded"; break
   case "notice": natural = quiet ? "mini" : "expanded"; break
   case "agent": natural = quiet ? "mini" : "peek"; break
+  case "jobs":   // queued or paused ones alone stay a small pill
+    natural = !quiet && act.item && (act.item.running > 0 || act.item.justFinished) ? "peek" : "mini"
+    break
   case "message": natural = quiet ? "mini" : "peek"; break
   case "timer":
     natural = !quiet && act.item && remaining(act.item.due, s.now) <= TIMER_PEEK_S ? "peek" : "mini"
@@ -139,7 +167,7 @@ function size(m, act, contentHeight, screenHeight) {
   var maxH = Math.max(200, (screenHeight || 1000) * 0.62)
   switch (m) {
   case "hidden": return { w: 180, h: 5, r: 2.5 }
-  case "mini": return { w: act.kind === "media" || act.kind === "agent" ? 156 : LIVE[act.kind] ? 168 : 128, h: 32, r: 16 }
+  case "mini": return { w: act.kind === "media" || act.kind === "agent" || act.kind === "jobs" ? 156 : LIVE[act.kind] ? 168 : 128, h: 32, r: 16 }
   case "peek": return { w: act.kind === "voice" ? 420 : 380, h: 44, r: 22 }
   case "expanded": return { w: 460, h: Math.min(maxH, Math.max(96, contentHeight || 140)), r: 26 }
   case "conversation": return { w: 620, h: Math.min(maxH, Math.max(320, contentHeight || 420)), r: 30 }

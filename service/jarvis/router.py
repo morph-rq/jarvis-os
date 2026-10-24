@@ -440,6 +440,8 @@ def _capability(t: str, text: str) -> Route | None:
         return Route("disk", {"action": "cleanup", "items": [i for i in re.split(r"[,\s]+", m.group(1)) if i]})
 
     # ---- media, images, maps, skills, meetings
+    if t in ("my location", "where am i", "мое местоположение", "где я", "minha localização", "ma position"):
+        return Route("maps", {"action": "locate"})
     if m := re.match(r"^(?:включи|поставь|play|toque|tocar)(?: песню| трек| song| a música)? (.+?) (?:на|в|on|no) (?:спотифа\w*|spotify)$", t):
         return Route("music", {"action": "search_play", "query": m.group(1)})
     if re.match(r"^(?:что (?:сейчас )?играет|что за песня|what s playing|what song is this|o que está tocando)$", t):

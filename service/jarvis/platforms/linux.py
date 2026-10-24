@@ -9,6 +9,7 @@ import re
 import shlex
 import shutil
 import subprocess
+import tempfile
 import time
 from pathlib import Path
 
@@ -32,8 +33,17 @@ def _spawn(args: list[str]) -> None:
         args = ["uwsm-app", "--", *args]
     elif args[0] != "uwsm-app" and shutil.which("systemd-run"):
         args = ["systemd-run", "--user", "--scope", "--quiet", "--collect", "--", *args]
-    subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                     stderr=subprocess.DEVNULL, start_new_session=True)
+    with tempfile.TemporaryFile() as errors:
+        proc = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                                stderr=errors, start_new_session=True)
+        try:
+            code = proc.wait(timeout=0.3)
+        except subprocess.TimeoutExpired:
+            return
+        if code:
+            errors.seek(0)
+            detail = errors.read(1500).decode(errors="replace").strip()
+            raise RuntimeError(f"Application launcher failed ({code}): {detail[:300]}")
 
 
 def _lua_string(value: str) -> str:
@@ -108,6 +118,9 @@ class LinuxPlatform(Platform):
         return None
 
     def launch_app(self, app: AppEntry) -> str:
+        office = app.id.startswith("libreoffice-")
+        if office and self.has["hyprctl"]:
+            self._check_office_recovery()
         window = self._window_for_app(app) if self.has["hyprctl"] else None
         if window:
             self.focus_window(window)
@@ -118,7 +131,26 @@ class LinuxPlatform(Platform):
             _spawn(["gtk-launch", app.id])
         else:
             _spawn([a for a in shlex.split(app.exec) if not a.startswith("%")])
-        return f"launched {app.name}"
+        if self.has["hyprctl"]:
+            # Wait for a real window: process creation alone can hide startup errors
+            # or a recovery dialog shared by all LibreOffice components.
+            for _ in range(50 if office else 20):
+                if office:
+                    self._check_office_recovery()
+                if self._window_for_app(app):
+                    return f"launched {app.name}"
+                time.sleep(0.15)
+            raise RuntimeError(f"Launch requested for {app.name}, but no application window appeared. "
+                               "The application may still be starting; check its startup dialog.")
+        return f"launch requested for {app.name}"
+
+    def _check_office_recovery(self) -> None:
+        for window in self.windows():
+            if window.app.lower().startswith(("soffice", "libreoffice")) and re.search(
+                    r"recovery|восстановлен|récupération|recupera", window.title, re.I):
+                self.focus_window(window)
+                raise RuntimeError("LibreOffice is blocked by its document recovery dialog. "
+                                   "It is now focused; finish document recovery, then open the app again.")
 
     def launch_role(self, role: str) -> str:
         command = {"browser": "omarchy-launch-browser", "editor": "omarchy-launch-editor",
