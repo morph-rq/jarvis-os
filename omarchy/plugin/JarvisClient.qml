@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "ui"
+import "ui/companion.js" as CompanionLogic
 
 // The one connection to jarvisd and the state every Jarvis surface shares (island, companion, panel,
 // HUD, command bar), whichever shell hosts them: Omarchy's shell (Service.qml) or Caelestia
@@ -99,6 +100,18 @@ Item {
   property var _approvalAt: ({})      // approval id -> when it reached this shell (ms)
   // One-shot reactions to real events, for the orb: success, error, barge, wake.
   signal reaction(string kind)
+  // The companion's character state (ui/companion.js), from real events only. A reaction holds a short
+  // "flash" (finished / error / dizzy) so the character can celebrate or wince before settling.
+  property string companionFlash: ""
+  readonly property string companionMood: CompanionLogic.characterState({
+    connected: root.connected, status: root.status, running: root.running, activeTools: root.activeTools,
+    approvals: root.approvals, agents: root.agents, research: root.research, flash: root.companionFlash })
+  function flashCompanion(kind, ms) { companionFlash = kind; flashTimer.interval = ms; flashTimer.restart() }
+  Timer { id: flashTimer; onTriggered: root.companionFlash = "" }
+  onReaction: function(kind) {
+    var r = CompanionLogic.reaction(kind)
+    if (r && r.flash) root.flashCompanion(r.flash, r.ms)
+  }
   property bool panelOpen: false      // set by the panel, so the HUD steps aside
   property int panelWidth: 460
 

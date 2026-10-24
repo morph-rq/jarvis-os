@@ -12,6 +12,22 @@ FaceBase {
   readonly property bool hint: live || kind === "media" || kind === "agent" || kind === "result" || kind === "notice"
                                || kind === "message"
 
+  readonly property bool usePip: !face.s || !face.s.settings["ui.companion_style"] || face.s.settings["ui.companion_style"] === "pip"
+
+  // Pip, the living companion (ui.companion_style = pip, the default): rests in the island, reacts to
+  // what Jarvis is really doing, and is poked, dragged files into and released from here.
+  Pip {
+    id: pip
+    size: 21
+    visible: face.usePip && face.mode !== "hidden"
+    x: face.hint ? 4 : (face.width - width) / 2
+    anchors.verticalCenter: parent.verticalCenter
+    mood: face.s ? face.s.companionMood : "offline"
+    level: face.s ? face.s.level : 0
+    interactive: false            // the face's own MouseArea below handles clicks (poke + open)
+    Connections { target: face.s; function onReaction(kind) { pip.react(kind) } }
+  }
+
   JarvisOrb {
     id: orb
     size: 26
@@ -22,15 +38,15 @@ FaceBase {
     bands: face.s ? face.s.bands : []
     vad: !!face.s && face.s.vad
     sleeping: face.mode === "hidden"
-    visible: face.mode !== "hidden"
+    visible: !face.usePip && face.mode !== "hidden"
     Connections { target: face.s; function onReaction(kind) { orb.react(kind) } }
   }
 
   PrivacyDots {
     s: face.s
     visible: face.mode !== "hidden"
-    x: orb.x + orb.width - 3
-    y: orb.y + 1
+    x: face.usePip ? pip.x + pip.width - 6 : orb.x + orb.width - 3
+    y: face.usePip ? pip.y + 3 : orb.y + 1
   }
 
   Row {
@@ -86,7 +102,7 @@ FaceBase {
       if (!face.s) return
       if (e.button === Qt.RightButton) face.s.listen()
       else if (e.button === Qt.MiddleButton) face.s.dictate("toggle")
-      else face.island.request("expanded")
+      else { if (face.usePip) pip.poke(); face.island.request("expanded") }
     }
   }
 }

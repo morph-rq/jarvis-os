@@ -55,5 +55,6 @@ jarvisd pushes one JSON object per line over `$XDG_RUNTIME_DIR/jarvis-workos/jar
 | `devices` | — | `inputs`, `outputs` [{name, label, default}], `input`, `output` (the voice.input_source / voice.output_target settings; setting one switches the open device at once) |
 | `guide` | `action` next, stop or status | `active`, `step`, `label`, `caption`: the walkthrough on screen (navigate) |
 | `learn` | `action` answer (+ `question` number, `choice` index: a tapped option), reveal, grade (+ `grade` again/hard/good/easy) or stop | the `learn` tool's result; the quiz or flashcard card updates by `hud` |
+| `research` | `action` ask (+ `query`, `mode` auto/quick/adaptive/thorough, `fresh`), cancel, status, stats, open (+ `url`: a source of a recent answer), export (+ `run_id`, `kind` xlsx/docx/pdf/md), restart (+ `target` research/searxng), mcp (+ `agent`, `query`: the Hermes/OpenClaw bridge) | ask: `task_id` (the answer streams as a `hud` card of kind research); others: their result |
 | `listen` / `stop_speaking` / `mute` / `ask` / `cancel` | see daemon.py | |
 
