@@ -85,11 +85,19 @@ class TelegramUser(Connector):
         self.a.config.save_secret("TELEGRAM_API_HASH", api_hash)
         return "Saved in the keyring."
 
-    def _client(self, session: str = ""):
+    def _client(self, session: str = "", *, receive_updates: bool = False):
+        """Updates stay off unless the Communication Hub monitors this account (jarvis/comms)."""
         TelegramClient, StringSession, _ = _telethon()
         return TelegramClient(StringSession(session), int(self.a.config.secret("TELEGRAM_API_ID")),
                               self.a.config.secret("TELEGRAM_API_HASH"), device_model="Jarvis", app_version="jarvis-workos",
-                              receive_updates=False)
+                              receive_updates=receive_updates)
+
+    def session_client(self, account: dict, *, receive_updates: bool = False):
+        """A client on the saved session of one connected account, for jarvis.comms (None: no session)."""
+        if _telethon() is None:
+            return None
+        session = self.a.vault.get(self._vault_key(account["ref"]))
+        return self._client(session, receive_updates=receive_updates) if session else None
 
     def _vault_key(self, ref: str) -> str:
         return f"telegram:{ref}"

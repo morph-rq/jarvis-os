@@ -95,6 +95,9 @@ class Jarvis:
         from jarvis.imports import Imports
         # First-run setup, Accounts & Integrations, import and encrypted backups (docs/ONBOARDING.md).
         self.accounts = Accounts(self)
+        from jarvis.comms import Comms
+        # The Communication Hub: the user's own messaging accounts behind messages/send_message (docs/COMMS.md).
+        self.comms = Comms(self)
         self.onboarding = Onboarding(self)
         self.backups = Backups(self)
         self.imports = Imports(self)
@@ -174,7 +177,7 @@ class Jarvis:
                 "history": self.memory.recent_turns(30), "activities": self.activities(),
                 "backends": self.backends.snapshot(), "catalog": self.catalog.registry.summary(),
                 "research": self.research.snapshot(), "onboarding": self.onboarding.public(),
-                "accounts": self.accounts.status(), **self.tasks.snapshot()}
+                "accounts": self.accounts.status(), "comms": self.comms.status(), **self.tasks.snapshot()}
 
     def publish_settings(self) -> None:
         self.bus.publish("settings", settings={k: self.config.get(k) for k in configmod.SCHEMA}, lang=self.lang(),
@@ -253,8 +256,14 @@ class Jarvis:
         if tool.check is not None:
             problem = tool.check(args)
             if problem:
-                self.tasks.step(task, "error", f"{name}: {problem}", tool=name, ok=False)
-                return {"ok": False, "refused": True, "message": problem}
+                # A dict is a structured answer (e.g. send_message's candidates to choose from), still before any approval.
+                detail = dict(problem) if isinstance(problem, dict) else {"message": problem}
+                card = detail.pop("card", None)
+                self.tasks.step(task, "error", f"{name}: {detail.get('message', '')}", tool=name, ok=False)
+                if card:
+                    self.hub.card(card.get("kind", "info"), card.get("data", {}), card.get("title", ""), card.get("ttl", 15),
+                                  task_id=task.id)
+                return {**detail, "ok": False, "refused": True}
         risk = tool.risk_for(args)
         if remote is not None:
             if remote.check(name, args):   # again, on the validated arguments
@@ -913,6 +922,7 @@ async def serve(cfg: configmod.Config) -> None:
         await stop.wait()
         log.info("shutting down")
         backup_scheduler.cancel()
+        await jarvis.comms.stop()
         await jarvis.accounts.close()
         await jarvis.gateway.stop()
         await jarvis.research.stop()

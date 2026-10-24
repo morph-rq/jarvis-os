@@ -82,6 +82,11 @@ EVENTS: dict[str, tuple[dict, str]] = {
                  "unavailable|unsupported|error}], state (not_configured, ready, awaiting_user, verifying, connected, "
                  "needs_attention, expired, reconnecting, unsupported, failed), action, accounts [{id, label, state, "
                  "capabilities, error {code, title, body, actions[], details}}], setup[], setup_fields[]}], flows[]}."),
+    "comms": ({"status": dict}, "Communication Hub (the user's own messaging accounts): {accounts [{id, provider, label, "
+              "state, capabilities[] (list_chats, read, unread, search, send, reply, send_file, download_file, mark_read, "
+              "read_status, monitor), limited (why capabilities are missing), permissions {read, search, attachments, "
+              "draft, send, notify, digest, groups: bool}, monitoring, monitor_active, problem, new, last_review}], "
+              "notify_preview, digest}. Message text never travels in this event."),
     "auth": ({"flow": dict}, "One sign-in in progress: {id, connector, step starting|qr|qr_expired|browser|form|verifying|"
              "done|error|cancelled, message, qr {size, rows[] of '0'/'1'} (modules only, never the payload), qr_expires, "
              "url, fields [{name, label, kind}], error, identity {label}}."),

@@ -46,9 +46,10 @@ TOOL_METHOD = {
     "web_search": "local_service", "weather": "official_api", "maps": "official_api", "app_action": "official_api",
     "app_tools": "official_api", "email": "official_api", "calendar": "official_api", "generate_image": "official_api",
     "youtube": "official_api", "home": "official_api", "music": "official_api", "message": "official_api",
+    "messages": "official_api", "send_message": "official_api", "comms_account": "official_api",
 }
 TOOL_LATENCY = {"local_service": "fast", "official_api": "fast", "browser": "slow", "desktop": "slow", "vision": "slow", "agent": "slow"}
-EXTERNAL = {"email", "message", "app_action", "call", "phone", "send_file", "home", "browser"}
+EXTERNAL = {"email", "message", "send_message", "app_action", "call", "phone", "send_file", "home", "browser"}
 
 # Upstream skills Jarvis serves itself, so they are listed but never routed to.
 NATIVE_DUPLICATES = {

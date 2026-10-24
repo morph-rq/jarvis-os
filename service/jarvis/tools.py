@@ -82,8 +82,9 @@ class Tool:
     # first (an external tool's metadata). Failures are ignored: the risk callable then fails closed.
     prepare: Callable[[dict], Awaitable[None]] | None = None
     # Refuses a call before any approval is asked (returns the reason), for requests that must be fixed
-    # rather than approved, e.g. an email whose text promises an attachment it doesn't carry.
-    check: Callable[[dict], str | None] | None = None
+    # rather than approved, e.g. an email whose text promises an attachment it doesn't carry. A dict is a
+    # structured refusal (a choice among candidates, a missing permission), returned as the result.
+    check: Callable[[dict], str | dict | None] | None = None
 
     def risk_for(self, args: dict) -> str:
         return self.risk(args) if callable(self.risk) else self.risk
@@ -107,7 +108,7 @@ REGISTRY: dict[str, Tool] = {}
 def tool(name: str, description: str, properties: dict | None = None, required: list[str] | None = None,
          risk: str | Callable[[dict], str] = SAFE, describe: Callable[[dict], str] | None = None,
          prepare: Callable[[dict], Awaitable[None]] | None = None,
-         check: Callable[[dict], str | None] | None = None):
+         check: Callable[[dict], str | dict | None] | None = None):
     def register(fn):
         REGISTRY[name] = Tool(name=name, description=description,
                               parameters={"type": "object", "properties": properties or {},

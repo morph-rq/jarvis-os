@@ -911,3 +911,31 @@ ONBOARD_UI["pt"] = {**ONBOARD_UI["en"], **{
 UI["fr"] = {**UI["en"], **FR_CORE}
 for _lang, _labels in ONBOARD_UI.items():
     UI[_lang].update(_labels)
+
+# ---- Communication Hub (the user's own messaging accounts; jarvis/comms). French and Portuguese fall back to English. ----
+COMMS_UI = {
+    "en": {
+        "comms_title": "Messages", "comms_inbox": "Unread", "comms_catch_up": "Catch me up", "comms_choose_chat": "Which chat?",
+        "comms_new_message": "New message from {who}", "comms_not_connected": "Not connected",
+        "comms_pairing_only": "Linked for pairing only: Jarvis can't read these chats yet",
+        "comms_monitor": "Notify me about new messages", "comms_preview": "Show message text in notifications",
+        "comms_purge": "Delete cached messages", "comms_permissions": "What Jarvis may do",
+        "comms_perm_read": "Read chats", "comms_perm_search": "Search messages", "comms_perm_attachments": "Attachments",
+        "comms_perm_draft": "Draft replies", "comms_perm_send": "Send (asks every time)", "comms_perm_notify": "Notifications",
+        "comms_perm_digest": "Digests", "comms_perm_groups": "Group chats and channels",
+    },
+    "ru": {
+        "comms_title": "Сообщения", "comms_inbox": "Непрочитанные", "comms_catch_up": "Что нового", "comms_choose_chat": "Какой чат?",
+        "comms_new_message": "Новое сообщение от {who}", "comms_not_connected": "Не подключено",
+        "comms_pairing_only": "Связано только для сопряжения: читать эти чаты Jarvis пока не может",
+        "comms_monitor": "Уведомлять о новых сообщениях", "comms_preview": "Показывать текст в уведомлениях",
+        "comms_purge": "Удалить кэш сообщений", "comms_permissions": "Что разрешено Jarvis",
+        "comms_perm_read": "Читать чаты", "comms_perm_search": "Искать в сообщениях", "comms_perm_attachments": "Вложения",
+        "comms_perm_draft": "Черновики ответов", "comms_perm_send": "Отправка (каждый раз спрашивает)",
+        "comms_perm_notify": "Уведомления", "comms_perm_digest": "Сводки", "comms_perm_groups": "Группы и каналы",
+    },
+}
+COMMS_UI["fr"] = dict(COMMS_UI["en"])
+COMMS_UI["pt"] = dict(COMMS_UI["en"])
+for _lang, _labels in COMMS_UI.items():
+    UI[_lang].update(_labels)

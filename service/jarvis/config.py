@@ -369,6 +369,13 @@ DEFAULTS: dict = {
         "whatsapp_bridge": "",
         "health_checks": True,
     },
+    # ---- Communication Hub: the user's own messaging accounts (jarvis/comms, docs/COMMS.md) ----
+    "comms": {
+        "notify_preview": False,    # new-message notices show only who wrote; True adds the first 200 characters
+        "digest": "off",            # reserved for scheduled digests (not implemented yet; the permission exists)
+        "cache_days": 7,            # how long fetched messages stay in the local cache (0 = never cached)
+        "group_send_limit": 50,     # sending to a group larger than this needs the stronger (danger) approval
+    },
     "onboarding": {
         "auto_open": True,      # open the welcome panel on the first start
     },
@@ -385,6 +392,8 @@ SCHEMA: dict[str, tuple] = {
     "accounts.allow_file_vault": (bool, None), "accounts.microsoft_client_id": (str, None),
     "accounts.microsoft_tenant": (str, None), "accounts.whatsapp_bridge": (str, None),
     "accounts.health_checks": (bool, None), "onboarding.auto_open": (bool, None),
+    "comms.notify_preview": (bool, None), "comms.digest": (str, ("off", "daily")), "comms.cache_days": (int, (0, 90)),
+    "comms.group_send_limit": (int, (2, 100000)),
     "backup.location": (str, None), "backup.schedule": (str, ("off", "daily", "weekly")), "backup.keep": (int, (1, 100)),
     "brain.provider": (str, ("gemini", "claude")),
     "brain.gemini_model": (str, None), "brain.claude_model": (str, None), "brain.vision_model": (str, None),

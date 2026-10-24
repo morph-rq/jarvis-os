@@ -119,6 +119,20 @@ def _sqlite_copy(src: Path, dst: Path) -> None:
         source.close()
 
 
+def _drop_message_cache(db: Path) -> None:
+    """Messages the Communication Hub cached from your chats are disposable copies: never in a backup."""
+    con = sqlite3.connect(db)
+    try:
+        present = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        for table in ("comms_cache", "comms_sends"):
+            if table in present:
+                con.execute(f"DELETE FROM {table}")
+        con.commit()
+        con.execute("VACUUM")    # deleted pages would otherwise still hold the text
+    finally:
+        con.close()
+
+
 class Backups:
     def __init__(self, jarvis=None, *, config_dir: Path | None = None, data_dir: Path | None = None) -> None:
         self.j = jarvis
@@ -156,6 +170,7 @@ class Backups:
         if "memory" in categories and db.exists():
             (work / "memory").mkdir()
             _sqlite_copy(db, work / "memory" / "memory.db")
+            _drop_message_cache(work / "memory" / "memory.db")
             add("memory/memory.db", work / "memory" / "memory.db")
             con = sqlite3.connect(work / "memory" / "memory.db")
             try:
