@@ -16,7 +16,7 @@
 // clipping. The voice (FFT bands mapped around the circle) pushes the outline; thinking tilts the
 // strands further and spins them; working sends a comet along the rim.
 //
-// Compile: qsb --glsl "100 es,120,150" --hlsl 50 --msl 12 -o orb.frag.qsb orb.frag
+// Compile: qsb --glsl "100 es,300 es,120,150,330" --hlsl 50 --msl 12 -o orb.frag.qsb orb.frag
 
 layout(location = 0) in vec2 qt_TexCoord0;
 layout(location = 0) out vec4 fragColor;
@@ -57,12 +57,24 @@ float angDist(float a, float b) {
 }
 
 // Spectrum around the circle, mirrored so the outline stays closed.
+float spectrumBand(int i) {
+    // Explicit components also work on the GLSL ES 100 backend: it cannot
+    // initialize a local array or dynamically index a uniform vector.
+    if (i == 0) return bandsA.x;
+    if (i == 1) return bandsA.y;
+    if (i == 2) return bandsA.z;
+    if (i == 3) return bandsA.w;
+    if (i == 4) return bandsB.x;
+    if (i == 5) return bandsB.y;
+    if (i == 6) return bandsB.z;
+    return bandsB.w;
+}
+
 float band(float u) {
     float x = abs(fract(u) * 2.0 - 1.0) * 7.0;
     int i = int(floor(x));
     float f = smoothstep(0.0, 1.0, fract(x));
-    float b[8] = float[8](bandsA.x, bandsA.y, bandsA.z, bandsA.w, bandsB.x, bandsB.y, bandsB.z, bandsB.w);
-    return mix(b[i], b[min(i + 1, 7)], f);
+    return mix(spectrumBand(i), spectrumBand(i + 1), f);
 }
 
 // The shell's outline at screen angle th: two slow harmonics, an inward fold and an outward lobe that

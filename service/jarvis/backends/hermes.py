@@ -100,6 +100,7 @@ class Hermes:
             if m.status_code in (401, 403):
                 self.state, self.error = "auth_failed", "Hermes refused Jarvis's API key"
             else:
+                m.raise_for_status()
                 self.state, self.error = "connected", ""
         except Exception as exc:
             self.state, self.error = "disconnected", f"{type(exc).__name__}: {exc}"[:200]
@@ -108,13 +109,19 @@ class Hermes:
                 "healthy": self.state == "connected", "active_runs": len(self.runs)}
 
     # ------------------------------------------------------------ runs
-    async def start_run(self, text: str, *, instructions: str = "", session_id: str = "") -> str:
+    async def start_run(self, text: str, *, instructions: str = "", session_id: str = "",
+                        history: list[dict] | None = None, memory_scope: str = "") -> str:
         body: dict[str, Any] = {"input": text}
         if instructions:
             body["instructions"] = instructions
         if session_id:
             body["session_id"] = session_id
-        r = await self._http().post("/v1/runs", json=body, headers=self._headers(), timeout=30)
+        if history:
+            body["conversation_history"] = history
+        headers = self._headers()
+        if memory_scope:
+            headers["X-Hermes-Session-Key"] = memory_scope
+        r = await self._http().post("/v1/runs", json=body, headers=headers, timeout=30)
         if r.status_code in (401, 403):
             self.state = "auth_failed"
             raise HermesError("Hermes refused Jarvis's API key")
@@ -142,8 +149,9 @@ class Hermes:
                     return
 
     async def answer(self, run_id: str, allow: bool) -> None:
-        await self._http().post(f"/v1/runs/{run_id}/approval", json={"choice": "once" if allow else "deny"},
-                                headers=self._headers(), timeout=15)
+        r = await self._http().post(f"/v1/runs/{run_id}/approval", json={"choice": "once" if allow else "deny"},
+                                   headers=self._headers(), timeout=15)
+        r.raise_for_status()
 
     async def stop(self, run_id: str) -> bool:
         try:
@@ -159,13 +167,15 @@ class Hermes:
         return n
 
     async def delegate(self, text: str, *, title: str = "", instructions: str = "", timeout: float = 900,
+                       session_id: str = "", history: list[dict] | None = None, memory_scope: str = "",
                        approve: Callable[[dict], Awaitable[bool]] | None = None,
                        progress: Callable[[dict], Awaitable[None] | None] | None = None) -> dict:
         """Run one task in Hermes and wait for its answer.
 
         `approve(event)` decides each approval Hermes asks for (no callback: denied). `progress(event)`
         sees tool starts/finishes as they happen. Returns {ok, status, output, run_id, tools, usage, error}."""
-        run_id = await self.start_run(text, instructions=instructions)
+        run_id = await self.start_run(text, instructions=instructions, session_id=session_id,
+                                      history=history, memory_scope=memory_scope)
         run = self.runs[run_id] = {"title": title or text[:80], "started": time.time(), "state": "running",
                                    "last_event": "", "tools": []}
         output, deltas, usage, error, status = "", [], {}, "", "failed"
@@ -196,9 +206,17 @@ class Hermes:
             await self.stop(run_id)
             status, error = "failed", f"no answer within {int(timeout)} s; stopped"
         except asyncio.CancelledError:
+            status, error = "cancelled", "stopped"
             await self.stop(run_id)
             raise
+        except Exception as exc:
+            # A broken SSE transport must not leave an invisible agent acting on the host.
+            await self.stop(run_id)
+            status, error = "failed", f"Hermes event stream lost ({type(exc).__name__}); stopped"
         finally:
+            if status == "failed" and not error:
+                await self.stop(run_id)
+                error = "Hermes event stream ended before completion; stopped"
             self.runs.pop(run_id, None)
         return {"ok": status == "completed", "status": status, "output": output.strip(), "run_id": run_id,
                 "tools": run["tools"], "usage": usage, "error": error}

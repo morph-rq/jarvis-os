@@ -1,0 +1,10 @@
+--- a/components/widgets/WallpaperImpl.qml
++++ b/components/widgets/WallpaperImpl.qml
+@@ -105,6 +105,7 @@
+ 
+         anchors.fill: parent
+         visible: root.transitionProgress < 1
++        vertexShader: Qt.resolvedUrl("wallpaper.vert.qsb")
+         fragmentShader: root.shader.url
+     }
+ }

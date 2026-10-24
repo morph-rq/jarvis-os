@@ -47,7 +47,32 @@ cmd_reload_ui() {
     [[ -d $src ]] || jw_die "Caelestia isn't installed (./install-jarvis.sh --shell caelestia)"
     "$repo/omarchy/caelestia/assemble.sh" "$src" "${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/caelestia" >/dev/null
     "$qs" -c caelestia kill >/dev/null 2>&1 || true
-    setsid -f "$qs" -c caelestia -n -d >/dev/null 2>&1
+    # The kill request returns before the old process exits. Starting with -n
+    # immediately can silently skip the new shell because the old one is alive.
+    local attempt stopped=0
+    for attempt in {1..40}; do
+      if ! "$qs" -c caelestia list --json 2>/dev/null | "$py" -c \
+        'import json,sys; s=sys.stdin.read().strip(); sys.exit(0 if s and json.loads(s) else 1)'; then
+        stopped=1; break
+      fi
+      sleep 0.25
+    done
+    (( stopped )) || jw_die "Caelestia did not exit; refusing to launch a duplicate"
+    mkdir -p "$JW_STATE"
+    local startup="$JW_STATE/caelestia-start.log"
+    "$qs" -c caelestia -n -d >"$startup" 2>&1 || {
+      cat "$startup" >&2
+      jw_die "Caelestia failed to start (see $startup)"
+    }
+    for attempt in {1..40}; do
+      if "$qs" -c caelestia ipc show >/dev/null 2>&1; then
+        jw_ok "Caelestia reloaded and its IPC responds (startup log: $startup)"
+        return 0
+      fi
+      sleep 0.25
+    done
+    cat "$startup" >&2
+    jw_die "Caelestia did not become responsive (see $startup)"
   else
     local plugin="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/plugins/jarvis.companion"
     if [[ ! -L $plugin ]]; then
