@@ -426,7 +426,7 @@ else
   cp -r "$repo/omarchy/plugin" "$plugin_dir"
   touch "$plugin_dir/.jarvis-workos"
 fi
-omarchy-plugin-validate "$plugin_dir"
+omarchy-plugin-validate "$(readlink -f "$plugin_dir")"
 omarchy-shell shell rescanPlugins >/dev/null
 shell_mode=$(cat "${XDG_STATE_HOME:-$HOME/.local/state}/jarvis-workos/shell-mode" 2>/dev/null || echo omarchy)
 if [[ $shell_mode == caelestia ]]; then
