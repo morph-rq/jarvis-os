@@ -39,13 +39,17 @@ done
 
 cp -r "$here/overlay/." "$dest/"
 
-# The shared Jarvis QML: the client, the island and its faces, cards and the settings panel. Omarchy's
-# host files (Service.qml, Island.qml, Hud.qml, CommandBar.qml, BarWidget.qml) are not used here.
+# The shared Jarvis QML: the client, the island and its faces, cards, the settings panel and every page it
+# opens (Accounts, Backup, Onboarding…). Everything in omarchy/plugin is copied except Omarchy's host files,
+# which Caelestia replaces with its own (overlay/): a new shared file can never be left behind (a missing
+# type makes Panel fail, and with it the whole Jarvis service and the island).
+HOST_ONLY=(Service.qml Island.qml Hud.qml CommandBar.qml BarWidget.qml manifest.json)
 j="$dest/modules/jarvis"
 mkdir -p "$j"
-for f in JarvisClient.qml IslandCore.qml Guide.qml CardBody.qml land.js Panel.qml Messaging.qml Companion.qml \
-         CapabilitiesHub.qml ResearchCard.qml; do
-  cp "$repo/omarchy/plugin/$f" "$j/"
+for path in "$repo"/omarchy/plugin/*.qml "$repo"/omarchy/plugin/*.js; do
+  f=${path##*/}
+  [[ " ${HOST_ONLY[*]} " == *" $f "* ]] && continue
+  cp "$path" "$j/"
 done
 cp -r "$repo/omarchy/plugin/island" "$repo/omarchy/plugin/ui" "$repo/omarchy/plugin/shaders" "$j/"
 
