@@ -32,6 +32,7 @@ from jarvis.accounts.errors import AccountError, classify
 
 QR_LIFETIME_S = 20          # WhatsApp rotates the pairing QR about every 20 s
 MAX_QRS = 6                 # then the code is shown as expired until the user asks for a new one
+MAX_DROPS_BEFORE_QR = 4     # WhatsApp's servers unreachable (e.g. 408 timeouts): say so instead of waiting
 PROBE_TIMEOUT_S = 30
 BRIDGE_PIN = "e0c479382e3609f7878d6e243e47d81f368a920c"   # NousResearch/hermes-agent, scripts/whatsapp-bridge
 
@@ -182,7 +183,7 @@ class WhatsAppPersonal(Connector):
             attempts += 1
             proc = await self._spawn()
             flow.progress("starting", "")
-            qrs, user, error = 0, None, ""
+            qrs, user, error, drops = 0, None, "", 0
             restart = asyncio.create_task(flow.restart.wait())
             try:
                 events = self._events(proc)
@@ -209,6 +210,11 @@ class WhatsAppPersonal(Connector):
                     elif kind == "error":
                         error = str(event.get("error") or "")
                         break
+                    elif kind == "disconnected" and not qrs and event.get("reason") != 515:
+                        drops += 1
+                        if drops >= MAX_DROPS_BEFORE_QR:
+                            error = f"unreachable ({event.get('reason')})"
+                            break
             finally:
                 restart.cancel()
                 if user is None:
@@ -226,6 +232,8 @@ class WhatsAppPersonal(Connector):
             if error == "logged_out" and attempts == 1:
                 self._set_aside_session()     # the old link was removed on the phone: start a clean pairing
                 continue
+            if error.startswith("unreachable"):
+                raise AccountError("network", technical=f"WhatsApp servers did not answer: {error}")
             if error:
                 raise AccountError("logged_out" if error == "logged_out" else "unknown", technical=error[:200])
             if qrs:

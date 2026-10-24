@@ -22,6 +22,21 @@ Item {
   onExpandedChanged: if (service) service.panelWidth = expanded ? 680 : 460
   property bool showSettings: false
   property bool showHub: false            // the Capabilities Hub (OpenClaw, Hermes, skills, updates)
+  property bool showAccounts: false       // Settings › Accounts & Integrations, Backup & Restore, Import
+  property bool showOnboarding: false     // the first-run setup
+  property bool _autoOpened: false
+  readonly property bool showPage: showHub || showAccounts || showOnboarding
+  // First start: open the welcome setup once, when jarvisd says it isn't done. Never blocks anything else.
+  Connections {
+    target: root.service
+    ignoreUnknownSignals: true
+    function onOnboardingChanged() {
+      if (root.service && root.service.onboarding.open && !root._autoOpened) {
+        root._autoOpened = true
+        root.open('{"view": "onboarding"}')
+      }
+    }
+  }
 
   readonly property var s: root.service
   readonly property color fg: Commons.Color.popups.text
@@ -53,6 +68,10 @@ Item {
     try { payload = JSON.parse(payloadJson || "{}"); view = payload.view || "" } catch (e) { view = "" }
     if (view === "messaging" && typeof payload.channel === "string") messagingSection.open = payload.channel
     root.showSettings = view === "settings" || view === "apps" || view === "messaging"
+    // {"view": "accounts"} / {"view": "backup"} / {"view": "onboarding"}: Accounts & Integrations, Backup, first-run setup.
+    root.showAccounts = view === "accounts" || view === "backup"
+    root.showOnboarding = view === "onboarding"
+    if (root.showAccounts || root.showOnboarding) root.expanded = true
     // {"view": "hub", "section": "updates"} opens the Capabilities Hub, optionally at one section.
     root.showHub = view === "hub"
     if (view === "hub" && typeof payload.section === "string" && payload.section) hub.section = payload.section
@@ -153,9 +172,14 @@ Item {
           spacing: 4
           IconButton { glyph: "▣"; tip: t("workspace", "Workspace"); onClicked: if (s) s.openWorkspace("") }
           IconButton { glyph: "◈"; tip: t("hub_title", "Capabilities"); active: root.showHub
-                       onClicked: { root.showHub = !root.showHub; if (root.showHub) root.showSettings = false } }
-          IconButton { glyph: "⚙"; tip: t("settings"); active: root.showSettings && !root.showHub
-                       onClicked: { root.showSettings = !(root.showSettings && !root.showHub); root.showHub = false } }
+                       onClicked: { root.showHub = !root.showHub; root.showAccounts = false; root.showOnboarding = false
+                                    if (root.showHub) root.showSettings = false } }
+          IconButton { glyph: "⚇"; tip: t("acc_title", "Accounts & Integrations"); active: root.showAccounts
+                       onClicked: { root.showAccounts = !root.showAccounts; root.showHub = false; root.showOnboarding = false
+                                    if (root.showAccounts) root.showSettings = false } }
+          IconButton { glyph: "⚙"; tip: t("settings"); active: root.showSettings && !root.showPage
+                       onClicked: { root.showSettings = !(root.showSettings && !root.showPage); root.showHub = false
+                                    root.showAccounts = false; root.showOnboarding = false } }
           IconButton { glyph: root.expanded ? "⤡" : "⤢"; tip: root.expanded ? t("compact") : t("expand"); onClicked: root.expanded = !root.expanded }
           IconButton { glyph: "✕"; tip: ""; onClicked: root.close() }
         }
@@ -297,8 +321,45 @@ Item {
       }
 
       Flickable {
+        id: accountsView
+        visible: root.showAccounts || root.showOnboarding
+        anchors { left: parent.left; right: parent.right; top: approvalsColumn.bottom; bottom: composer.top; margins: 12 }
+        contentHeight: pageColumn.implicitHeight
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+        Column {
+          id: pageColumn
+          width: accountsView.width
+          spacing: 18
+          Onboarding {
+            width: parent.width
+            visible: root.showOnboarding && root.isOpen
+            service: root.service
+            onCloseRequested: root.showOnboarding = false
+            onAskRequested: function(text) { root.showOnboarding = false; if (s) s.ask(text) }
+          }
+          Accounts {
+            width: parent.width
+            visible: root.showAccounts && root.isOpen
+            service: root.service
+          }
+          Backup {
+            width: parent.width
+            visible: root.showAccounts && root.isOpen
+            service: root.service
+          }
+          Chip {
+            visible: root.showAccounts
+            text: t("ob_rerun", "Run setup again")
+            onClicked: { if (s) s.onboardingAction("reset"); root.showAccounts = false; root.showOnboarding = true }
+          }
+        }
+      }
+
+      Flickable {
         id: settingsView
-        visible: root.showSettings && !root.showHub
+        visible: root.showSettings && !root.showPage
         anchors { left: parent.left; right: parent.right; top: approvalsColumn.bottom; bottom: composer.top; margins: 12 }
         contentHeight: settingsColumn.implicitHeight
         clip: true
@@ -408,6 +469,8 @@ Item {
             }
           }
 
+          Chip { text: t("acc_title", "Accounts & Integrations") + "  ›"; active: true
+                 onClicked: { root.showAccounts = true; root.showSettings = false } }
           // Connected apps: what is connected, through which provider, and what a provider still needs.
           // Connect opens the app's own sign-in page in the browser; nothing here ever asks for a password.
           Text {
@@ -477,7 +540,7 @@ Item {
       // ------------------------------------------------------------ conversation
       ListView {
         id: list
-        visible: !root.showSettings && !root.showHub
+        visible: !root.showSettings && !root.showPage
         anchors { left: parent.left; right: parent.right; top: approvalsColumn.bottom; bottom: composer.top; margins: 12 }
         clip: true
         spacing: 8

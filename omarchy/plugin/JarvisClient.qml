@@ -85,6 +85,19 @@ Item {
   property var hubNote: ({})          // {action, ok, message} of the last hub button
   property bool hubOpen: false        // set by the panel while the hub is showing
   property var _hubPending: ({})      // request id -> action
+  // Accounts & Integrations (op accounts, events accounts/auth): {vault, cards [...], flows [...]}. Sign-ins run in
+  // jarvisd; the panel only shows what it is told (a QR's modules, a URL, a form) and sends the user's answers.
+  property var accounts: ({ vault: {}, cards: [], flows: [] })
+  property var authFlow: ({})         // the sign-in on screen: {id, connector, step, qr, url, fields, error, identity}
+  property var accountsNote: ({})     // {action, ok, message, error} of the last accounts button
+  property var accountsSearch: ({})   // {query, cards} of the last intent search
+  // First-run setup (op onboarding, event onboarding): {stage, index, open, name, voice, suggestions…}
+  property var onboarding: ({ stage: "done", open: false })
+  property var backup: ({})           // Backup & Restore (event backup / op backup status)
+  property var backupNote: ({})       // {action, ok, message, …} of the last backup button
+  property var imports: ({ sources: [], counts: {} })
+  property var importNote: ({})
+  property var _opPending: ({})       // request id -> "op:action" for accounts, onboarding, backup, imports
   // The on-screen guide (navigate): the latest `guide` event while a ring is up, {} otherwise.
   property var guide: ({})
   property bool guideHidden: false   // hidden for a moment while jarvisd takes a screenshot
@@ -211,6 +224,26 @@ Item {
     return true
   }
   function refreshHub() { return hubAction({ action: "snapshot" }) }
+  function _op(op, req) {
+    req.op = op
+    if (!send(req)) return false
+    root._opPending[req.id] = op + ":" + (req.action || "status")
+    return true
+  }
+  function accountsAction(req) {
+    if (req.action && req.action !== "status" && req.action !== "search")
+      root.accountsNote = { action: req.action, ok: true, message: "…" }
+    return _op("accounts", req)
+  }
+  function refreshAccounts(full) { return _op("accounts", { action: "status", refresh: !!full }) }
+  function connectAccount(connector, options) { return accountsAction({ action: "connect", connector: connector, options: options || {} }) }
+  function submitAuth(values) { return accountsAction({ action: "submit", flow_id: root.authFlow.id, values: values }) }
+  function cancelAuth() { return accountsAction({ action: "cancel", flow_id: root.authFlow.id }) }
+  function newQr() { return accountsAction({ action: "new_qr", flow_id: root.authFlow.id }) }
+  function searchAccounts(query) { return _op("accounts", { action: "search", query: query }) }
+  function onboardingAction(action, fields) { return _op("onboarding", fields ? { action: action, fields: fields } : { action: action }) }
+  function backupAction(req) { root.backupNote = { action: req.action, ok: true, message: "…" }; return _op("backup", req) }
+  function importsAction(req) { if (req.action !== "status") root.importNote = { action: req.action, ok: true, message: "…" }; return _op("imports", req) }
   // While the hub is open, task changes (a delegated run starting, a step, the end) refresh it, at most every 0.4 s.
   Timer { id: hubRefresh; interval: 400; onTriggered: root.refreshHub() }
   // Web research: ask (a mode from the card's selector, or a related question), open a cited source,
@@ -405,6 +438,28 @@ Item {
       }
       return
     }
+    if (msg.reply !== undefined && root._opPending[msg.reply] !== undefined) {
+      var opAct = root._opPending[msg.reply].split(":")
+      delete root._opPending[msg.reply]
+      var op = opAct[0], act = opAct[1]
+      if (op === "accounts") {
+        if ((act === "status" || act === "search") && msg.cards) {
+          if (act === "search" || msg.query) root.accountsSearch = { query: msg.query || "", cards: msg.cards }
+          else root.accounts = msg
+        } else {
+          root.accountsNote = { action: act, ok: msg.ok !== false, message: msg.message || "", error: msg.error || null }
+          if (msg.flow) root.authFlow = msg.flow
+        }
+      } else if (op === "onboarding" && msg.state) root.onboarding = msg.state
+      else if (op === "backup") {
+        if (act === "status" && msg.ok) root.backup = msg
+        else root.backupNote = Object.assign({ action: act }, msg)
+      } else if (op === "imports") {
+        if (act === "status" && msg.ok) root.imports = msg
+        else root.importNote = Object.assign({ action: act }, msg)
+      }
+      return
+    }
     if (msg.reply !== undefined && msg.history !== undefined) {
       // Snapshot answering our subscribe.
       root.status = msg.status
@@ -418,6 +473,8 @@ Item {
       root.backends = msg.backends || ({ lockdown: false })
       root.research = msg.research || ({ enabled: false, ready: false })
       root.catalogSummary = msg.catalog || ({})
+      if (msg.accounts) root.accounts = msg.accounts
+      if (msg.onboarding) root.onboarding = msg.onboarding
       root.protocolVersion = msg.protocol || 1
       var live = msg.activities || {}
       root.timers = live.reminders || []
@@ -459,6 +516,14 @@ Item {
     switch (msg.event) {
     case "status": root.status = msg.status; break
     case "integrations": if (msg.status) root.apps = msg.status; break
+    case "accounts": if (msg.status) root.accounts = msg.status; break
+    case "auth":
+      // The flow on screen follows its events; a newer flow (another card) replaces it.
+      if (msg.flow && (!root.authFlow.id || msg.flow.id === root.authFlow.id || ["done", "error", "cancelled"].indexOf(root.authFlow.step) >= 0))
+        root.authFlow = msg.flow
+      break
+    case "onboarding": if (msg.state) root.onboarding = msg.state; break
+    case "backup": if (msg.status) root.backup = msg.status; break
     case "gateway": if (msg.status) root.gateway = msg.status; break
     case "call": root.call = msg.call || ({}); break
     case "level":

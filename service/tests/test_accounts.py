@@ -669,6 +669,8 @@ const mode = process.env.FAKE_BRIDGE_MODE || fs.readFileSync(path.join(__dirname
 if (fs.existsSync(creds) && mode !== 'logged_out') {
   emit({event: 'connected', user: {id: '15551234567:3@s.whatsapp.net', name: 'Roman'}});
   setTimeout(() => process.exit(0), 50);
+} else if (mode === 'offline') {
+  let n = 0; const t = setInterval(() => { emit({event: 'disconnected', reason: 408}); if (++n > 10) process.exit(0); }, 30);
 } else if (mode === 'logged_out') {
   emit({event: 'error', error: 'logged_out', reason: 401}); process.exit(1);
 } else {
@@ -952,4 +954,15 @@ def test_local_discovery_reads_no_private_files(jarvis, tmp_path, monkeypatch):
         assert cards["office"]["capabilities"][1]["state"] == "verified"
         assert not [p for p in opened if any(s in p for s in ("Cookies", "Login Data", "logins.json", "places.sqlite",
                                                                  "key4.db", "Bookmarks"))]
+    drive(j, body())
+
+
+def test_whatsapp_unreachable_is_reported_quickly(jarvis, bridge):
+    j = jarvis
+    (bridge / "mode").write_text("offline")
+
+    async def body():
+        fid = (await j.accounts.connect("whatsapp"))["flow"]["id"]
+        await until(lambda: j.accounts.flows[fid].step == "error", 10)
+        assert j.accounts.flows[fid].error["code"] == "network" and "retry" in j.accounts.flows[fid].error["actions"]
     drive(j, body())

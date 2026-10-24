@@ -160,3 +160,12 @@ What was checked in each upstream's own source before relying on it:
 **Measured in the running VM (2026-10-21):** `omarchy-version` → `4.0.4-10` (package `try-omarchy-runtime`, no git checkout under `/usr/share/omarchy`), Hyprland `v0.56.2` (`efb50993`), quickshell `0.3.2-1`, PipeWire `1.6.9`, Python `3.14.8`; 8 vCPU, 5.9 GB RAM. v0.12.0 is the newest launcher release, so this is the newest guest Try Omarchy supports; it cannot track upstream `quattro` (4.5.0-rc1+) without leaving the launcher's supported update path, so it was not forced.
 
 The guest's actual version must be read from the running VM (`scripts/vm.ps1 version`); it is not assumed to match the table above. Supported guest upgrades come from launcher-delivered package repos (`docs/GUEST-UPGRADES.md`), not directly from upstream `quattro`.
+
+## Accounts & onboarding (docs/ONBOARDING.md)
+
+| Source | Pin | Licence | Use |
+|---|---|---|---|
+| [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) `scripts/whatsapp-bridge` | `e0c479382e3609f7878d6e243e47d81f368a920c` | MIT | Personal WhatsApp pairing (`--pair-only --pair-json`), installed by `omarchy/whatsapp/setup.sh` with `npm ci` from its lockfile |
+| [segno](https://github.com/heuer/segno) | `>=1.6` | BSD-3-Clause | QR modules for the panel |
+| [Telethon](https://github.com/LonamiWebs/Telethon) | `1.42.0` (optional) | MIT | Telegram account QR login |
+| [cryptography](https://github.com/pyca/cryptography) | `>=42` | Apache-2.0/BSD | AES-256-GCM + scrypt backups |
