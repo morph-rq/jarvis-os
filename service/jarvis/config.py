@@ -134,7 +134,7 @@ DEFAULTS: dict = {
         # Floating HUD cards (weather, results, plans, notices) at the screen edge.
         "hud": True,
         # Bar/floating companion look: "jarvis" (the GPU orb with eyes), "pebble" (eyes) or "orb" (rings and glow).
-        "companion_style": "coucou",
+        "companion_style": "pip",
         # The Jarvis Island: a pill at the top centre that grows into captions, approvals, results,
         # agent activity and the conversation view.
         "island": True,
@@ -380,7 +380,7 @@ SCHEMA: dict[str, tuple] = {
     "ui.companion_right": (int, (0, 8000)),
     "ui.companion_bottom": (int, (0, 8000)),
     "ui.hud": (bool, None),
-    "ui.companion_style": (str, ("coucou", "pip", "jarvis", "pebble", "orb")),
+    "ui.companion_style": (str, ("pip", "coucou", "jarvis", "pebble", "orb")),
     "ui.island": (bool, None),
     "ui.island_autohide": (bool, None),
     "ui.island_screen": (str, ("focused", "primary")),

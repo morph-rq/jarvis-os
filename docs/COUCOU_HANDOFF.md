@@ -27,6 +27,22 @@ Make the Jarvis island a living companion, driven by Coucou's MIT animation engi
 - If `engine.js` is missing, the island falls back to **Pip** (`ui/Pip.qml`), Jarvis's original character, which runs on the ported timings in `ui/companion.js`.
 - Do not commit screenshots of Mochi. `evidence/coucou/pip-moods.png` shows Pip only.
 
+## Pip: our own character, with the full set of Coucou-style animations (default)
+
+The user wanted every Coucou animation in the project, as our own, cuter character that is fine to publish. That is `omarchy/plugin/ui/pip-engine.js`, Jarvis's own engine and artwork, about 700 lines of plain JS:
+- **Character:** a gumdrop with a springy sprout, glossy eyes with highlights, rosy cheeks, a cat ω mouth, nub hands and a ground shadow.
+- **States (16):** idle, listening, speaking, thinking, working, searching, browsing, reading, approval, question, error, finished, ratelimit, sleeping, dizzy, offline. Each has its own colour tint, eyes, badge and idle motion: breathing, bouncing, scanning, sweat drops or z's.
+- **Eyes (14):** pill, wide, dot, line, flat, happy, cup, closed, tired, spiral, heart, star, wink, plus blinking with occasional double blinks.
+- **Emotes:** love, surprised, proud, wink, yawn, happy, annoyed, content. Permanent moods repeat a small behaviour: hop, head shake, wink or hearts.
+- **Particles:** hearts, stars, sparks, sweat drops, z's.
+- **Badges:** dots, !, ?, dot, an update arrow, with pop-in.
+- **Motion:** the greeting hop with a hand wave; the 112 BPM dance; gulp and chew; squash; poke ×3 → dizzy, with roll and orbiting stars; the sprout on a spring; the mouth on a spring following the voice.
+- **The file swallow:** dragEnter/dragMove/dragLeave/drop, then accepted() or rejected(). The mouth is ajar while the file hovers; the file is sucked in, then a squeeze and chews, and Pip waits for the *real* result. Accepted: content eyes and sparks. Rejected: the file is spat back out.
+
+The timings follow Coucou's MIT engine; no Coucou code or artwork is copied. `Pip.qml` hosts the engine in a Canvas. It ticks at 60 fps while moving, 20 fps while only breathing, and stops when hidden. Tests: `node --test omarchy/dev/pip-engine.test.js`. These drive every state, emote and choreography through a canvas that rejects any method QML's Canvas lacks. Renders: `evidence/coucou/pip-moods.png` and `pip-actions.png`. Preview: `omarchy/dev/pip-preview.qml`.
+
+Coucou's actual Mochi remains an **opt-in** for personal use only. Run `JARVIS_COUCOU=1 ./install-jarvis.sh` or `bash omarchy/coucou/setup.sh`, then `config set ui.companion_style coucou`. It is never committed.
+
 ## Architecture
 
 ```
@@ -80,14 +96,15 @@ jarvis restart && jarvis logs ui
 
 ## Next action for Codex
 
-1. On Omarchy, run `bash omarchy/coucou/setup.sh`, then `jarvis reload-ui`. Check that Mochi rests in the island, blinks, looks at the pointer, gets dizzy after 3 quick clicks, and changes state with voice and tasks (`jarvis logs ui` for QML errors).
+1. On Omarchy, run `jarvis reload-ui`. Check that Pip rests in the island, blinks, looks at the pointer, gets dizzy after 3 quick clicks, and changes state with voice and tasks (`jarvis logs ui` for QML errors).
 2. M4, file swallowing, is the next to implement:
    - Daemon: `service/jarvis/attachments.py` stages dropped files under `data_dir()/attachments`. It validates that each is a regular file with an allowed MIME type and at most 100 MB, copies it, deletes copies after 24 h, and publishes an `attachment` event (staged/rejected).
    - The op is `attach` {paths}. `handle_text` adds the staged files to the next turn as untrusted file references and forces the model route. `tools._within_roots` must also allow the staging dir.
-   - QML: a `DropArea` on the island (`IslandCore.qml`) sets `receiving` on the character while a drag hovers. It sends `{op:"attach", paths: companion.js dropPaths(drop.urls)}` and calls `gulp()` only when an `attachment` event says staged. The island then shows chips/previews (`fileKind`).
+   - QML: a `DropArea` on the island (`IslandCore.qml`) sets `receiving` on the character while a drag hovers. It sends `{op:"attach", paths: companion.js dropPaths(drop.urls)}` and calls `pip.drop(kind)` on drop and `pip.accepted()` / `pip.rejected()` from the `attachment` event (staged / rejected); `pip.dragEnter/dragMove/dragLeave` during the drag. The island then shows chips/previews (`fileKind`).
 3. M6, flying: a free-floating Coucou in `Service.qml`'s `companionWindow`. Read the cursor from `hyprctl cursorpos -j` only while follow mode is on (Process + 50 ms timer), drive the motion with `flyStep`/`followPoint`/`shouldLand`, and fly toward the `guide` event's rect via `guidePoint`.
 4. M5: an OP-Caelestia flavour in `omarchy/caelestia/assemble.sh` (pin `621339c`, GPL-3.0). Check whether `patches/*.patch` apply to it.
 
 ## Progress log
+- M2b: Pip rebuilt as a full engine with all Coucou-style animations, original art, and made the default. 35 node tests pass.
 - M2/M3: Pip and companion.js (10 node tests). The user then asked for Coucou's exact look, so the island now runs Coucou's own engine, built locally. Rendered offscreen in all states with PySide6. The full Python suite passed (585 passed, 11 skipped); PROTOCOL.md was regenerated.
 - M1: upstream reviewed. The Coucou Linux build is the Tauri app in `windows/`, and `linux/arch` packages it. Jarvis already has a pebble `Companion.qml`, a floating companion window and a guide ring, so the work extends those rather than adding a new service.

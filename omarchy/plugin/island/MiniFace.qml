@@ -12,8 +12,9 @@ FaceBase {
   readonly property bool hint: live || kind === "media" || kind === "agent" || kind === "result" || kind === "notice"
                                || kind === "message"
 
-  readonly property string style: face.s && face.s.settings["ui.companion_style"] ? face.s.settings["ui.companion_style"] : "coucou"
-  // Coucou's own engine when it was built on this machine (omarchy/coucou/build.mjs); Pip otherwise.
+  readonly property string style: face.s && face.s.settings["ui.companion_style"] ? face.s.settings["ui.companion_style"] : "pip"
+  // Pip by default. ui.companion_style = coucou shows Coucou's Mochi when it was built on this machine
+  // (omarchy/coucou/setup.sh, personal use only); Pip otherwise.
   readonly property bool useCoucou: style === "coucou" && coucou.status === Loader.Ready
   readonly property bool usePip: style === "pip" || (style === "coucou" && !useCoucou)
   readonly property var character: useCoucou ? coucou.item : pip

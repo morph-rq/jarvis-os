@@ -360,7 +360,7 @@ Item {
           SettingRow {
             label: t("companion_style")
             Repeater {
-              model: [["coucou", "Coucou"], ["pip", "Pip"], ["jarvis", "Jarvis"], ["pebble", "Pebble"], ["orb", "Orb"]]
+              model: [["pip", "Pip"], ["coucou", "Coucou"], ["jarvis", "Jarvis"], ["pebble", "Pebble"], ["orb", "Orb"]]
               Chip { required property var modelData; text: modelData[1]; active: s && s.settings["ui.companion_style"] === modelData[0]
                      onClicked: s.setSetting("ui.companion_style", modelData[0]) }
             }
