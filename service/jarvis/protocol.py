@@ -76,6 +76,19 @@ EVENTS: dict[str, tuple[dict, str]] = {
                  "version, morphic…}, searxng: {state, healthy, url…}, active, stats}. Answers themselves arrive as "
                  "hud cards of kind research (run_id, query, mode, state, phase, sources[], answer, citations[], "
                  "blocks[], verification, conflicts, metrics)."),
+    "accounts": ({"status": dict}, "Accounts & Integrations: {vault {backend keyring|file|none, encrypted, problem}, "
+                 "cards [{id, label, group, kind account|local, auth oauth|qr|form|none, official, experimental, cost, can[], "
+                 "cannot[], limitations[], capabilities [{id, label, kind, state verified|granted|missing_permission|"
+                 "unavailable|unsupported|error}], state (not_configured, ready, awaiting_user, verifying, connected, "
+                 "needs_attention, expired, reconnecting, unsupported, failed), action, accounts [{id, label, state, "
+                 "capabilities, error {code, title, body, actions[], details}}], setup[], setup_fields[]}], flows[]}."),
+    "auth": ({"flow": dict}, "One sign-in in progress: {id, connector, step starting|qr|qr_expired|browser|form|verifying|"
+             "done|error|cancelled, message, qr {size, rows[] of '0'/'1'} (modules only, never the payload), qr_expires, "
+             "url, fields [{name, label, kind}], error, identity {label}}."),
+    "onboarding": ({"state": dict}, "First-run setup: {stage welcome|language|personal|connect|verify|ready|done, index, "
+                   "open, name, mode, voice, language, ui_lang, suggestions [{label, ask, available}]}."),
+    "backup": ({"status": dict}, "Backups: {location, schedule, last {path, created, verified, reauth[]}, running, "
+               "backups[]}."),
     "guide": ({"op": str, "run_id": str}, "On-screen guidance (navigate). op show: kind ring|ghost, rect {x,y,width,height} "
               "in Hyprland layout px, monitor, label, caption, step, total, mode guide|do|show, hold_s, task_id; "
               "op hide: for a capture, show again follows; op end: reason done|stopped|stuck|timeout|error, caption."),
@@ -147,6 +160,15 @@ def markdown() -> str:
               "stats, open (+ `url`: a source of a recent answer), export (+ `run_id`, `kind` xlsx/docx/pdf/md), restart "
               "(+ `target` research/searxng), mcp (+ `agent`, `query`: the Hermes/OpenClaw bridge) | ask: `task_id` (the "
               "answer streams as a `hud` card of kind research); others: their result |",
+              "| `accounts` | `action` status (+ `query`: intent search, `refresh`), connect (+ `connector`, `options` "
+              "{capabilities[], account_hint, method}), submit (+ `flow_id`, `values`), cancel / new_qr (+ `flow_id`), "
+              "verify / disconnect (+ `account_id`), configure (+ `connector`, `values`), install (+ `connector`), vault | "
+              "the result; progress arrives as `auth` and `accounts` events |",
+              "| `onboarding` | `action` status, set (+ `fields` {language, name, voice, mode, connect_later}), next, skip, "
+              "back, goto (+ `stage`), finish, reset | `state` |",
+              "| `backup` | `action` status, create (+ `passphrase`, `categories`), preview / verify / restore (+ `path`, "
+              "`passphrase`, `categories`) | the result (create also verifies the new archive) |",
+              "| `imports` | `action` status, preview / apply (+ `source` {id, path, label}), cancel | the result |",
               "| `listen` / `stop_speaking` / `mute` / `ask` / `cancel` | see daemon.py | |", ""]
     return "\n".join(lines)
 

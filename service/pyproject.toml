@@ -10,6 +10,10 @@ dependencies = [
   "jeepney>=0.8",
   # The OpenClaw gateway client (jarvis/backends/openclaw.py); google-genai already brings it.
   "websockets>=13",
+  # QR codes drawn in the panel (WhatsApp/Telegram pairing; jarvis/accounts/qr.py); pure Python, BSD-3-Clause.
+  "segno>=1.6",
+  # Encrypted backups (AES-256-GCM, scrypt; jarvis/backup.py); Apache-2.0/BSD.
+  "cryptography>=42",
 ]
 
 [project.optional-dependencies]
@@ -23,6 +27,8 @@ pipecat = ["pipecat-ai==1.13.0", "google-genai>=2.25,<3"]
 documents = ["python-docx==1.2.0", "openpyxl==3.1.5", "python-pptx==1.0.2", "pypdf==6.21.1", "fpdf2==2.8.9"]
 # Only needed off Linux; on Omarchy audio goes through PipeWire's pw-record/pw-play.
 windows = ["sounddevice>=0.5", "numpy", "tzdata"]
+# A personal Telegram account (jarvis/accounts/connectors/telegram.py); MIT.
+telegram = ["telethon==1.42.0"]
 dev = ["pytest>=8"]
 
 [project.scripts]

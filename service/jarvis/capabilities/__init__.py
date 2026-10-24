@@ -24,7 +24,7 @@ log = logging.getLogger("jarvis.capabilities")
 MODULES = ("reminders", "web", "clipboard", "system", "automation", "files", "documents", "skills", "agent",
            "selfheal", "proactive", "media", "imagegen", "circuits", "geo", "home", "phone", "mail",
            "meeting", "focus", "camera", "apps", "office", "visual", "messaging", "navigator", "learn", "browser",
-           "abilities")
+           "abilities", "imported")
 
 _loaded = False
 SERVICES: list[type] = []   # Service classes the Hub instantiates, registered with @service

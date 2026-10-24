@@ -89,6 +89,15 @@ class Jarvis:
         from jarvis.research import Research
         # Web research: Morphic's pipeline on a local SearXNG, behind web_search (docs/RESEARCH.md).
         self.research = Research(self)
+        from jarvis.accounts import Accounts
+        from jarvis.accounts.onboarding import Onboarding
+        from jarvis.backup import Backups
+        from jarvis.imports import Imports
+        # First-run setup, Accounts & Integrations, import and encrypted backups (docs/ONBOARDING.md).
+        self.accounts = Accounts(self)
+        self.onboarding = Onboarding(self)
+        self.backups = Backups(self)
+        self.imports = Imports(self)
         self.brain.selector = self._tools_for
         self.voice = None
         # Results that finished after the conversation that asked for them had ended; the next Live
@@ -128,6 +137,9 @@ class Jarvis:
         setting = self.config["ui"]["language"]
         return setting if setting in i18n.LANGS else self.last_lang
 
+    def ui_lang(self) -> str:
+        return i18n.ui_language(self.config["ui"]["language"], self.lang())
+
     # ---------------------------------------------------------------- status
     def _status(self) -> str:
         if self.tasks.approvals:
@@ -155,12 +167,17 @@ class Jarvis:
         lang = self.lang()
         return {"version": __version__, "protocol": protocol.VERSION, "platform": self.platform.name,
                 "status": self.bus.status, "agents": self.agents.public(),
-                "provider": self.brain.provider, "lang": lang, "ui": i18n.UI[lang],
+                "provider": self.brain.provider, "lang": lang, "ui_lang": self.ui_lang(), "ui": i18n.UI[self.ui_lang()],
                 "voice": self.voice.public() if self.voice else {"mode": "unavailable"},
                 "settings": {k: self.config.get(k) for k in configmod.SCHEMA},
                 "history": self.memory.recent_turns(30), "activities": self.activities(),
                 "backends": self.backends.snapshot(), "catalog": self.catalog.registry.summary(),
-                "research": self.research.snapshot(), **self.tasks.snapshot()}
+                "research": self.research.snapshot(), "onboarding": self.onboarding.public(),
+                "accounts": self.accounts.status(), **self.tasks.snapshot()}
+
+    def publish_settings(self) -> None:
+        self.bus.publish("settings", settings={k: self.config.get(k) for k in configmod.SCHEMA}, lang=self.lang(),
+                         ui=i18n.UI[self.ui_lang()], ui_lang=self.ui_lang())
 
     def activities(self) -> dict:
         """What the island shows as live activities after a (re)connect: timers and reminders due within
@@ -663,6 +680,17 @@ class Jarvis:
             return {"ok": True, **await self.backends.stop_all(), "research_runs": await self.research.cancel_all()}
         if op == "research":
             return await self.research_op(req)
+        if op == "accounts":
+            # Sign-ins, QR pairing, health checks and disconnects: only over this owner-only socket.
+            return await self.accounts.op(req)
+        if op == "onboarding":
+            return await self.onboarding.op(req)
+        if op == "backup":
+            result = await self.backups.op(req)
+            self.bus.publish("backup", status=self.backups.status())
+            return result
+        if op == "imports":
+            return await self.imports.op(req)
         if op == "resume_agents":
             self.backends.lift()
             return {"ok": True}
@@ -677,8 +705,7 @@ class Jarvis:
                     return {"ok": False, "message": str(exc)}
                 self.config.save()
                 await self._apply_setting(str(req["key"]))
-                self.bus.publish("settings", settings={k: self.config.get(k) for k in configmod.SCHEMA}, lang=self.lang(),
-                                 ui=i18n.UI[self.lang()])
+                self.publish_settings()
                 return {"ok": True, "key": req["key"], "value": value}
             return {"ok": True, "settings": {k: self.config.get(k) for k in configmod.SCHEMA}, "path": str(self.config.path)}
         if op == "health":
@@ -862,11 +889,15 @@ async def serve(cfg: configmod.Config) -> None:
     await jarvis.backends.start()
     await jarvis.catalog.start()
     await jarvis.research.start()
+    await jarvis.accounts.start()
+    backup_scheduler = asyncio.create_task(jarvis.backups.scheduler(), name="backup-scheduler")
     jarvis.bus.publish("status", status="idle")
     async with server:
         serving = asyncio.create_task(server.serve_forever())
         await stop.wait()
         log.info("shutting down")
+        backup_scheduler.cancel()
+        await jarvis.accounts.close()
         await jarvis.gateway.stop()
         await jarvis.research.stop()
         await jarvis.catalog.stop()

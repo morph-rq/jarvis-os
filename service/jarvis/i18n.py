@@ -9,7 +9,8 @@ import locale
 import os
 import re
 
-LANGS = ("ru", "en", "pt")
+LANGS = ("ru", "en", "pt")          # spoken and written replies
+UI_LANGS = ("ru", "en", "fr", "pt")   # the interface (French: labels, setup and accounts; replies follow the user)
 _CYR = re.compile(r"[а-яё]", re.I)
 _PT = re.compile(r"[ãõçáéíóúâêô]|\b(você|voce|não|nao|abra|abrir|obrigad[oa]|pasta|arquivo)\b", re.I)
 
@@ -38,6 +39,16 @@ def system_language() -> str:
 
 def resolve(setting: str) -> str:
     return setting if setting in LANGS else system_language()
+
+
+def ui_language(setting: str, fallback: str) -> str:
+    """The interface language: the setting when it names one, else the system's (French included)."""
+    if setting in UI_LANGS:
+        return setting
+    value = (os.environ.get("LC_ALL") or os.environ.get("LC_MESSAGES") or os.environ.get("LANG") or "").lower()
+    if setting == "auto" and value.startswith("fr"):
+        return "fr"
+    return fallback if fallback in UI_LANGS else "en"
 
 
 # Whisper language codes and Piper voice setting per language.
@@ -688,3 +699,203 @@ RESEARCH_UI = {
 for _lang, _labels in RESEARCH_UI.items():
     UI[_lang].update(_labels)
 
+
+
+# ---- French interface (labels not translated here fall back to English) ----
+FR_CORE = {
+    "ready": "Prêt", "listening": "J'écoute…", "thinking": "Je réfléchis…", "working": "J'exécute…",
+    "speaking": "Je parle…", "approval": "Confirmation requise", "connecting": "Connexion de la voix…",
+    "error": "Erreur", "offline": "jarvisd ne tourne pas", "dictating": "Dictée…", "transcribing": "Transcription…",
+    "paused": "En pause", "wake": "J'attends « Hey Jarvis »", "muted": "Micro coupé", "ask": "Demander",
+    "voice": "Voix", "voice_on": "Voix activée", "listen": "Écouter", "dictate": "Dicter", "mute": "Couper le micro",
+    "pause": "Pause", "resume": "Reprendre", "cancel": "Annuler", "restart": "Redémarrer", "settings": "Réglages",
+    "expand": "Agrandir", "workspace": "Espace de travail", "connected_apps": "Applications connectées",
+    "connect": "Connecter", "disconnect": "Déconnecter", "not_connected": "non connecté",
+    "signing_in": "connexion en cours…", "compact": "Réduire", "allow": "Autoriser", "deny": "Refuser",
+    "approve_q": "Autoriser ?", "danger_q": "Action risquée : autoriser ?", "wake_word": "Mot d'éveil",
+    "sensitivity": "Sensibilité", "language": "Langue", "reconnecting": "Reconnexion…", "latency": "latence",
+    "type_here": "Écrivez ici…", "stop_speaking": "Arrêter de parler", "end_conversation": "Terminer",
+    "talk": "Parler", "conversation": "Conversation", "you": "Vous", "jarvis": "Jarvis", "timer": "Minuteur",
+    "reminder": "Rappel", "open": "Ouvrir", "folder": "Dossier", "copy": "Copier", "send": "Envoyer",
+    "choose": "Choisir", "close": "Fermer", "messaging": "Messagerie", "reconnect": "Reconnecter", "test": "Tester",
+    "revoke": "Révoquer", "devices": "Appareils", "microphone": "Micro", "speaker": "Haut-parleur",
+    "system_default": "Par défaut", "reduced_motion": "Animations réduites", "focus": "Concentration",
+    "agents": "Agents", "show_all": "Tout afficher", "local": "local",
+}
+
+# ---- First-run setup, Accounts & Integrations, Import, Backup & Restore (Onboarding.qml, Accounts.qml) ----
+ONBOARD_UI = {
+    "en": {
+        "ob_hi": "Hi! I'm Jarvis.", "ob_intro": "I can help with your work, files, messages, calendar and more. "
+        "Let's get everything ready — it takes a minute.", "ob_start": "Let's start", "ob_voice_or_text": "How do you want to talk?",
+        "ob_by_voice": "By voice", "ob_by_text": "By typing", "ob_language": "Choose your language",
+        "ob_language_hint": "You can change it any time in Settings.", "ob_more_langs": "Other languages follow your system.",
+        "ob_about": "A little about you", "ob_name": "What should I call you?", "ob_name_hint": "Your name",
+        "ob_voice_help": "Voice assistance (“Hey Jarvis”)", "ob_connect_now": "Connect your accounts now",
+        "ob_connect_later": "Later", "ob_services": "Connect your services", "ob_services_hint":
+        "Pick what you use. Everything is optional, and you can add more later in Settings › Accounts.",
+        "ob_check": "Checking your connections", "ob_check_hint": "Jarvis tries one harmless read with each account.",
+        "ob_ready": "You're all set{name}!", "ob_try": "Try one of these:", "ob_nothing_yet":
+        "Nothing connected yet — Jarvis already works with your files, apps and the web.", "ob_finish": "Start using Jarvis",
+        "ob_next": "Continue", "ob_back": "Back", "ob_skip": "Skip", "ob_skip_all": "Skip setup",
+        "ob_rerun": "Run setup again", "ob_step": "Step {i} of {n}",
+        "acc_title": "Accounts & Integrations", "acc_search": "What should Jarvis do? (e.g. read my email)",
+        "acc_connected": "Connected", "acc_ready": "Ready to connect", "acc_not_configured": "Needs setup",
+        "acc_awaiting_user": "Waiting for you", "acc_verifying": "Checking…", "acc_needs_attention": "Needs attention",
+        "acc_expired": "Sign in again", "acc_reconnecting": "Reconnecting…", "acc_unsupported": "Not available",
+        "acc_failed": "Failed", "acc_local": "On this computer", "acc_installed": "Found", "acc_not_found": "Not found",
+        "acc_connect": "Connect", "acc_add": "Add account", "acc_setup": "Set up", "acc_reconnect": "Reconnect",
+        "acc_verify": "Check now", "acc_disconnect": "Disconnect", "acc_install": "Install", "acc_retry": "Try again",
+        "acc_new_qr": "Show a new code", "acc_open_signin": "Open sign-in page", "acc_details": "Details",
+        "acc_help": "Help", "acc_cancel": "Cancel", "acc_save": "Save", "acc_can": "Can", "acc_cannot": "Can't",
+        "acc_permissions": "Permissions", "acc_method_oauth": "Sign in with the provider in your browser",
+        "acc_method_qr": "Scan a code with your phone", "acc_method_form": "Paste the details from the provider",
+        "acc_method_none": "Nothing to sign in", "acc_official": "Official", "acc_unofficial": "Unofficial",
+        "acc_experimental": "Experimental", "acc_cost": "Cost", "acc_external": "Uses an online service",
+        "acc_scan_whatsapp": "On your phone: WhatsApp › Settings › Linked devices › Link a device, then scan.",
+        "acc_scan_telegram": "On your phone: Telegram › Settings › Devices › Link Desktop Device, then scan.",
+        "acc_qr_expires": "New code in {s} s", "acc_qr_expired": "The code expired.", "acc_browser_wait":
+        "Finish signing in in your browser. Jarvis continues by itself.", "acc_link": "Sign-in link",
+        "acc_verified": "verified", "acc_granted": "allowed", "acc_missing_permission": "not allowed",
+        "acc_unavailable": "API off", "acc_cap_error": "error", "acc_last_check": "Checked {t}",
+        "acc_vault_keyring": "Sign-ins are kept in your desktop keyring.", "acc_vault_file":
+        "No keyring: sign-ins are kept in owner-only files (not encrypted).", "acc_vault_none":
+        "No keyring available: unlock or install one so Jarvis can keep sign-ins.", "acc_choose": "What may Jarvis do?",
+        "acc_risk": "Unofficial: WhatsApp may restrict accounts that use it, and it can stop working.", "acc_understand":
+        "I understand, continue", "acc_use_phone": "Use phone number instead", "acc_done": "Connected as {who}",
+        "acc_group_messaging": "Messaging", "acc_group_mail": "Mail, calendar & files", "acc_group_local":
+        "On this computer", "acc_group_agents": "Agents", "acc_group_apps": "More apps", "acc_none_found":
+        "Nothing matches. Try other words.",
+        "imp_title": "Import", "imp_hint": "Bring in bookmarks, contacts or calendars. Passwords and cookies are never read.",
+        "imp_preview": "Preview", "imp_import": "Import", "imp_found": "{n} items, {new} new, {old} already in Jarvis",
+        "imp_done": "Imported {n}", "imp_file": "Or a .vcf / .ics file:",
+        "bk_title": "Backup & Restore", "bk_now": "Back up now", "bk_passphrase": "Passphrase (at least 8 characters)",
+        "bk_passphrase2": "Repeat the passphrase", "bk_location": "Location", "bk_schedule": "Automatic backups",
+        "bk_off": "Off", "bk_daily": "Daily", "bk_weekly": "Weekly", "bk_restore": "Restore", "bk_preview": "Preview restore",
+        "bk_verify": "Check backup", "bk_ok": "Backup saved and checked", "bk_bad": "Backup check failed",
+        "bk_reauth": "After restoring, sign in again to: {list}", "bk_secrets": "Include API keys (encrypted)",
+        "bk_mismatch": "The passphrases don't match", "bk_restored": "Restored. Your previous data was kept in {path}",
+        "bk_migrate": "Moving to a new computer? Back up here, copy the file, restore it there.",
+        "bk_file": "Backup file", "bk_scheduled_needs": "Automatic backups need BACKUP_PASSPHRASE in the keyring.",
+    },
+    "ru": {
+        "ob_hi": "Привет! Я Jarvis.", "ob_intro": "Помогу с работой, файлами, сообщениями, календарём и не только. "
+        "Давайте всё подготовим — это займёт минуту.", "ob_start": "Начнём", "ob_voice_or_text": "Как удобнее общаться?",
+        "ob_by_voice": "Голосом", "ob_by_text": "Текстом", "ob_language": "Выберите язык",
+        "ob_language_hint": "Его можно поменять в Настройках.", "ob_more_langs": "Другие языки — по системе.",
+        "ob_about": "Немного о вас", "ob_name": "Как к вам обращаться?", "ob_name_hint": "Ваше имя",
+        "ob_voice_help": "Голосовой помощник («Hey Jarvis»)", "ob_connect_now": "Подключить аккаунты сейчас",
+        "ob_connect_later": "Позже", "ob_services": "Подключите сервисы", "ob_services_hint":
+        "Выберите, чем пользуетесь. Всё необязательно — добавить можно позже в Настройки › Аккаунты.",
+        "ob_check": "Проверяю подключения", "ob_check_hint": "Jarvis делает одно безопасное чтение в каждом аккаунте.",
+        "ob_ready": "Всё готово{name}!", "ob_try": "Попробуйте:", "ob_nothing_yet":
+        "Пока ничего не подключено — Jarvis уже работает с файлами, приложениями и интернетом.", "ob_finish": "Начать",
+        "ob_next": "Дальше", "ob_back": "Назад", "ob_skip": "Пропустить", "ob_skip_all": "Пропустить настройку",
+        "ob_rerun": "Пройти настройку заново", "ob_step": "Шаг {i} из {n}",
+        "acc_title": "Аккаунты и интеграции", "acc_search": "Что должен уметь Jarvis? (например, читать почту)",
+        "acc_connected": "Подключено", "acc_ready": "Можно подключить", "acc_not_configured": "Нужна настройка",
+        "acc_awaiting_user": "Ждёт вас", "acc_verifying": "Проверяю…", "acc_needs_attention": "Требует внимания",
+        "acc_expired": "Войдите снова", "acc_reconnecting": "Переподключение…", "acc_unsupported": "Недоступно",
+        "acc_failed": "Ошибка", "acc_local": "На этом компьютере", "acc_installed": "Найдено", "acc_not_found": "Не найдено",
+        "acc_connect": "Подключить", "acc_add": "Добавить аккаунт", "acc_setup": "Настроить", "acc_reconnect": "Подключить снова",
+        "acc_verify": "Проверить", "acc_disconnect": "Отключить", "acc_install": "Установить", "acc_retry": "Повторить",
+        "acc_new_qr": "Показать новый код", "acc_open_signin": "Открыть страницу входа", "acc_details": "Подробности",
+        "acc_help": "Помощь", "acc_cancel": "Отмена", "acc_save": "Сохранить", "acc_can": "Умеет", "acc_cannot": "Не будет",
+        "acc_permissions": "Разрешения", "acc_method_oauth": "Вход у провайдера в браузере",
+        "acc_method_qr": "Сканировать код телефоном", "acc_method_form": "Вставить данные от провайдера",
+        "acc_method_none": "Вход не нужен", "acc_official": "Официально", "acc_unofficial": "Неофициально",
+        "acc_experimental": "Экспериментально", "acc_cost": "Стоимость", "acc_external": "Использует онлайн-сервис",
+        "acc_scan_whatsapp": "На телефоне: WhatsApp › Настройки › Связанные устройства › Привязка устройства — и сканируйте.",
+        "acc_scan_telegram": "На телефоне: Telegram › Настройки › Устройства › Подключить устройство — и сканируйте.",
+        "acc_qr_expires": "Новый код через {s} с", "acc_qr_expired": "Код устарел.", "acc_browser_wait":
+        "Завершите вход в браузере. Jarvis продолжит сам.", "acc_link": "Ссылка для входа",
+        "acc_verified": "проверено", "acc_granted": "разрешено", "acc_missing_permission": "не разрешено",
+        "acc_unavailable": "API выключен", "acc_cap_error": "ошибка", "acc_last_check": "Проверено {t}",
+        "acc_vault_keyring": "Входы хранятся в связке ключей.", "acc_vault_file":
+        "Нет связки ключей: входы в файлах только для вас (без шифрования).", "acc_vault_none":
+        "Связка ключей недоступна: разблокируйте или установите её.", "acc_choose": "Что разрешить Jarvis?",
+        "acc_risk": "Неофициально: WhatsApp может ограничить такой аккаунт, а связь может перестать работать.",
+        "acc_understand": "Понимаю, продолжить", "acc_use_phone": "Войти по номеру телефона", "acc_done": "Подключено: {who}",
+        "acc_group_messaging": "Мессенджеры", "acc_group_mail": "Почта, календарь и файлы", "acc_group_local":
+        "На этом компьютере", "acc_group_agents": "Агенты", "acc_group_apps": "Другие приложения", "acc_none_found":
+        "Ничего не найдено. Попробуйте другие слова.",
+        "imp_title": "Импорт", "imp_hint": "Перенесите закладки, контакты или календари. Пароли и cookies не читаются.",
+        "imp_preview": "Посмотреть", "imp_import": "Импортировать", "imp_found": "{n} шт., новых {new}, уже есть {old}",
+        "imp_done": "Импортировано: {n}", "imp_file": "Или файл .vcf / .ics:",
+        "bk_title": "Резервная копия", "bk_now": "Создать копию", "bk_passphrase": "Пароль (не короче 8 символов)",
+        "bk_passphrase2": "Повторите пароль", "bk_location": "Папка", "bk_schedule": "Автоматически",
+        "bk_off": "Выкл.", "bk_daily": "Ежедневно", "bk_weekly": "Еженедельно", "bk_restore": "Восстановить",
+        "bk_preview": "Что восстановится", "bk_verify": "Проверить копию", "bk_ok": "Копия сохранена и проверена",
+        "bk_bad": "Проверка копии не прошла", "bk_reauth": "После восстановления войдите снова: {list}",
+        "bk_secrets": "Включить API-ключи (зашифрованы)", "bk_mismatch": "Пароли не совпадают",
+        "bk_restored": "Восстановлено. Прежние данные сохранены в {path}",
+        "bk_migrate": "Переезжаете на новый компьютер? Сделайте копию здесь и восстановите там.",
+        "bk_file": "Файл копии", "bk_scheduled_needs": "Для автокопий нужен BACKUP_PASSPHRASE в связке ключей.",
+    },
+    "fr": {
+        "ob_hi": "Bonjour ! Je suis Jarvis.", "ob_intro": "Je vous aide pour le travail, les fichiers, les messages, "
+        "l'agenda et plus encore. Préparons tout — cela prend une minute.", "ob_start": "Commencer",
+        "ob_voice_or_text": "Comment voulez-vous échanger ?", "ob_by_voice": "À la voix", "ob_by_text": "Par écrit",
+        "ob_language": "Choisissez votre langue", "ob_language_hint": "Modifiable à tout moment dans les Réglages.",
+        "ob_more_langs": "Les autres langues suivent votre système.", "ob_about": "Un peu sur vous",
+        "ob_name": "Comment dois-je vous appeler ?", "ob_name_hint": "Votre prénom",
+        "ob_voice_help": "Assistance vocale (« Hey Jarvis »)", "ob_connect_now": "Connecter vos comptes maintenant",
+        "ob_connect_later": "Plus tard", "ob_services": "Connectez vos services", "ob_services_hint":
+        "Choisissez ce que vous utilisez. Tout est facultatif, ajoutez-en plus tard dans Réglages › Comptes.",
+        "ob_check": "Vérification des connexions", "ob_check_hint": "Jarvis fait une lecture sans risque sur chaque compte.",
+        "ob_ready": "Tout est prêt{name} !", "ob_try": "Essayez :", "ob_nothing_yet":
+        "Rien de connecté pour l'instant — Jarvis fonctionne déjà avec vos fichiers, vos applis et le web.",
+        "ob_finish": "Commencer avec Jarvis", "ob_next": "Continuer", "ob_back": "Retour", "ob_skip": "Passer",
+        "ob_skip_all": "Passer la configuration", "ob_rerun": "Refaire la configuration", "ob_step": "Étape {i} sur {n}",
+        "acc_title": "Comptes et intégrations", "acc_search": "Que doit faire Jarvis ? (ex. lire mes e-mails)",
+        "acc_connected": "Connecté", "acc_ready": "Prêt à connecter", "acc_not_configured": "À configurer",
+        "acc_awaiting_user": "Vous attend", "acc_verifying": "Vérification…", "acc_needs_attention": "À vérifier",
+        "acc_expired": "Reconnectez-vous", "acc_reconnecting": "Reconnexion…", "acc_unsupported": "Indisponible",
+        "acc_failed": "Échec", "acc_local": "Sur cet ordinateur", "acc_installed": "Trouvé", "acc_not_found": "Introuvable",
+        "acc_connect": "Connecter", "acc_add": "Ajouter un compte", "acc_setup": "Configurer", "acc_reconnect": "Reconnecter",
+        "acc_verify": "Vérifier", "acc_disconnect": "Déconnecter", "acc_install": "Installer", "acc_retry": "Réessayer",
+        "acc_new_qr": "Nouveau code", "acc_open_signin": "Ouvrir la page de connexion", "acc_details": "Détails",
+        "acc_help": "Aide", "acc_cancel": "Annuler", "acc_save": "Enregistrer", "acc_can": "Peut", "acc_cannot": "Ne fera pas",
+        "acc_permissions": "Autorisations", "acc_method_oauth": "Connexion chez le fournisseur dans le navigateur",
+        "acc_method_qr": "Scanner un code avec le téléphone", "acc_method_form": "Coller les informations du fournisseur",
+        "acc_method_none": "Aucune connexion nécessaire", "acc_official": "Officiel", "acc_unofficial": "Non officiel",
+        "acc_experimental": "Expérimental", "acc_cost": "Coût", "acc_external": "Utilise un service en ligne",
+        "acc_scan_whatsapp": "Sur le téléphone : WhatsApp › Réglages › Appareils connectés › Connecter un appareil, puis scannez.",
+        "acc_scan_telegram": "Sur le téléphone : Telegram › Réglages › Appareils › Connecter un appareil, puis scannez.",
+        "acc_qr_expires": "Nouveau code dans {s} s", "acc_qr_expired": "Le code a expiré.", "acc_browser_wait":
+        "Terminez la connexion dans le navigateur. Jarvis continue tout seul.", "acc_link": "Lien de connexion",
+        "acc_verified": "vérifié", "acc_granted": "autorisé", "acc_missing_permission": "non autorisé",
+        "acc_unavailable": "API désactivée", "acc_cap_error": "erreur", "acc_last_check": "Vérifié {t}",
+        "acc_vault_keyring": "Les connexions sont gardées dans le trousseau.", "acc_vault_file":
+        "Pas de trousseau : connexions dans des fichiers privés (non chiffrés).", "acc_vault_none":
+        "Aucun trousseau disponible : déverrouillez-en ou installez-en un.", "acc_choose": "Qu'autorisez-vous ?",
+        "acc_risk": "Non officiel : WhatsApp peut restreindre ce compte, et cela peut cesser de fonctionner.",
+        "acc_understand": "J'ai compris, continuer", "acc_use_phone": "Utiliser le numéro de téléphone",
+        "acc_done": "Connecté : {who}", "acc_group_messaging": "Messagerie", "acc_group_mail": "Courrier, agenda et fichiers",
+        "acc_group_local": "Sur cet ordinateur", "acc_group_agents": "Agents", "acc_group_apps": "Autres applis",
+        "acc_none_found": "Aucun résultat. Essayez d'autres mots.",
+        "imp_title": "Importer", "imp_hint": "Importez favoris, contacts ou agendas. Mots de passe et cookies ne sont jamais lus.",
+        "imp_preview": "Aperçu", "imp_import": "Importer", "imp_found": "{n} éléments, {new} nouveaux, {old} déjà présents",
+        "imp_done": "{n} importés", "imp_file": "Ou un fichier .vcf / .ics :",
+        "bk_title": "Sauvegarde et restauration", "bk_now": "Sauvegarder", "bk_passphrase": "Phrase secrète (8 caractères min.)",
+        "bk_passphrase2": "Répétez la phrase secrète", "bk_location": "Emplacement", "bk_schedule": "Sauvegardes automatiques",
+        "bk_off": "Non", "bk_daily": "Chaque jour", "bk_weekly": "Chaque semaine", "bk_restore": "Restaurer",
+        "bk_preview": "Aperçu de la restauration", "bk_verify": "Vérifier la sauvegarde", "bk_ok": "Sauvegarde enregistrée et vérifiée",
+        "bk_bad": "La vérification a échoué", "bk_reauth": "Après restauration, reconnectez : {list}",
+        "bk_secrets": "Inclure les clés API (chiffrées)", "bk_mismatch": "Les phrases secrètes diffèrent",
+        "bk_restored": "Restauré. Vos données précédentes sont dans {path}",
+        "bk_migrate": "Nouvel ordinateur ? Sauvegardez ici, copiez le fichier, restaurez-le là-bas.",
+        "bk_file": "Fichier de sauvegarde", "bk_scheduled_needs": "Les sauvegardes automatiques nécessitent BACKUP_PASSPHRASE dans le trousseau.",
+    },
+}
+ONBOARD_UI["pt"] = {**ONBOARD_UI["en"], **{
+    "ob_hi": "Olá! Eu sou o Jarvis.", "ob_start": "Vamos começar", "ob_language": "Escolha seu idioma",
+    "ob_name": "Como devo chamar você?", "ob_services": "Conecte seus serviços", "ob_ready": "Tudo pronto{name}!",
+    "ob_next": "Continuar", "ob_back": "Voltar", "ob_skip": "Pular", "ob_finish": "Começar a usar o Jarvis",
+    "acc_title": "Contas e integrações", "acc_connected": "Conectado", "acc_connect": "Conectar",
+    "acc_disconnect": "Desconectar", "acc_retry": "Tentar de novo", "acc_cancel": "Cancelar", "bk_title": "Backup e restauração",
+}}
+
+UI["fr"] = {**UI["en"], **FR_CORE}
+for _lang, _labels in ONBOARD_UI.items():
+    UI[_lang].update(_labels)

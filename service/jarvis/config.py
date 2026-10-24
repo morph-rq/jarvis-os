@@ -124,8 +124,9 @@ DEFAULTS: dict = {
         "projects_dir": "",
     },
     "ui": {
-        # "auto" follows the system locale; Russian, English and Portuguese are complete.
+        # "auto" follows the system locale; Russian, English and Portuguese are complete, French covers the interface.
         "language": "auto",
+        "user_name": "",        # what Jarvis calls you (first-run setup)
         "floating_companion": False,
         # Where the floating companion sits: its distance from the screen's right and bottom edges (px);
         # dragging it sets these.
@@ -337,10 +338,38 @@ DEFAULTS: dict = {
         "share_with_hermes": True,
         "share_with_openclaw": False,
     },
+    # ---- Accounts & Integrations, first-run setup and backups (jarvis/accounts, docs/ONBOARDING.md) ----
+    "accounts": {
+        # Without a desktop keyring, sign-ins are refused rather than written to plain files; set this to
+        # keep them in owner-only files instead (protected by file permissions only, not encrypted).
+        "allow_file_vault": False,
+        # Microsoft 365: your own app registration (Entra ID > App registrations, "Mobile and desktop"
+        # redirect http://localhost, public client). Its client id is not a secret. tenant: common,
+        # consumers, organizations or a tenant id.
+        "microsoft_client_id": "",
+        "microsoft_tenant": "common",
+        # Personal WhatsApp (experimental, unofficial): the Hermes WhatsApp bridge directory ("" = the one
+        # omarchy/whatsapp/setup.sh installs, or Hermes's own).
+        "whatsapp_bridge": "",
+        "health_checks": True,
+    },
+    "onboarding": {
+        "auto_open": True,      # open the welcome panel on the first start
+    },
+    "backup": {
+        "location": "",         # "" = ~/.local/state/jarvis/backups
+        "schedule": "off",      # off, daily, weekly (needs BACKUP_PASSPHRASE in the keyring)
+        "keep": 5,
+        "categories": ["config", "preferences", "memory", "skills", "integrations"],
+    },
 }
 
 # Validation for `jarvis-workos config set` and the settings panel: (type, choices | (min, max) | None).
 SCHEMA: dict[str, tuple] = {
+    "accounts.allow_file_vault": (bool, None), "accounts.microsoft_client_id": (str, None),
+    "accounts.microsoft_tenant": (str, None), "accounts.whatsapp_bridge": (str, None),
+    "accounts.health_checks": (bool, None), "onboarding.auto_open": (bool, None),
+    "backup.location": (str, None), "backup.schedule": (str, ("off", "daily", "weekly")), "backup.keep": (int, (1, 100)),
     "brain.provider": (str, ("gemini", "claude")),
     "brain.gemini_model": (str, None), "brain.claude_model": (str, None), "brain.vision_model": (str, None),
     "brain.tool_selection": (str, ("relevant", "all")),
@@ -375,7 +404,8 @@ SCHEMA: dict[str, tuple] = {
     "dictation.language": (str, ("auto", "ru", "en", "pt")),
     "approval.timeout_s": (int, (10, 600)),
     "files.projects_dir": (str, None),
-    "ui.language": (str, ("auto", "ru", "en", "pt")),
+    "ui.language": (str, ("auto", "ru", "en", "fr", "pt")),
+    "ui.user_name": (str, None),
     "ui.floating_companion": (bool, None),
     "ui.companion_right": (int, (0, 8000)),
     "ui.companion_bottom": (int, (0, 8000)),
@@ -449,7 +479,10 @@ SECRET_NAMES = ("GEMINI_API_KEY", "ANTHROPIC_API_KEY", "HOME_ASSISTANT_TOKEN", "
                 "OPENCLAW_TELEGRAM_BOT_TOKEN",
                 # Research (jarvis/research): SearXNG's secret_key (made by Jarvis), an optional OpenAI-compatible
                 # model endpoint's key, and optional paid search APIs, used only when research.search_provider names them.
-                "SEARXNG_SECRET", "OPENAI_COMPATIBLE_API_KEY", "TAVILY_API_KEY", "BRAVE_SEARCH_API_KEY")
+                "SEARXNG_SECRET", "OPENAI_COMPATIBLE_API_KEY", "TAVILY_API_KEY", "BRAVE_SEARCH_API_KEY",
+                # Accounts (jarvis/accounts): Telegram's my.telegram.org app for a personal account, and the
+                # passphrase for scheduled encrypted backups (keyring only).
+                "TELEGRAM_API_ID", "TELEGRAM_API_HASH", "BACKUP_PASSPHRASE")
 
 
 def _deep_merge(base: dict, override: dict) -> dict:
