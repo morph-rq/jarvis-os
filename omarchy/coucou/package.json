@@ -1,0 +1,7 @@
+{
+  "name": "jarvis-coucou-build",
+  "private": true,
+  "description": "Builds Coucou's character engine locally for the Jarvis island (see build.mjs)",
+  "type": "module",
+  "devDependencies": { "esbuild": "0.25.12" }
+}

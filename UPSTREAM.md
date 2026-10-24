@@ -61,6 +61,7 @@ Cloned to `upstream/ui-refs/` (gitignored) and read at source level; the full st
 
 | Project | Commit | License | Used for |
 |---|---|---|---|
+| [louis-cfm/coucou](https://github.com/louis-cfm/coucou) | `7ea7b22` | MIT code; the Mochi character, name and sounds are reserved (LICENSE-ASSETS.md) | the character engine (`windows/src/mochi/engine.ts`), built locally by `omarchy/coucou/setup.sh` and never committed; timings ported to `ui/companion.js` for Pip |
 | [caelestia-dots/shell](https://github.com/caelestia-dots/shell) | `29fcf69` | GPL-3.0 | ideas only (motion, morphing panels) |
 | [louis-cfm/coucou](https://github.com/louis-cfm/coucou) | `1e51809` | MIT code; assets reserved | ideas: open spring 0.5 s / 0.72, hook relay with silence = no decision, 600 ms click guard |
 | [AvengeMedia/DankMaterialShell](https://github.com/AvengeMedia/DankMaterialShell) | `47c9d8d` | MIT | ideas: input region fixed per change, focus handling |

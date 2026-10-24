@@ -101,7 +101,7 @@ fi
 jw_step "System packages"
 want=(python git curl unzip gnupg pciutils pipewire pipewire-pulse wireplumber libpulse wl-clipboard wtype grim slurp
       playerctl brightnessctl plocate fd libsecret poppler chromium at-spi2-core tesseract tesseract-data-eng portaudio)
-(( dev_tools )) && want+=(nodejs npm)
+want+=(nodejs npm)   # the island's Coucou character is built locally (omarchy/coucou)
 if [[ $shell == caelestia ]]; then
   read -r -a caelestia_pkgs <<< "$(bash "$repo/omarchy/caelestia/install-caelestia.sh" --print-packages)"
   want+=("${caelestia_pkgs[@]}")
@@ -201,6 +201,15 @@ if (( ! DRY_RUN )) && [[ -x $JW_BIN/jarvis-workos ]]; then
       jw_info "later: jarvis secret set GEMINI_API_KEY"
     fi
   fi
+fi
+
+jw_step "Coucou character (built on this machine, for your own use)"
+if (( DRY_RUN )); then
+  jw_info "would run omarchy/coucou/setup.sh"
+elif bash "$repo/omarchy/coucou/setup.sh"; then
+  jw_ok "Coucou lives in the island (ui.companion_style = coucou)"
+else
+  jw_warn "Coucou could not be built; the island shows Pip. Retry: bash $repo/omarchy/coucou/setup.sh"
 fi
 
 jw_step "Done"

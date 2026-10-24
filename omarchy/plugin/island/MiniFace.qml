@@ -12,7 +12,28 @@ FaceBase {
   readonly property bool hint: live || kind === "media" || kind === "agent" || kind === "result" || kind === "notice"
                                || kind === "message"
 
-  readonly property bool usePip: !face.s || !face.s.settings["ui.companion_style"] || face.s.settings["ui.companion_style"] === "pip"
+  readonly property string style: face.s && face.s.settings["ui.companion_style"] ? face.s.settings["ui.companion_style"] : "coucou"
+  // Coucou's own engine when it was built on this machine (omarchy/coucou/build.mjs); Pip otherwise.
+  readonly property bool useCoucou: style === "coucou" && coucou.status === Loader.Ready
+  readonly property bool usePip: style === "pip" || (style === "coucou" && !useCoucou)
+  readonly property var character: useCoucou ? coucou.item : pip
+
+  Loader {
+    id: coucou
+    active: face.style === "coucou"
+    visible: face.useCoucou && face.mode !== "hidden"
+    width: 38; height: 32
+    x: face.hint ? 0 : (face.width - width) / 2
+    anchors.verticalCenter: parent.verticalCenter
+    source: "../ui/coucou/CoucouCanvas.qml"
+    onLoaded: {
+      item.interactive = false
+      item.mood = Qt.binding(function() { return face.s ? face.s.companionMood : "offline" })
+      item.level = Qt.binding(function() { return face.s ? face.s.level : 0 })
+      item.reducedMotion = Qt.binding(function() { return Tokens.reducedMotion })
+    }
+  }
+  Connections { target: face.useCoucou ? face.s : null; function onReaction(kind) { coucou.item.react(kind) } }
 
   // Pip, the living companion (ui.companion_style = pip, the default): rests in the island, reacts to
   // what Jarvis is really doing, and is poked, dragged files into and released from here.
@@ -38,15 +59,15 @@ FaceBase {
     bands: face.s ? face.s.bands : []
     vad: !!face.s && face.s.vad
     sleeping: face.mode === "hidden"
-    visible: !face.usePip && face.mode !== "hidden"
+    visible: !face.usePip && !face.useCoucou && face.mode !== "hidden"
     Connections { target: face.s; function onReaction(kind) { orb.react(kind) } }
   }
 
   PrivacyDots {
     s: face.s
     visible: face.mode !== "hidden"
-    x: face.usePip ? pip.x + pip.width - 6 : orb.x + orb.width - 3
-    y: face.usePip ? pip.y + 3 : orb.y + 1
+    x: face.useCoucou ? coucou.x + coucou.width - 6 : face.usePip ? pip.x + pip.width - 6 : orb.x + orb.width - 3
+    y: face.useCoucou ? coucou.y + 3 : face.usePip ? pip.y + 3 : orb.y + 1
   }
 
   Row {
@@ -102,7 +123,7 @@ FaceBase {
       if (!face.s) return
       if (e.button === Qt.RightButton) face.s.listen()
       else if (e.button === Qt.MiddleButton) face.s.dictate("toggle")
-      else { if (face.usePip) pip.poke(); face.island.request("expanded") }
+      else { if (face.useCoucou || face.usePip) face.character.poke(); face.island.request("expanded") }
     }
   }
 }

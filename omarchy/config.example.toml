@@ -22,7 +22,7 @@ threshold = 0.5                # lower = more sensitive
 [ui]
 language = "auto"              # auto | ru | en | pt
 hud = true                     # floating cards, notices and approvals at the screen edge
-companion_style = "pip"        # pip (the living companion) | jarvis (GPU orb with eyes) | pebble (eyes) | orb (rings and glow)
+companion_style = "coucou"     # coucou (Coucou's own character, built locally: omarchy/coucou) | pip (Jarvis's original) | jarvis (GPU orb with eyes) | pebble (eyes) | orb (rings and glow)
 island = true                  # the Jarvis Island at the top centre (Super+Alt+I)
 island_autohide = false        # idle: shrink to a thin strip until hovered
 island_screen = "focused"      # focused | primary

@@ -20,7 +20,12 @@ Make the Jarvis island a living companion, driven by Coucou's MIT animation engi
 | OVERxPOWERED/op-caelestia-shell | `621339c` | GPL-3.0 | An alternate base for `omarchy/caelestia/assemble.sh` (milestone 5). |
 | caelestia-dots/shell | pinned in `omarchy/caelestia/pins.env` | GPL-3.0 | The current base. |
 
-**Licensing decision.** The name "Coucou", the Mochi character's design, expressions and look, the icons and the sounds are all reserved by their author. Jarvis therefore ships an **original character**, called the Jarvis companion ("Pip" internally). It is drawn by our own QML (`omarchy/plugin/Pip.qml`) and driven by a port of Coucou's MIT engine logic, with credit in UPSTREAM.md. No Mochi artwork and no Coucou sounds are copied. Sounds are off until we have our own.
+**How Coucou looks exactly like Coucou, without redistributing it.** The user asked for Coucou's exact design. Coucou's code is MIT, but `LICENSE-ASSETS.md` reserves the Mochi character, its name and its sounds; building and running it yourself is allowed, publishing it is not. So:
+- This repo carries only Jarvis's adapter: `omarchy/coucou/{build.mjs,prelude.js,setup.sh,pins.env,package.json}` and `omarchy/plugin/ui/coucou/CoucouCanvas.qml`.
+- `omarchy/coucou/setup.sh`, which `install-jarvis.sh` runs, clones Coucou at the pin into `upstream/coucou` (git-ignored). It installs the pinned esbuild and bundles Coucou's real `windows/src/mochi/engine.ts` into `omarchy/plugin/ui/coucou/engine.js`, which is also git-ignored and is **never commit**ted.
+- `prelude.js` gives that engine what a browser would: `performance`, a frame-driven `setTimeout`, `Path2D`, the browser `ellipse()` and a Context2D wrapper. QML Canvas then draws Mochi with Coucou's own code: the same body, eyes, mouth, badges, particles, springs and timings. The build stubs out sounds and outfits.
+- If `engine.js` is missing, the island falls back to **Pip** (`ui/Pip.qml`), Jarvis's original character, which runs on the ported timings in `ui/companion.js`.
+- Do not commit screenshots of Mochi. `evidence/coucou/pip-moods.png` shows Pip only.
 
 ## Architecture
 
@@ -47,8 +52,8 @@ Rules:
 | # | Milestone | State |
 |---|---|---|
 | 1 | Foundation: branch, handoff, upstream review | done |
-| 2 | Living island: Pip renderer and engine port in the island | in progress |
-| 3 | Real agent reactions: event -> state map, tests | pending |
+| 2 | Living island: Coucou's real engine in the island (CoucouCanvas), Pip fallback | done |
+| 3 | Real agent reactions: companionMood from status/tools/approvals/agents, reactions, flash states | done (QML on Omarchy untested) |
 | 4 | File swallowing: DropArea, `attach` op, accepted/rejected events, gulp | pending |
 | 5 | OP-Caelestia flavour in assemble.sh with fallback | pending |
 | 6 | Flying companion: takeoff, landing, follow-cursor, return to island, guide targets | pending |
@@ -71,11 +76,18 @@ jarvis restart && jarvis logs ui
 
 ## Rollback
 
-`git switch main` (or `jarvis-island`), then `jarvis restart`. To use the old visuals without switching branches, set `jarvis-workos config set ui.companion_style jarvis`.
+`git switch main` (or `jarvis-island`), then `jarvis restart`. Old visuals without switching branches: `jarvis-workos config set ui.companion_style jarvis` (or `pip` for the original character). To remove Coucou's local build, delete `omarchy/plugin/ui/coucou/engine.js` and `upstream/coucou`.
 
 ## Next action for Codex
 
-See the first "pending" row in Milestones. The section below lists details per milestone.
+1. On Omarchy, run `bash omarchy/coucou/setup.sh`, then `jarvis reload-ui`. Check that Mochi rests in the island, blinks, looks at the pointer, gets dizzy after 3 quick clicks, and changes state with voice and tasks (`jarvis logs ui` for QML errors).
+2. M4, file swallowing, is the next to implement:
+   - Daemon: `service/jarvis/attachments.py` stages dropped files under `data_dir()/attachments`. It validates that each is a regular file with an allowed MIME type and at most 100 MB, copies it, deletes copies after 24 h, and publishes an `attachment` event (staged/rejected).
+   - The op is `attach` {paths}. `handle_text` adds the staged files to the next turn as untrusted file references and forces the model route. `tools._within_roots` must also allow the staging dir.
+   - QML: a `DropArea` on the island (`IslandCore.qml`) sets `receiving` on the character while a drag hovers. It sends `{op:"attach", paths: companion.js dropPaths(drop.urls)}` and calls `gulp()` only when an `attachment` event says staged. The island then shows chips/previews (`fileKind`).
+3. M6, flying: a free-floating Coucou in `Service.qml`'s `companionWindow`. Read the cursor from `hyprctl cursorpos -j` only while follow mode is on (Process + 50 ms timer), drive the motion with `flyStep`/`followPoint`/`shouldLand`, and fly toward the `guide` event's rect via `guidePoint`.
+4. M5: an OP-Caelestia flavour in `omarchy/caelestia/assemble.sh` (pin `621339c`, GPL-3.0). Check whether `patches/*.patch` apply to it.
 
 ## Progress log
+- M2/M3: Pip and companion.js (10 node tests). The user then asked for Coucou's exact look, so the island now runs Coucou's own engine, built locally. Rendered offscreen in all states with PySide6. The full Python suite passed (585 passed, 11 skipped); PROTOCOL.md was regenerated.
 - M1: upstream reviewed. The Coucou Linux build is the Tauri app in `windows/`, and `linux/arch` packages it. Jarvis already has a pebble `Companion.qml`, a floating companion window and a guide ring, so the work extends those rather than adding a new service.

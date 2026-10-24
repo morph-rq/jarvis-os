@@ -24,3 +24,4 @@ dist/
 
 # The research engine's npm dependencies (omarchy/research/engine/package-lock.json pins them)
 node_modules/
+omarchy/plugin/ui/coucou/engine.js
